@@ -358,61 +358,89 @@
         const gltfUrl = 'https://raw.githubusercontent.com/EragonV7/Layout-3D-testev1/141e6626bf72aa246d5d86a29bbe763ed7a1e954/Testev1.glb';
         const loader = new THREE.GLTFLoader();
         
-        loader.load(gltfUrl, function (gltf) {
-            modeloGeral = gltf.scene; 
-            scene.add(modeloGeral);
-            
-            boxGeral = new THREE.Box3().setFromObject(modeloGeral);
-            centroGeral = boxGeral.getCenter(new THREE.Vector3());
-            const size = boxGeral.getSize(new THREE.Vector3());
-            tamanhoMax = Math.max(size.x, size.y, size.z);
-            
-            controls.target.copy(centroGeral);
-            const posFinalCamera = new THREE.Vector3(
-                centroGeral.x + (tamanhoMax * 0.8),
-                centroGeral.y + (tamanhoMax * 0.8),
-                centroGeral.z + (tamanhoMax * 0.8)
-            );
-            camera.position.set(
-                centroGeral.x + (tamanhoMax * 2.2),
-                centroGeral.y + (tamanhoMax * 2.6),
-                centroGeral.z + (tamanhoMax * 2.2)
-            );
-            controls.update();
-
-            modeloGeral.traverse(child => {
-                if (child.name) {
-                    const nome = normalizarNome(child.name);
-                    const match = nome.match(/^([A-Z]\d{2})(?:-N\d{2})?$/);
-                    if (match) enderecosDoModelo.add(match[1]);
-                }
-                if (child.isMesh) {
-                    child.material = child.material.clone();
-                    if ('metalness' in child.material) child.material.metalness = 0.6;
-                    if ('roughness' in child.material) child.material.roughness = 0.3;
-                    child.userData.corOriginal = child.material.color ? child.material.color.getHex() : 0xffffff;
-                }
-            });
-            aplicarCoresBaseModelo();
-
-            criar3PlacasCorredor();
-            atualizarVisibilidadePlacas();
-            if(typeof calcularInfoCorredores === 'function') calcularInfoCorredores();
-            if(typeof criarEmpilhadeiraGrupo === 'function') criarEmpilhadeiraGrupo();
-            aplicarFiltrosECores();
-
+        function finalizarTelaCarregamento(mensagem) {
             const telaCarregamento = document.getElementById('tela-carregamento');
+            const textoEl = document.querySelector('#tela-carregamento .texto-carregamento');
+            if (mensagem && textoEl) textoEl.innerText = mensagem;
             if (telaCarregamento) telaCarregamento.classList.add('escondida');
-            tweenCamera(posFinalCamera, centroGeral.clone(), 2200);
+        }
+
+        loader.load(gltfUrl, function (gltf) {
+            try {
+                modeloGeral = gltf.scene;
+                scene.add(modeloGeral);
+
+                boxGeral = new THREE.Box3().setFromObject(modeloGeral);
+                centroGeral = boxGeral.getCenter(new THREE.Vector3());
+                const size = boxGeral.getSize(new THREE.Vector3());
+                tamanhoMax = Math.max(size.x, size.y, size.z);
+
+                controls.target.copy(centroGeral);
+                const posFinalCamera = new THREE.Vector3(
+                    centroGeral.x + (tamanhoMax * 0.8),
+                    centroGeral.y + (tamanhoMax * 0.8),
+                    centroGeral.z + (tamanhoMax * 0.8)
+                );
+                camera.position.set(
+                    centroGeral.x + (tamanhoMax * 2.2),
+                    centroGeral.y + (tamanhoMax * 2.6),
+                    centroGeral.z + (tamanhoMax * 2.2)
+                );
+                controls.update();
+
+                modeloGeral.traverse(child => {
+                    if (child.name) {
+                        const nome = normalizarNome(child.name);
+                        const match = nome.match(/^([A-Z]\d{2})(?:-N\d{2})?$/);
+                        if (match) enderecosDoModelo.add(match[1]);
+                    }
+                    if (child.isMesh) {
+                        if (Array.isArray(child.material)) {
+                            child.material = child.material.map(mat => mat.clone());
+                        } else if (child.material) {
+                            child.material = child.material.clone();
+                        }
+
+                        const materiais = Array.isArray(child.material) ? child.material : [child.material];
+                        const primeiraCor = materiais[0] && materiais[0].color && materiais[0].color.getHex
+                            ? materiais[0].color.getHex()
+                            : 0xffffff;
+                        child.userData.corOriginal = primeiraCor;
+
+                        materiais.forEach(mat => {
+                            if ('metalness' in mat) mat.metalness = 0.6;
+                            if ('roughness' in mat) mat.roughness = 0.3;
+                        });
+                    }
+                });
+
+                aplicarCoresBaseModelo();
+                criar3PlacasCorredor();
+                atualizarVisibilidadePlacas();
+                if (typeof calcularInfoCorredores === 'function') calcularInfoCorredores();
+                if (typeof criarEmpilhadeiraGrupo === 'function') criarEmpilhadeiraGrupo();
+                aplicarFiltrosECores();
+
+                finalizarTelaCarregamento();
+                tweenCamera(posFinalCamera, centroGeral.clone(), 2200);
+            } catch (err) {
+                console.error('[VISUAL] Erro durante a preparação do modelo 3D:', err);
+                finalizarTelaCarregamento('Erro ao preparar o modelo 3D');
+            }
         }, function (xhr) {
             const pctEl = document.getElementById('pct-carregamento');
-            if (pctEl && xhr.total) {
-                pctEl.innerText = Math.min(100, Math.round((xhr.loaded / xhr.total) * 100)) + '%';
+            if (pctEl && xhr && xhr.total > 0) {
+                const pct = Math.min(99, Math.round((xhr.loaded / xhr.total) * 100));
+                pctEl.innerText = pct + '%';
             }
         }, function (erro) {
             console.error('[VISUAL] Falha ao carregar o modelo 3D:', erro);
             const textoEl = document.querySelector('#tela-carregamento .texto-carregamento');
             if (textoEl) textoEl.innerText = 'Erro ao carregar o modelo 3D';
+            const pctEl = document.getElementById('pct-carregamento');
+            if (pctEl) pctEl.innerText = 'ERRO';
+            const telaCarregamento = document.getElementById('tela-carregamento');
+            if (telaCarregamento) telaCarregamento.classList.add('escondida');
         });
 
         // --- 4. FUNÇÕES DE SUPORTE E LEITURA DE NOMES ---
@@ -494,11 +522,15 @@
 
         function setMaterialColor(material, hex, emissiveHex = 0x000000, emissiveIntensity = 0) {
             if (!material) return;
-            if (material.color && material.color.setHex) material.color.setHex(hex);
-            if (material.emissive && material.emissive.setHex) {
-                material.emissive.setHex(emissiveHex);
-                material.emissiveIntensity = emissiveIntensity;
-            }
+            const materiais = Array.isArray(material) ? material : [material];
+            materiais.forEach(mat => {
+                if (!mat) return;
+                if (mat.color && mat.color.setHex) mat.color.setHex(hex);
+                if (mat.emissive && mat.emissive.setHex) {
+                    mat.emissive.setHex(emissiveHex);
+                    mat.emissiveIntensity = emissiveIntensity;
+                }
+            });
         }
 
         function nomeObjetoTemPalavra(obj, palavras) {
