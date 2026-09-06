@@ -10,31 +10,22 @@
         #canvas-container { width: 100vw; height: 100vh; position: absolute; top:0; left:0; z-index: 1; }
         
         /* Painel de Controles */
-        #ui-controles { position: absolute; top: 15px; left: 15px; z-index: 10; display: flex; gap: 8px; flex-wrap: wrap; max-width: 420px; }
+        #ui-controles { position: absolute; top: 15px; left: 15px; z-index: 10; display: flex; gap: 8px; flex-wrap: wrap; max-width: 500px; }
         .btn { background: #0f1724; color: #00f3ff; border: 1px solid #005b7a; padding: 10px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 13px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,243,255,0.1); }
         .btn:hover { background: #00f3ff; color: #040914; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,243,255,0.4); }
         .btn:active { transform: translateY(0); }
         .btn-toggle-ativo { background: #00ff55 !important; color: #040914 !important; border-color: #00ff55 !important; } 
-        .btn-status { background: #6200ea; border-color: #9d46ff; color: #fff; } 
-        .btn-status:hover { background: #9d46ff; color: #fff; }
 
         /* HUD Global */
         #hud-topo { position: absolute !important; top: 15px !important; right: 15px !important; left: auto !important; transform: none !important; background: rgba(4, 9, 20, 0.85); display: flex; gap: 25px; padding: 12px 25px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,243,255,0.2); z-index: 20; border: 1px solid #005b7a; border-bottom: 4px solid #00f3ff; backdrop-filter: blur(4px); }
-        .hud-box { text-align: center; color: #fff; min-width: 80px; }
+        .hud-box { text-align: center; color: #fff; min-width: 90px; }
         .hud-box .titulo { font-size: 11px; color: #80d8ff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; display: block; font-weight: bold; }
         .hud-box .valor { font-size: 20px; font-weight: bold; text-shadow: 0 0 8px rgba(255,255,255,0.4); }
 
         /* Placas de Corredor (CSS2D) */
         .placa-corredor { background: rgba(4, 9, 20, 0.9); color: #00f3ff; padding: 6px 16px; border-radius: 4px; font-weight: bold; font-size: 16px; border: 1px solid #00f3ff; pointer-events: none; text-align: center; box-shadow: 0 0 15px rgba(0,243,255,0.4); text-transform: uppercase; letter-spacing: 2px; }
 
-        /* Tooltip Flutuante */
-        #tooltip { position: absolute; background: rgba(4, 9, 20, 0.95); color: #e0f7fa; padding: 12px 16px; border-radius: 6px; display: none; pointer-events: none; z-index: 9999; font-size: 13px; box-shadow: 0 0 20px rgba(0,243,255,0.3); border: 1px solid #005b7a; border-top: 4px solid #00f3ff; min-width: 170px; backdrop-filter: blur(4px); }
-        .tt-header { font-weight: bold; font-size: 15px; margin-bottom: 10px; border-bottom: 1px solid #005b7a; padding-bottom: 6px; color: #00f3ff; text-shadow: 0 0 5px rgba(0,243,255,0.5); }
-        .tt-line { display: flex; justify-content: space-between; margin-bottom: 6px; }
-        .tt-label { color: #80d8ff; }
-        .tt-value { font-weight: bold; color: #fff; text-align: right; margin-left: 20px; }
-
-        /* Painel Lateral KPI */
+        /* Painel Lateral KPI (Clique) */
         #painel-kpi { position: absolute !important; top: 95px !important; right: 15px !important; left: auto !important; transform: none !important; width: 280px; z-index: 30; background: rgba(4, 9, 20, 0.95); border-radius: 8px; box-shadow: 0 0 25px rgba(0,0,0,0.8); display: none; overflow: hidden; border: 1px solid #005b7a; border-top: 4px solid #00f3ff; backdrop-filter: blur(4px); color: #e0f7fa; }
         #painel-kpi .cabecalho { background: rgba(0, 91, 122, 0.4); padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 16px; border-bottom: 1px solid #005b7a; color: #00f3ff; }
         #painel-kpi .fechar { cursor: pointer; font-size: 20px; color: #80d8ff; line-height: 1; transition: color 0.2s; }
@@ -43,16 +34,6 @@
         #painel-kpi .linha { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
         #painel-kpi .rotulo { color: #80d8ff; }
         #painel-kpi .valor { font-weight: bold; color: #fff; text-align: right; }
-        .barra-fundo { background: #0f1724; border-radius: 4px; height: 8px; overflow: hidden; border: 1px solid #005b7a; }
-        .barra-preenchida { height: 100%; border-radius: 3px; transition: width 0.5s ease, background 0.5s ease; box-shadow: 0 0 8px currentColor; }
-
-        /* Legenda flutuante */
-        #hud-legenda { position: absolute !important; bottom: 15px !important; right: 15px !important; left: auto !important; z-index: 20; background: rgba(4, 9, 20, 0.85); color: #e0f7fa; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.5); padding: 12px 16px; font-size: 12px; max-width: 230px; display: none; border: 1px solid #005b7a; border-top: 4px solid #00f3ff; backdrop-filter: blur(4px); }
-        #hud-legenda h4 { margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #00f3ff; }
-        #hud-legenda .legenda-cor-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-        #hud-legenda .swatch { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; box-shadow: 0 0 5px currentColor; }
-        #hud-legenda .legenda-secao + .legenda-secao { margin-top: 12px; padding-top: 10px; border-top: 1px solid #005b7a; }
-        #hud-legenda .tecla { display: inline-block; background: #0f1724; border: 1px solid #00f3ff; border-radius: 4px; padding: 1px 7px; font-family: 'Consolas', monospace; font-weight: bold; margin-right: 3px; font-size: 11px; color: #00f3ff; }
 
         /* Tela de carregamento */
         #tela-carregamento { position: fixed; inset: 0; background: #040914; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-family: 'Segoe UI', Tahoma, sans-serif; transition: opacity 0.7s ease; }
@@ -61,9 +42,6 @@
         #tela-carregamento .texto-carregamento { font-size: 13px; letter-spacing: 2px; color: #80d8ff; text-transform: uppercase; }
         #tela-carregamento .pct-carregamento { font-size: 30px; font-weight: bold; margin-top: 8px; color: #fff; text-shadow: 0 0 10px rgba(0,243,255,0.5); }
         @keyframes girar-spinner { to { transform: rotate(360deg); } }
-
-        .btn-cinema { background: #0f1724; border: 1px solid #005b7a; }
-        .btn-cinema.btn-toggle-ativo { background: #00f3ff !important; color: #040914 !important; border-color: #00f3ff; box-shadow: 0 0 15px rgba(0,243,255,0.6); }
     </style>
 
     <!-- Bibliotecas Three.js -->
@@ -84,35 +62,29 @@
         <button class="btn" id="btn-frente">Frente</button>
         <button class="btn" id="btn-topo">Topo</button>
         <button class="btn" id="btn-lado">Lado</button>
-        <button class="btn btn-status" id="btn-status">Modo: Status (Desligado)</button>
+        <button class="btn" id="btn-autorotate">Girar Câmera (Mouse)</button>
         <button class="btn" id="btn-wasd">Visão: 1ª Pessoa</button>
-        <button class="btn btn-cinema" id="btn-cinema">Modo Cinemático</button>
+        <button class="btn" id="btn-cinema">Modo Cinemático</button>
     </div>
 
     <div id="hud-topo">
         <div class="hud-box">
-            <span class="titulo">Capacidade</span>
-            <span class="valor" id="hud-cap">0</span>
+            <span class="titulo">Valor em Estoque</span>
+            <span class="valor" id="hud-valor">R$ 0</span>
         </div>
         <div class="hud-box">
-            <span class="titulo">Estoque</span>
-            <span class="valor" id="hud-est">0</span>
+            <span class="titulo">Soma da Qtd</span>
+            <span class="valor" id="hud-qtd">0</span>
         </div>
         <div class="hud-box">
-            <span class="titulo">Ocupação</span>
-            <span class="valor" id="hud-pct">0%</span>
+            <span class="titulo">% Selecionado</span>
+            <span class="valor" id="hud-pct">100%</span>
         </div>
         <div class="hud-box" style="border-left: 1px solid #005b7a; padding-left: 20px;">
             <span class="titulo">Lidos do PBI</span>
             <span class="valor" id="hud-debug" style="color: #00ff55; text-shadow: 0 0 8px rgba(0,255,85,0.4);">0</span>
         </div>
-        <div class="hud-box" style="border-left: 1px solid #005b7a; padding-left: 20px;">
-            <span class="titulo">Empilhadeira</span>
-            <span class="valor" id="hud-emp" style="color: #00f3ff;">Inativa</span>
-        </div>
     </div>
-
-    <div id="tooltip"></div>
 
     <div id="painel-kpi">
         <div class="cabecalho">
@@ -121,49 +93,41 @@
         </div>
         <div class="corpo">
             <div class="linha"><span class="rotulo">Produto</span><span class="valor" id="kpi-produto">-</span></div>
-            <div class="linha"><span class="rotulo">Estoque</span><span class="valor" id="kpi-estoque">-</span></div>
-            <div class="linha"><span class="rotulo">Capacidade</span><span class="valor" id="kpi-capacidade">-</span></div>
-            <div class="linha"><span class="rotulo">Status</span><span class="valor" id="kpi-status">-</span></div>
-            <div style="margin-top: 15px;">
-                <div class="linha" style="margin-bottom: 2px;"><span class="rotulo">Ocupação</span><span class="valor" id="kpi-pct">0%</span></div>
-                <div class="barra-fundo" style="margin-top: 5px;"><div class="barra-preenchida" id="kpi-barra"></div></div>
-            </div>
+            <div class="linha"><span class="rotulo">Estoque (Qtd)</span><span class="valor" id="kpi-estoque">-</span></div>
+            <div class="linha"><span class="rotulo">Custo Unitário</span><span class="valor" id="kpi-custo-un">-</span></div>
+            <div class="linha"><span class="rotulo">Custo Total</span><span class="valor" id="kpi-custo-tot">-</span></div>
+            <div class="linha"><span class="rotulo">Validade</span><span class="valor" id="kpi-validade">-</span></div>
         </div>
     </div>
 
     <div id="canvas-container"></div>
 
-    <div id="hud-legenda">
-        <div class="legenda-secao" id="legenda-status" style="display:none;">
-            <h4>Legenda de Status</h4>
-            <div class="legenda-cor-item"><span class="swatch" style="background:#00ff55; color:#00ff55;"></span> Normal / OK</div>
-            <div class="legenda-cor-item"><span class="swatch" style="background:#ffb700; color:#ffb700;"></span> Estoque Baixo</div>
-            <div class="legenda-cor-item"><span class="swatch" style="background:#ff0055; color:#ff0055;"></span> Crítico</div>
-        </div>
-        <div class="legenda-secao" id="legenda-controles" style="display:none;">
-            <h4>Controles (1ª Pessoa)</h4>
-            <div style="margin-bottom:6px;"><span class="tecla">W</span><span class="tecla">A</span><span class="tecla">S</span><span class="tecla">D</span> mover</div>
-            <div>Mouse (arrastar) — olhar ao redor</div>
-        </div>
-    </div>
-
     <script>
         // --- 1. ESTADO E COMUNICAÇÃO COM O POWER BI ---
         let dadosMap = {};
         let arrSelecionados = [];
-        let modoStatusAtivo = false;
+        let totalEnderecosNoModelo = 0; 
 
         function atualizarHUD(qtdLidos = 0) {
-            let capTotal = 0, estTotal = 0;
+            let valorTotal = 0, estTotal = 0;
             let objCount = 0;
+            
             for (const key in dadosMap) {
-                capTotal += Number(dadosMap[key].capacidade) || 0;
+                valorTotal += Number(dadosMap[key].custo_total) || 0;
                 estTotal += Number(dadosMap[key].estoque) || 0;
                 objCount++;
             }
-            document.getElementById('hud-cap').innerText = capTotal;
-            document.getElementById('hud-est').innerText = estTotal;
-            const pct = capTotal > 0 ? Math.round((estTotal / capTotal) * 100) : 0;
+            
+            // Formatar Moeda
+            const formatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+            document.getElementById('hud-valor').innerText = formatter.format(valorTotal);
+            document.getElementById('hud-qtd').innerText = estTotal;
+            
+            // Calcula % Selecionada
+            let pct = 100;
+            if (arrSelecionados.length > 0 && totalEnderecosNoModelo > 0) {
+                pct = Math.round((arrSelecionados.length / totalEnderecosNoModelo) * 100);
+            }
             document.getElementById('hud-pct').innerText = pct + '%';
             document.getElementById('hud-debug').innerText = objCount; 
         }
@@ -187,7 +151,6 @@
                         
                         if(enderecoRaw) {
                             const endKey = enderecoRaw.toString().trim().toUpperCase();
-                            
                             const extrairNum = (v) => {
                                 if(v == null) return 0;
                                 if(typeof v === 'number') return v;
@@ -199,8 +162,9 @@
                                 originalName: enderecoRaw.toString(),
                                 produto: d['produto'] || 'N/A',
                                 estoque: extrairNum(d['estoque']),
-                                capacidade: extrairNum(d['capacidade']),
-                                status: (d['status'] || 'OK').toString().trim()
+                                custo_unitario: extrairNum(d['custo_unitario']),
+                                custo_total: extrairNum(d['custo_total']),
+                                validade: d['validade'] || 'N/A'
                             };
                             countLidos++;
                         }
@@ -216,16 +180,14 @@
                 
                 atualizarHUD(countLidos);
                 aplicarFiltrosECores();
-                if(typeof atualizarEmpilhadeiraSelecao === 'function') atualizarEmpilhadeiraSelecao();
             }
         });
 
         // --- 2. CONFIGURAÇÃO DA CENA THREE.JS ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x040914); // Azul Abissal Sci-Fi
-        scene.fog = new THREE.FogExp2(0x040914, 0.002); // Névoa holográfica
+        scene.background = new THREE.Color(0x040914);
+        scene.fog = new THREE.FogExp2(0x040914, 0.002);
 
-        // Grade holográfica no chão
         const gridHelper = new THREE.GridHelper(500, 150, 0x00f3ff, 0x005b7a);
         gridHelper.position.y = -0.1;
         gridHelper.material.transparent = true;
@@ -251,9 +213,8 @@
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         
-        // Iluminação ajustada para tons mais frios/tecnológicos
-        scene.add(new THREE.AmbientLight(0x406080, 1.5));
-        const dirLight = new THREE.DirectionalLight(0x00f3ff, 1.2);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
         dirLight.position.set(50, 150, 50);
         scene.add(dirLight);
 
@@ -293,11 +254,7 @@
 
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-        const tooltip = document.getElementById('tooltip');
         const painelKPI = document.getElementById('painel-kpi');
-
-        let modoWASD = false;
-        const teclas = { w: false, a: false, s: false, d: false };
 
         // --- 3. CARREGANDO O MODELO GLTF ---
         const gltfUrl = 'https://raw.githubusercontent.com/EragonV7/Layout-3D-testev1/main/Testev1.glb';
@@ -325,21 +282,20 @@
             );
             controls.update();
 
+            let enderecosSet = new Set();
             modeloGeral.traverse(child => {
                 if (child.isMesh) {
                     child.material = child.material.clone();
-                    
-                    // Injeta estilo metálico para reletir a iluminação holográfica
-                    child.material.metalness = 0.6;
-                    child.material.roughness = 0.3;
-                    
+                    // Salva a cor original (Laranja/Verde)
                     child.userData.corOriginal = child.material.color.getHex();
+                    
+                    const endFull = getEnderecoDaHierarquia(child);
+                    if (endFull) enderecosSet.add(endFull);
                 }
             });
+            totalEnderecosNoModelo = enderecosSet.size;
 
             criar3PlacasCorredor();
-            if(typeof calcularInfoCorredores === 'function') calcularInfoCorredores();
-            if(typeof criarEmpilhadeiraGrupo === 'function') criarEmpilhadeiraGrupo();
             aplicarFiltrosECores();
 
             const telaCarregamento = document.getElementById('tela-carregamento');
@@ -350,19 +306,7 @@
             if (pctEl && xhr.total) {
                 pctEl.innerText = Math.min(100, Math.round((xhr.loaded / xhr.total) * 100)) + '%';
             }
-        }, function (erro) {
-            console.error('[VISUAL] Falha ao carregar o modelo 3D:', erro);
-            const textoEl = document.querySelector('#tela-carregamento .texto-carregamento');
-            if (textoEl) textoEl.innerText = 'Erro ao carregar o modelo 3D';
         });
-
-        // --- 4. FUNÇÕES DE SUPORTE E LEITURA DE NOMES ---
-        function corPorStatus(status) {
-            const s = (status || '').toUpperCase();
-            if (s === 'CRITICO' || s === 'CRÍTICO') return 0xff0055; // Rosa Neon
-            if (s === 'BAIXO') return 0xffb700; // Laranja/Amarelo Neon
-            return 0x00ff55; // Verde Neon 
-        }
 
         function getEnderecoDaHierarquia(obj) { 
             let atual = obj; 
@@ -384,36 +328,29 @@
             for (let key in dadosMap) {
                 if (key.includes(nome3D) || nome3D.includes(key)) return dadosMap[key];
             }
-            const regex = /([A-Z]\d{2}-N\d{2})/;
-            const match3D = nome3D.match(regex);
-            if (match3D) {
-                for (let key in dadosMap) {
-                    const matchPBI = key.match(regex);
-                    if (matchPBI && matchPBI[1] === match3D[1]) return dadosMap[key];
-                }
-            }
             return null;
         }
 
-        // --- 5. APLICAR FILTROS (CORREÇÃO DO VISUAL) ---
-        let meshesCriticos = [];
-
+        // --- 5. APLICAR FILTROS SEM PERDER AS CORES ORIGINAIS ---
         function aplicarFiltrosECores() {
             if(!modeloGeral) return;
-            meshesCriticos = [];
             
             modeloGeral.traverse(child => {
                 if (!child.isMesh) return;
                 
                 const endFull = getEnderecoDaHierarquia(child);
                 
-                // Se não tiver endereço, é uma estrutura (pilar, viga). Mantemos 100% visível sempre.
+                // Se NÃO tiver endereço (estruturas, chão, pilares), não mexe na cor/transparência
                 if (!endFull) {
                     child.material.transparent = false;
                     child.material.opacity = 1.0;
+                    if (child.userData.corOriginal !== undefined) {
+                        child.material.color.setHex(child.userData.corOriginal);
+                    }
                     return;
                 }
 
+                // Verifica se a caixa está selecionada no filtro
                 let estaSelecionado = false;
                 if (arrSelecionados.length === 0) {
                     estaSelecionado = true;
@@ -428,45 +365,26 @@
                     });
                 }
 
-                // Se for uma caixa NÃO selecionada, fica 5% visível (quase oculta)
+                // Aplica a opacidade apenas se não estiver selecionada
                 if (!estaSelecionado) {
                     child.material.transparent = true;
                     child.material.opacity = 0.05; 
                     child.material.depthWrite = false;
-                    child.material.color.setHex(0x555555); 
-                    if (child.material.emissive) child.material.emissive.setHex(0x000000);
                 } else {
-                    // Caixa selecionada ou filtro vazio
                     child.material.transparent = false;
                     child.material.opacity = 1.0;
                     child.material.depthWrite = true;
-
-                    const info = buscarDadosSeguro(endFull);
-
-                    if (modoStatusAtivo && info) {
-                        const corHex = corPorStatus(info.status);
-                        child.material.color.setHex(corHex);
-                        const statusUpper = (info.status || '').toUpperCase();
-                        
-                        if (statusUpper === 'CRITICO' || statusUpper === 'CRÍTICO') {
-                            if (!child.material.emissive) child.material.emissive = new THREE.Color(0x000000);
-                            child.material.emissive.setHex(corHex);
-                            child.material.emissiveIntensity = 0.8; // Efeito neon ajustável aqui!
-                            meshesCriticos.push(child);
-                        } else {
-                            if (child.material.emissive) child.material.emissive.setHex(0x000000);
-                        }
-                    } else {
-                        if (child.userData.corOriginal !== undefined) {
-                            child.material.color.setHex(child.userData.corOriginal);
-                        }
-                        if (child.material.emissive) child.material.emissive.setHex(0x000000);
-                    }
                 }
+
+                // Restaura a cor original que veio do Blender/GLTF
+                if (child.userData.corOriginal !== undefined) {
+                    child.material.color.setHex(child.userData.corOriginal);
+                }
+                if (child.material.emissive) child.material.emissive.setHex(0x000000);
             });
         }
 
-        // --- 6. GERAR APENAS 3 PLACAS (CORREDOR A, B, C) ---
+        // --- 6. GERAR PLACAS ---
         function criar3PlacasCorredor() {
             placasGeral.forEach(p => scene.remove(p));
             placasGeral = [];
@@ -518,60 +436,13 @@
             });
         }
 
-        // --- 7. MOUSE, TOOLTIP E CLIQUE ---
         function atualizarPosicaoMouse(e) {
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
         }
 
-        window.addEventListener('mousemove', (e) => {
-            atualizarPosicaoMouse(e);
-            if (!modeloGeral) return;
-
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(modeloGeral.children, true);
-
-            if (intersects.length > 0) {
-                let endFull = null;
-                for (let i = 0; i < intersects.length; i++) {
-                    endFull = getEnderecoDaHierarquia(intersects[i].object);
-                    if (endFull) break;
-                }
-
-                if (endFull) {
-                    const info = buscarDadosSeguro(endFull) || { produto: 'N/A', estoque: 0, capacidade: 0, status: 'Sem Info' };
-                    
-                    const cap = Number(info.capacidade) || 0;
-                    const est = Number(info.estoque) || 0;
-                    const pct = cap > 0 ? Math.round((est / cap) * 100) : 0;
-                    const corBarra = pct > 90 ? '#ff0055' : (pct > 50 ? '#ffb700' : '#00ff55');
-
-                    let tituloVisual = endFull;
-                    const matchVisual = endFull.match(/([A-Z]\d{2}-N\d{2})/);
-                    if(matchVisual) tituloVisual = matchVisual[1];
-
-                    tooltip.style.display = 'block';
-                    tooltip.style.left = (e.clientX + 15) + 'px';
-                    tooltip.style.top = (e.clientY + 15) + 'px';
-                    
-                    tooltip.innerHTML = `
-                        <div class="tt-header">${tituloVisual}</div>
-                        <div class="tt-line"><span class="tt-label">Produto</span><span class="tt-value">${info.produto}</span></div>
-                        <div class="tt-line"><span class="tt-label">Estoque</span><span class="tt-value">${info.estoque}</span></div>
-                        <div class="tt-line"><span class="tt-label">Capacidade</span><span class="tt-value">${info.capacidade}</span></div>
-                        <div class="tt-line"><span class="tt-label">Status</span><span class="tt-value">${info.status}</span></div>
-                        <div class="tt-line" style="margin-top: 10px;"><span class="tt-label">Ocupação</span><span class="tt-value">${pct}%</span></div>
-                        <div class="barra-fundo" style="margin-top: 2px;"><div class="barra-preenchida" style="width: ${Math.min(pct, 100)}%; background: ${corBarra};"></div></div>
-                    `;
-                } else {
-                    tooltip.style.display = 'none';
-                }
-            } else {
-                tooltip.style.display = 'none';
-            }
-        });
-
+        // --- 7. CLIQUE E PAINEL KPI ---
         window.addEventListener('click', (e) => {
             if (e.target.closest('#ui-controles') || e.target.closest('#painel-kpi') || e.target.closest('#hud-topo')) return;
             if (!modeloGeral) return;
@@ -599,24 +470,13 @@
         });
 
         function exibirKPI(enderecoVisual, d) {
+            const formatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
             document.getElementById('kpi-endereco').innerText = enderecoVisual;
             document.getElementById('kpi-produto').innerText = d.produto || 'N/A';
             document.getElementById('kpi-estoque').innerText = d.estoque ?? 0;
-            document.getElementById('kpi-capacidade').innerText = d.capacidade ?? 0;
-            document.getElementById('kpi-status').innerText = d.status || 'N/A';
-
-            const cap = Number(d.capacidade) || 0;
-            const est = Number(d.estoque) || 0;
-            const pct = cap > 0 ? Math.round((est / cap) * 100) : 0;
-            
-            // Cores de status baseadas no Cyberpunk para o KPI
-            let corBarra = '#00ff55';
-            if(pct > 50) corBarra = '#ffb700';
-            if(pct > 90) corBarra = '#ff0055';
-
-            document.getElementById('kpi-pct').innerText = pct + '%';
-            document.getElementById('kpi-barra').style.width = Math.min(pct, 100) + '%';
-            document.getElementById('kpi-barra').style.background = corBarra;
+            document.getElementById('kpi-custo-un').innerText = d.custo_unitario ? formatter.format(d.custo_unitario) : '-';
+            document.getElementById('kpi-custo-tot').innerText = d.custo_total ? formatter.format(d.custo_total) : '-';
+            document.getElementById('kpi-validade').innerText = d.validade || '-';
             
             painelKPI.style.display = 'block';
         }
@@ -634,7 +494,6 @@
         }
         animate();
 
-        // Tratamento de redimensionamento da janela
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -642,7 +501,7 @@
             labelRenderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Controles de Botões Visuais Básicos (Frente, Topo, Lado)
+        // Botões de Navegação
         document.getElementById('btn-frente').addEventListener('click', () => {
             if(modeloGeral) tweenCamera(new THREE.Vector3(centroGeral.x, centroGeral.y, centroGeral.z + tamanhoMax * 1.5), centroGeral, 1000);
         });
@@ -652,20 +511,20 @@
         document.getElementById('btn-lado').addEventListener('click', () => {
             if(modeloGeral) tweenCamera(new THREE.Vector3(centroGeral.x + tamanhoMax * 1.5, centroGeral.y, centroGeral.z), centroGeral, 1000);
         });
-        document.getElementById('btn-status').addEventListener('click', (e) => {
-            modoStatusAtivo = !modoStatusAtivo;
-            if(modoStatusAtivo) {
-                e.target.innerText = "Modo: Status (Ligado)";
+
+        // Toggle Auto Rotate Camera
+        let isAutoRotate = false;
+        document.getElementById('btn-autorotate').addEventListener('click', (e) => {
+            isAutoRotate = !isAutoRotate;
+            controls.autoRotate = isAutoRotate;
+            controls.autoRotateSpeed = 2.0;
+            if(isAutoRotate) {
                 e.target.classList.add('btn-toggle-ativo');
-                document.getElementById('legenda-status').style.display = 'block';
-                document.getElementById('hud-legenda').style.display = 'block';
+                e.target.innerText = "Parar Câmera";
             } else {
-                e.target.innerText = "Modo: Status (Desligado)";
                 e.target.classList.remove('btn-toggle-ativo');
-                document.getElementById('legenda-status').style.display = 'none';
-                document.getElementById('hud-legenda').style.display = 'none';
+                e.target.innerText = "Girar Câmera (Mouse)";
             }
-            aplicarFiltrosECores();
         });
 
     </script>
