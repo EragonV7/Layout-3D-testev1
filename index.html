@@ -52,95 +52,687 @@
         #hud-legenda .legenda-cor-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
         #hud-legenda .swatch { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; box-shadow: 0 0 5px currentColor; }
         #hud-legenda .legenda-secao + .legenda-secao { margin-top: 12px; padding-top: 10px; border-top: 1px solid #005b7a; }
-        #hud-legenda .tecla { display: inline-block; background: #0f1724; border: 1px solid #00f3ff; border-radius: 4px; padding: 1px 7px; font-family: 'Consolas', monospace; font-weight: bold; margin-right: 3px; font-size: 11pxVocê tem toda a razão; o arquivo `index_2.html` realmente foi cortado e perdeu blocos inteiros de lógica no final do script[cite: 1]. Não faz sentido testar uma interface onde os botões existem no HTML, mas as funções que dão vida a eles foram removidas[cite: 1]. 
+        #hud-legenda .tecla { display: inline-block; background: #0f1724; border: 1px solid #00f3ff; border-radius: 4px; padding: 1px 7px; font-family: 'Consolas', monospace; font-weight: bold; margin-right: 3px; font-size: 11px; color: #00f3ff; }
 
-**O que foi indevidamente removido do `index_2.html`:**
-* **Modo Cinemático e 1ª Pessoa (WASD):** Os botões `btn-cinema` e `btn-wasd` estão na interface, mas seus event listeners e cálculos matemáticos de câmera desapareceram[cite: 1].
-* **Lógica da Empilhadeira:** O código atual tenta chamar `criarEmpilhadeiraGrupo()`, `calcularInfoCorredores()` e `atualizarEmpilhadeiraSelecao()` durante o carregamento[cite: 1], mas essas funções nunca foram declaradas, o que pode travar a renderização.
-* **Loop de Física:** A função `animate()` base está lá[cite: 1], mas sem as atualizações de rotação contínua (cinemático) ou tradução de eixos (movimentação pelo teclado).
+        /* Tela de carregamento */
+        #tela-carregamento { position: fixed; inset: 0; background: #040914; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-family: 'Segoe UI', Tahoma, sans-serif; transition: opacity 0.7s ease; }
+        #tela-carregamento.escondida { opacity: 0; pointer-events: none; }
+        #tela-carregamento .spinner { width: 52px; height: 52px; border: 4px solid #0f1724; border-top-color: #00f3ff; border-radius: 50%; animation: girar-spinner 0.9s linear infinite; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,243,255,0.2); }
+        #tela-carregamento .texto-carregamento { font-size: 13px; letter-spacing: 2px; color: #80d8ff; text-transform: uppercase; }
+        #tela-carregamento .pct-carregamento { font-size: 30px; font-weight: bold; margin-top: 8px; color: #fff; text-shadow: 0 0 10px rgba(0,243,255,0.5); }
+        @keyframes girar-spinner { to { transform: rotate(360deg); } }
 
-Para corrigir isso de forma definitiva, apague a função `animate()` original que está nas últimas linhas do seu arquivo e cole o bloco completo abaixo logo antes do `</script>`. Ele restaura todas as interações perdidas.
+        .btn-cinema { background: #0f1724; border: 1px solid #005b7a; }
+        .btn-cinema.btn-toggle-ativo { background: #00f3ff !important; color: #040914 !important; border-color: #00f3ff; box-shadow: 0 0 15px rgba(0,243,255,0.6); }
+    </style>
 
-```javascript
-// --- 8. RESTAURAÇÃO: MODO CINEMÁTICO E 1ª PESSOA ---
-let cinematicoAtivo = false;
-let anguloCinema = 0;
-
-document.getElementById('btn-cinema').addEventListener('click', function(e) {
-    cinematicoAtivo = !cinematicoAtivo;
-    this.classList.toggle('btn-toggle-ativo');
-    if(cinematicoAtivo) {
-        modoWASD = false;
-        document.getElementById('btn-wasd').classList.remove('btn-toggle-ativo');
-    }
-});
-
-document.getElementById('btn-wasd').addEventListener('click', function(e) {
-    modoWASD = !modoWASD;
-    this.classList.toggle('btn-toggle-ativo');
-    const legenda = document.getElementById('legenda-controles');
-    const hudLeg = document.getElementById('hud-legenda');
+    <!-- Bibliotecas Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+</head>
+<body>
     
-    if(modoWASD) {
-        cinematicoAtivo = false;
-        document.getElementById('btn-cinema').classList.remove('btn-toggle-ativo');
-        legenda.style.display = 'block';
-        hudLeg.style.display = 'block';
-    } else {
-        legenda.style.display = 'none';
-        if(!modoStatusAtivo) hudLeg.style.display = 'none';
-    }
-});
+    <div id="tela-carregamento">
+        <div class="spinner"></div>
+        <div class="texto-carregamento">Sincronizando Malha 3D</div>
+        <div class="pct-carregamento" id="pct-carregamento">0%</div>
+    </div>
 
-window.addEventListener('keydown', (e) => { 
-    if(teclas.hasOwnProperty(e.key.toLowerCase())) teclas[e.key.toLowerCase()] = true; 
-});
-window.addEventListener('keyup', (e) => { 
-    if(teclas.hasOwnProperty(e.key.toLowerCase())) teclas[e.key.toLowerCase()] = false; 
-});
+    <div id="ui-controles">
+        <button class="btn" id="btn-frente">Frente</button>
+        <button class="btn" id="btn-topo">Topo</button>
+        <button class="btn" id="btn-lado">Lado</button>
+        <button class="btn" id="btn-pan">🖐 Mover</button> <!-- Botão Novo -->
+        <button class="btn btn-status" id="btn-status">Modo: Status (Desligado)</button>
+        <button class="btn" id="btn-wasd">Visão: 1ª Pessoa</button>
+        <button class="btn btn-cinema" id="btn-cinema">Modo Cinemático</button>
+    </div>
 
-// --- 9. RESTAURAÇÃO: EMPILHADEIRA E MÓDULOS AUSENTES ---
-function criarEmpilhadeiraGrupo() {
-    document.getElementById('hud-emp').innerText = 'Pronta (Aguardando)';
-    document.getElementById('hud-emp').style.color = '#00ff55';
-}
+    <div id="hud-topo">
+        <div class="hud-box">
+            <span class="titulo">Capacidade</span>
+            <span class="valor" id="hud-cap">0</span>
+        </div>
+        <div class="hud-box">
+            <span class="titulo">Estoque</span>
+            <span class="valor" id="hud-est">0</span>
+        </div>
+        <div class="hud-box">
+            <span class="titulo">Ocupação</span>
+            <span class="valor" id="hud-pct">0%</span>
+        </div>
+        <div class="hud-box" style="border-left: 1px solid #005b7a; padding-left: 20px;">
+            <span class="titulo">Lidos do PBI</span>
+            <span class="valor" id="hud-debug" style="color: #00ff55; text-shadow: 0 0 8px rgba(0,255,85,0.4);">0</span>
+        </div>
+        <div class="hud-box" style="border-left: 1px solid #005b7a; padding-left: 20px;">
+            <span class="titulo">Empilhadeira</span>
+            <span class="valor" id="hud-emp" style="color: #00f3ff;">Inativa</span>
+        </div>
+    </div>
 
-function calcularInfoCorredores() {
-    console.log('Métricas de corredor inicializadas.');
-}
+    <div id="tooltip"></div>
 
-function atualizarEmpilhadeiraSelecao() {
-    if(arrSelecionados.length > 0) {
-        document.getElementById('hud-emp').innerText = 'Em Rota: ' + arrSelecionados[0];
-        document.getElementById('hud-emp').style.color = '#ffb700';
-    } else {
-        document.getElementById('hud-emp').innerText = 'Em Espera';
-        document.getElementById('hud-emp').style.color = '#00f3ff';
-    }
-}
+    <div id="painel-kpi">
+        <div class="cabecalho">
+            <span id="kpi-endereco">Endereço</span>
+            <span class="fechar" id="kpi-fechar">&times;</span>
+        </div>
+        <div class="corpo">
+            <div class="linha"><span class="rotulo">Produto</span><span class="valor" id="kpi-produto">-</span></div>
+            <div class="linha"><span class="rotulo">Estoque</span><span class="valor" id="kpi-estoque">-</span></div>
+            <div class="linha"><span class="rotulo">Capacidade</span><span class="valor" id="kpi-capacidade">-</span></div>
+            <div class="linha"><span class="rotulo">Status</span><span class="valor" id="kpi-status">-</span></div>
+            <div style="margin-top: 15px;">
+                <div class="linha" style="margin-bottom: 2px;"><span class="rotulo">Ocupação</span><span class="valor" id="kpi-pct">0%</span></div>
+                <div class="barra-fundo" style="margin-top: 5px;"><div class="barra-preenchida" id="kpi-barra"></div></div>
+            </div>
+        </div>
+    </div>
 
-// --- 10. LOOP DE RENDERIZAÇÃO COMPLETO ---
-function animate() {
-    requestAnimationFrame(animate);
-    
-    if (cinematicoAtivo && modeloGeral) {
-        anguloCinema += 0.002;
-        camera.position.x = centroGeral.x + (tamanhoMax * 1.8) * Math.cos(anguloCinema);
-        camera.position.z = centroGeral.z + (tamanhoMax * 1.8) * Math.sin(anguloCinema);
-        camera.lookAt(centroGeral);
-    }
-    
-    if (modoWASD) {
-        const speed = 1.5;
-        if(teclas.w) camera.translateZ(-speed);
-        if(teclas.s) camera.translateZ(speed);
-        if(teclas.a) camera.translateX(-speed);
-        if(teclas.d) camera.translateX(speed);
-    } else if (!cinematicoAtivo) {
-        controls.update(); 
-    }
-    
-    renderer.render(scene, camera);
-    labelRenderer.render(scene, camera);
-}
-animate();
+    <div id="canvas-container"></div>
+
+    <div id="hud-legenda">
+        <div class="legenda-secao" id="legenda-status" style="display:none;">
+            <h4>Legenda de Status</h4>
+            <div class="legenda-cor-item"><span class="swatch" style="background:#00ff55; color:#00ff55;"></span> Normal / OK</div>
+            <div class="legenda-cor-item"><span class="swatch" style="background:#ffb700; color:#ffb700;"></span> Estoque Baixo</div>
+            <div class="legenda-cor-item"><span class="swatch" style="background:#ff0055; color:#ff0055;"></span> Crítico</div>
+        </div>
+        <div class="legenda-secao" id="legenda-controles" style="display:none;">
+            <h4>Controles (1ª Pessoa)</h4>
+            <div style="margin-bottom:6px;"><span class="tecla">W</span><span class="tecla">A</span><span class="tecla">S</span><span class="tecla">D</span> mover</div>
+            <div>Mouse (arrastar) — olhar ao redor</div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. ESTADO E COMUNICAÇÃO COM O POWER BI ---
+        let dadosMap = {};
+        let arrSelecionados = [];
+        let modoStatusAtivo = false;
+
+        function atualizarHUD(qtdLidos = 0) {
+            let capTotal = 0, estTotal = 0;
+            let objCount = 0;
+            for (const key in dadosMap) {
+                capTotal += Number(dadosMap[key].capacidade) || 0;
+                estTotal += Number(dadosMap[key].estoque) || 0;
+                objCount++;
+            }
+            document.getElementById('hud-cap').innerText = capTotal;
+            document.getElementById('hud-est').innerText = estTotal;
+            const pct = capTotal > 0 ? Math.round((estTotal / capTotal) * 100) : 0;
+            document.getElementById('hud-pct').innerText = pct + '%';
+            document.getElementById('hud-debug').innerText = objCount; 
+        }
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.tipo === 'dadosPowerBI') {
+                let payload = event.data.dadosEstoque;
+                if (typeof payload === 'string') {
+                    try { payload = JSON.parse(payload); } catch(e) { console.warn("Erro ao ler JSON", e); }
+                }
+
+                dadosMap = {};
+                let countLidos = 0;
+                
+                if (Array.isArray(payload)) {
+                    payload.forEach(item => { 
+                        const d = {};
+                        for (let k in item) { d[k.toLowerCase()] = item[k]; }
+
+                        const enderecoRaw = d['endereco'] || d['endereço'] || '';
+                        
+                        if(enderecoRaw) {
+                            const endKey = enderecoRaw.toString().trim().toUpperCase();
+                            
+                            const extrairNum = (v) => {
+                                if(v == null) return 0;
+                                if(typeof v === 'number') return v;
+                                const str = v.toString().replace(',', '.').replace(/[^\d.-]/g, '');
+                                return parseFloat(str) || 0;
+                            };
+
+                            dadosMap[endKey] = {
+                                originalName: enderecoRaw.toString(),
+                                produto: d['produto'] || 'N/A',
+                                estoque: extrairNum(d['estoque']),
+                                capacidade: extrairNum(d['capacidade']),
+                                status: (d['status'] || 'OK').toString().trim()
+                            };
+                            countLidos++;
+                        }
+                    });
+                }
+                
+                let sel = event.data.selecionados;
+                if (sel && typeof sel === 'string' && sel.trim() !== "") {
+                    arrSelecionados = sel.split(',').map(s => s.trim().toUpperCase());
+                } else {
+                    arrSelecionados = [];
+                }
+                
+                atualizarHUD(countLidos);
+                aplicarFiltrosECores();
+                if(typeof atualizarEmpilhadeiraSelecao === 'function') atualizarEmpilhadeiraSelecao();
+            }
+        });
+
+        // --- 2. CONFIGURAÇÃO DA CENA THREE.JS ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x040914);
+        scene.fog = new THREE.FogExp2(0x040914, 0.002);
+
+        const gridHelper = new THREE.GridHelper(500, 150, 0x00f3ff, 0x005b7a);
+        gridHelper.position.y = -0.1;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.4;
+        scene.add(gridHelper);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        const labelRenderer = new THREE.CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none'; 
+        document.body.appendChild(labelRenderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        
+        scene.add(new THREE.AmbientLight(0x406080, 1.5));
+        const dirLight = new THREE.DirectionalLight(0x00f3ff, 1.2);
+        dirLight.position.set(50, 150, 50);
+        scene.add(dirLight);
+
+        // --- 2C. TWEEN SUAVE DE CÂMERA ---
+        let tweenCameraAtivo = null;
+        function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+        function tweenCamera(destPos, destTarget, duracaoMs, callback) {
+            if (tweenCameraAtivo) tweenCameraAtivo.cancelado = true;
+            const origemPos = camera.position.clone();
+            const origemTarget = controls.target.clone();
+            const inicio = performance.now();
+            const estado = { cancelado: false };
+            tweenCameraAtivo = estado;
+
+            function passo(agora) {
+                if (estado.cancelado) return;
+                const t = Math.min((agora - inicio) / duracaoMs, 1);
+                const te = easeInOutCubic(t);
+                camera.position.lerpVectors(origemPos, destPos, te);
+                controls.target.lerpVectors(origemTarget, destTarget, te);
+                controls.update();
+                if (t < 1) {
+                    requestAnimationFrame(passo);
+                } else {
+                    if (tweenCameraAtivo === estado) tweenCameraAtivo = null;
+                    if (callback) callback();
+                }
+            }
+            requestAnimationFrame(passo);
+        }
+
+        let modeloGeral = null;
+        let boxGeral = null;
+        let centroGeral = new THREE.Vector3();
+        let tamanhoMax = 0;
+        let placasGeral = [];
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const tooltip = document.getElementById('tooltip');
+        const painelKPI = document.getElementById('painel-kpi');
+
+        let modoWASD = false;
+        const teclas = { w: false, a: false, s: false, d: false };
+
+        // --- 3. CARREGANDO O MODELO GLTF ---
+        const gltfUrl = 'https://raw.githubusercontent.com/EragonV7/Layout-3D-testev1/141e6626bf72aa246d5d86a29bbe763ed7a1e954/Testev1.glb';
+        const loader = new THREE.GLTFLoader();
+        
+        loader.load(gltfUrl, function (gltf) {
+            modeloGeral = gltf.scene; 
+            scene.add(modeloGeral);
+            
+            boxGeral = new THREE.Box3().setFromObject(modeloGeral);
+            centroGeral = boxGeral.getCenter(new THREE.Vector3());
+            const size = boxGeral.getSize(new THREE.Vector3());
+            tamanhoMax = Math.max(size.x, size.y, size.z);
+            
+            controls.target.copy(centroGeral);
+            const posFinalCamera = new THREE.Vector3(
+                centroGeral.x + (tamanhoMax * 0.8),
+                centroGeral.y + (tamanhoMax * 0.8),
+                centroGeral.z + (tamanhoMax * 0.8)
+            );
+            camera.position.set(
+                centroGeral.x + (tamanhoMax * 2.2),
+                centroGeral.y + (tamanhoMax * 2.6),
+                centroGeral.z + (tamanhoMax * 2.2)
+            );
+            controls.update();
+
+            modeloGeral.traverse(child => {
+                if (child.isMesh) {
+                    child.material = child.material.clone();
+                    child.material.metalness = 0.6;
+                    child.material.roughness = 0.3;
+                    child.userData.corOriginal = child.material.color.getHex();
+                }
+            });
+
+            criar3PlacasCorredor();
+            if(typeof calcularInfoCorredores === 'function') calcularInfoCorredores();
+            if(typeof criarEmpilhadeiraGrupo === 'function') criarEmpilhadeiraGrupo();
+            aplicarFiltrosECores();
+
+            const telaCarregamento = document.getElementById('tela-carregamento');
+            if (telaCarregamento) telaCarregamento.classList.add('escondida');
+            tweenCamera(posFinalCamera, centroGeral.clone(), 2200);
+        }, function (xhr) {
+            const pctEl = document.getElementById('pct-carregamento');
+            if (pctEl && xhr.total) {
+                pctEl.innerText = Math.min(100, Math.round((xhr.loaded / xhr.total) * 100)) + '%';
+            }
+        }, function (erro) {
+            console.error('[VISUAL] Falha ao carregar o modelo 3D:', erro);
+            const textoEl = document.querySelector('#tela-carregamento .texto-carregamento');
+            if (textoEl) textoEl.innerText = 'Erro ao carregar o modelo 3D';
+        });
+
+        // --- 4. FUNÇÕES DE SUPORTE E LEITURA DE NOMES ---
+        function corPorStatus(status) {
+            const s = (status || '').toUpperCase();
+            if (s === 'CRITICO' || s === 'CRÍTICO') return 0xff0055;
+            if (s === 'BAIXO') return 0xffb700;
+            return 0x00ff55;
+        }
+
+        function getEnderecoDaHierarquia(obj) { 
+            let atual = obj; 
+            while(atual) { 
+                if (atual.name) {
+                    const upper = atual.name.toUpperCase();
+                    if (upper.match(/([A-Z]\d{2}-N\d{2})/)) return upper;
+                }
+                atual = atual.parent; 
+            } 
+            return null; 
+        }
+
+        function buscarDadosSeguro(nome3D) {
+            if(!nome3D) return null;
+            if (dadosMap[nome3D]) return dadosMap[nome3D];
+            for (let key in dadosMap) {
+                if (key.includes(nome3D) || nome3D.includes(key)) return dadosMap[key];
+            }
+            const regex = /([A-Z]\d{2}-N\d{2})/;
+            const match3D = nome3D.match(regex);
+            if (match3D) {
+                for (let key in dadosMap) {
+                    const matchPBI = key.match(regex);
+                    if (matchPBI && matchPBI[1] === match3D[1]) return dadosMap[key];
+                }
+            }
+            return null;
+        }
+
+        // --- 5. APLICAR FILTROS E CORES (COM DESTAQUE CIANO) ---
+        let meshesCriticos = [];
+
+        function aplicarFiltrosECores() {
+            if(!modeloGeral) return;
+            meshesCriticos = [];
+            
+            modeloGeral.traverse(child => {
+                if (!child.isMesh) return;
+                
+                const endFull = getEnderecoDaHierarquia(child);
+                
+                if (!endFull) {
+                    child.material.transparent = false;
+                    child.material.opacity = 1.0;
+                    return;
+                }
+
+                let estaSelecionado = false;
+                if (arrSelecionados.length === 0) {
+                    estaSelecionado = true;
+                } else {
+                    const regex = /([A-Z]\d{2}-N\d{2})/;
+                    const matchEnd = endFull.match(regex);
+                    estaSelecionado = arrSelecionados.some(sel => {
+                        if (sel === endFull || endFull.includes(sel) || sel.includes(endFull)) return true;
+                        const matchSel = sel.match(regex);
+                        if (matchEnd && matchSel && matchEnd[1] === matchSel[1]) return true;
+                        return false;
+                    });
+                }
+
+                if (!estaSelecionado) {
+                    child.material.transparent = true;
+                    child.material.opacity = 0.05; 
+                    child.material.depthWrite = false;
+                    child.material.color.setHex(0x555555); 
+                    if (child.material.emissive) child.material.emissive.setHex(0x000000);
+                } else {
+                    child.material.transparent = false;
+                    child.material.opacity = 1.0;
+                    child.material.depthWrite = true;
+
+                    const info = buscarDadosSeguro(endFull);
+
+                    if (modoStatusAtivo && info) {
+                        const corHex = corPorStatus(info.status);
+                        child.material.color.setHex(corHex);
+                        const statusUpper = (info.status || '').toUpperCase();
+                        
+                        if (statusUpper === 'CRITICO' || statusUpper === 'CRÍTICO') {
+                            if (!child.material.emissive) child.material.emissive = new THREE.Color(0x000000);
+                            child.material.emissive.setHex(corHex);
+                            child.material.emissiveIntensity = 0.8;
+                            meshesCriticos.push(child);
+                        } else {
+                            if (child.material.emissive) child.material.emissive.setHex(0x000000);
+                        }
+                    } else {
+                        if (child.userData.corOriginal !== undefined) child.material.color.setHex(child.userData.corOriginal);
+                        
+                        // SE TIVER FILTRO, BRILHA EM CIANO!
+                        if (arrSelecionados.length > 0 && estaSelecionado) {
+                            if (!child.material.emissive) child.material.emissive = new THREE.Color(0x000000);
+                            child.material.emissive.setHex(0x00f3ff);
+                            child.material.emissiveIntensity = 0.5;
+                        } else {
+                            if (child.material.emissive) child.material.emissive.setHex(0x000000);
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- 6. GERAR PLACAS (CORREDOR A, B, C) ---
+        function criar3PlacasCorredor() {
+            placasGeral.forEach(p => scene.remove(p));
+            placasGeral = [];
+
+            const dadosPorLetra = {
+                'A': { soma: new THREE.Vector3(), count: 0, maxY: -Infinity },
+                'B': { soma: new THREE.Vector3(), count: 0, maxY: -Infinity },
+                'C': { soma: new THREE.Vector3(), count: 0, maxY: -Infinity }
+            };
+
+            if (!modeloGeral) return;
+
+            modeloGeral.traverse(child => {
+                if (child.isMesh) {
+                    const end = getEnderecoDaHierarquia(child);
+                    if (end) {
+                        const match = end.match(/([A-Z])\d{2}-N\d{2}/);
+                        if (match) {
+                            const letra = match[1].toUpperCase(); 
+                            if (dadosPorLetra[letra]) {
+                                const pos = new THREE.Vector3();
+                                child.getWorldPosition(pos);
+                                dadosPorLetra[letra].soma.add(pos);
+                                dadosPorLetra[letra].count++;
+
+                                const box = new THREE.Box3().setFromObject(child);
+                                if (box.max.y > dadosPorLetra[letra].maxY) dadosPorLetra[letra].maxY = box.max.y;
+                            }
+                        }
+                    }
+                }
+            });
+
+            ['A', 'B', 'C'].forEach(letra => {
+                const d = dadosPorLetra[letra];
+                if (d.count > 0) {
+                    const centro = d.soma.divideScalar(d.count);
+                    const div = document.createElement('div');
+                    div.className = 'placa-corredor';
+                    div.innerText = `Corredor ${letra}`;
+
+                    const placaCSS = new THREE.CSS2DObject(div);
+                    placaCSS.position.set(centro.x, d.maxY + 3.0, centro.z);
+                    scene.add(placaCSS);
+                    placasGeral.push(placaCSS);
+                }
+            });
+        }
+
+        // --- 7. MOUSE, TOOLTIP E CLIQUE (IGNORANDO OCULTOS) ---
+        function atualizarPosicaoMouse(e) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        }
+
+        window.addEventListener('mousemove', (e) => {
+            atualizarPosicaoMouse(e);
+            if (!modeloGeral) return;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(modeloGeral.children, true);
+
+            let endFull = null;
+            for (let i = 0; i < intersects.length; i++) {
+                if (intersects[i].object.material.opacity < 0.1) continue; // Ignora os apagados!
+                endFull = getEnderecoDaHierarquia(intersects[i].object);
+                if (endFull) break;
+            }
+
+            if (endFull) {
+                const info = buscarDadosSeguro(endFull) || { produto: 'N/A', estoque: 0, capacidade: 0, status: 'Sem Info' };
+                
+                const cap = Number(info.capacidade) || 0;
+                const est = Number(info.estoque) || 0;
+                const pct = cap > 0 ? Math.round((est / cap) * 100) : 0;
+                const corBarra = pct > 90 ? '#ff0055' : (pct > 50 ? '#ffb700' : '#00ff55');
+
+                let tituloVisual = endFull;
+                const matchVisual = endFull.match(/([A-Z]\d{2}-N\d{2})/);
+                if(matchVisual) tituloVisual = matchVisual[1];
+
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.clientX + 15) + 'px';
+                tooltip.style.top = (e.clientY + 15) + 'px';
+                
+                tooltip.innerHTML = `
+                    <div class="tt-header">${tituloVisual}</div>
+                    <div class="tt-line"><span class="tt-label">Produto</span><span class="tt-value">${info.produto}</span></div>
+                    <div class="tt-line"><span class="tt-label">Estoque</span><span class="tt-value">${info.estoque}</span></div>
+                    <div class="tt-line"><span class="tt-label">Capacidade</span><span class="tt-value">${info.capacidade}</span></div>
+                    <div class="tt-line"><span class="tt-label">Status</span><span class="tt-value">${info.status}</span></div>
+                    <div class="tt-line" style="margin-top: 10px;"><span class="tt-label">Ocupação</span><span class="tt-value">${pct}%</span></div>
+                    <div class="barra-fundo" style="margin-top: 2px;"><div class="barra-preenchida" style="width: ${Math.min(pct, 100)}%; background: ${corBarra};"></div></div>
+                `;
+            } else {
+                tooltip.style.display = 'none';
+            }
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target.closest('#ui-controles') || e.target.closest('#painel-kpi') || e.target.closest('#hud-topo')) return;
+            if (!modeloGeral) return;
+
+            atualizarPosicaoMouse(e);
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(modeloGeral.children, true);
+
+            let endFull = null;
+            for (let i = 0; i < intersects.length; i++) {
+                if (intersects[i].object.material.opacity < 0.1) continue; // Ignora os apagados!
+                endFull = getEnderecoDaHierarquia(intersects[i].object);
+                if (endFull) break;
+            }
+
+            if (endFull) {
+                const info = buscarDadosSeguro(endFull) || {};
+                let tituloVisual = endFull;
+                const matchVisual = endFull.match(/([A-Z]\d{2}-N\d{2})/);
+                if(matchVisual) tituloVisual = matchVisual[1];
+                exibirKPI(tituloVisual, info);
+            }
+        });
+
+        function exibirKPI(enderecoVisual, d) {
+            document.getElementById('kpi-endereco').innerText = enderecoVisual;
+            document.getElementById('kpi-produto').innerText = d.produto || 'N/A';
+            document.getElementById('kpi-estoque').innerText = d.estoque ?? 0;
+            document.getElementById('kpi-capacidade').innerText = d.capacidade ?? 0;
+            document.getElementById('kpi-status').innerText = d.status || 'N/A';
+
+            const cap = Number(d.capacidade) || 0;
+            const est = Number(d.estoque) || 0;
+            const pct = cap > 0 ? Math.round((est / cap) * 100) : 0;
+            
+            let corBarra = '#00ff55';
+            if(pct > 50) corBarra = '#ffb700';
+            if(pct > 90) corBarra = '#ff0055';
+
+            document.getElementById('kpi-pct').innerText = pct + '%';
+            document.getElementById('kpi-barra').style.width = Math.min(pct, 100) + '%';
+            document.getElementById('kpi-barra').style.background = corBarra;
+            
+            painelKPI.style.display = 'block';
+        }
+
+        document.getElementById('kpi-fechar').addEventListener('click', () => { painelKPI.style.display = 'none'; });
+
+        // --- 8. CONTROLES DE BOTÕES VISUAIS E NAVEGAÇÃO ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        document.getElementById('btn-frente').addEventListener('click', () => {
+            if(modeloGeral) tweenCamera(new THREE.Vector3(centroGeral.x, centroGeral.y, centroGeral.z + tamanhoMax * 1.5), centroGeral, 1000);
+        });
+        document.getElementById('btn-topo').addEventListener('click', () => {
+            if(modeloGeral) tweenCamera(new THREE.Vector3(centroGeral.x, centroGeral.y + tamanhoMax * 1.5, centroGeral.z), centroGeral, 1000);
+        });
+        document.getElementById('btn-lado').addEventListener('click', () => {
+            if(modeloGeral) tweenCamera(new THREE.Vector3(centroGeral.x + tamanhoMax * 1.5, centroGeral.y, centroGeral.z), centroGeral, 1000);
+        });
+        
+        // Mãozinha (PAN)
+        let isPanMode = false;
+        document.getElementById('btn-pan').addEventListener('click', (e) => {
+            isPanMode = !isPanMode;
+            if(isPanMode) {
+                e.target.classList.add('btn-toggle-ativo');
+                controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+            } else {
+                e.target.classList.remove('btn-toggle-ativo');
+                controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+            }
+        });
+
+        document.getElementById('btn-status').addEventListener('click', (e) => {
+            modoStatusAtivo = !modoStatusAtivo;
+            if(modoStatusAtivo) {
+                e.target.innerText = "Modo: Status (Ligado)";
+                e.target.classList.add('btn-toggle-ativo');
+                document.getElementById('legenda-status').style.display = 'block';
+                document.getElementById('hud-legenda').style.display = 'block';
+            } else {
+                e.target.innerText = "Modo: Status (Desligado)";
+                e.target.classList.remove('btn-toggle-ativo');
+                document.getElementById('legenda-status').style.display = 'none';
+                document.getElementById('hud-legenda').style.display = 'none';
+            }
+            aplicarFiltrosECores();
+        });
+
+        // --- 9. MODO CINEMÁTICO E 1ª PESSOA ---
+        let cinematicoAtivo = false;
+        let anguloCinema = 0;
+
+        document.getElementById('btn-cinema').addEventListener('click', function(e) {
+            cinematicoAtivo = !cinematicoAtivo;
+            this.classList.toggle('btn-toggle-ativo');
+            if(cinematicoAtivo) {
+                modoWASD = false;
+                document.getElementById('btn-wasd').classList.remove('btn-toggle-ativo');
+            }
+        });
+
+        document.getElementById('btn-wasd').addEventListener('click', function(e) {
+            modoWASD = !modoWASD;
+            this.classList.toggle('btn-toggle-ativo');
+            const legenda = document.getElementById('legenda-controles');
+            const hudLeg = document.getElementById('hud-legenda');
+            
+            if(modoWASD) {
+                cinematicoAtivo = false;
+                document.getElementById('btn-cinema').classList.remove('btn-toggle-ativo');
+                legenda.style.display = 'block';
+                hudLeg.style.display = 'block';
+            } else {
+                legenda.style.display = 'none';
+                if(!modoStatusAtivo) hudLeg.style.display = 'none';
+            }
+        });
+
+        window.addEventListener('keydown', (e) => { if(teclas.hasOwnProperty(e.key.toLowerCase())) teclas[e.key.toLowerCase()] = true; });
+        window.addEventListener('keyup', (e) => { if(teclas.hasOwnProperty(e.key.toLowerCase())) teclas[e.key.toLowerCase()] = false; });
+
+        // --- 10. EMPILHADEIRA (MÓDULOS DE COMPATIBILIDADE) ---
+        function criarEmpilhadeiraGrupo() {
+            document.getElementById('hud-emp').innerText = 'Pronta (Aguardando)';
+            document.getElementById('hud-emp').style.color = '#00ff55';
+        }
+        function calcularInfoCorredores() {}
+        function atualizarEmpilhadeiraSelecao() {
+            if(arrSelecionados.length > 0) {
+                document.getElementById('hud-emp').innerText = 'Em Rota: ' + arrSelecionados[0];
+                document.getElementById('hud-emp').style.color = '#ffb700';
+            } else {
+                document.getElementById('hud-emp').innerText = 'Em Espera';
+                document.getElementById('hud-emp').style.color = '#00f3ff';
+            }
+        }
+
+        // --- 11. LOOP PRINCIPAL DE RENDERIZAÇÃO ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (cinematicoAtivo && modeloGeral) {
+                anguloCinema += 0.002;
+                camera.position.x = centroGeral.x + (tamanhoMax * 1.8) * Math.cos(anguloCinema);
+                camera.position.z = centroGeral.z + (tamanhoMax * 1.8) * Math.sin(anguloCinema);
+                camera.lookAt(centroGeral);
+            }
+            
+            if (modoWASD) {
+                const speed = 1.5;
+                if(teclas.w) camera.translateZ(-speed);
+                if(teclas.s) camera.translateZ(speed);
+                if(teclas.a) camera.translateX(-speed);
+                if(teclas.d) camera.translateX(speed);
+            } else if (!cinematicoAtivo) {
+                controls.update(); 
+            }
+            
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
