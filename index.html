@@ -28,7 +28,7 @@
         .placa-corredor { background: rgba(4, 9, 20, 0.9); color: #00f3ff; padding: 6px 16px; border-radius: 4px; font-weight: bold; font-size: 16px; border: 1px solid #00f3ff; pointer-events: none; text-align: center; box-shadow: 0 0 15px rgba(0,243,255,0.4); text-transform: uppercase; letter-spacing: 2px; }
 
         /* Tooltip Flutuante */
-        #tooltip { position: fixed !important; background: rgba(4, 9, 20, 0.95); color: #e0f7fa; padding: 12px 16px; border-radius: 6px; display: none; pointer-events: none; z-index: 100000 !important; font-size: 13px; box-shadow: 0 0 20px rgba(0,243,255,0.3); border: 1px solid #005b7a; border-top: 4px solid #00f3ff; min-width: 170px; backdrop-filter: blur(4px); }
+        #tooltip { position: fixed !important; background: rgba(4, 9, 20, 0.95); color: #e0f7fa; padding: 12px 16px; border-radius: 6px; display: none; pointer-events: none; z-index: 100000 !important; font-size: 13px; box-shadow: 0 0 20px rgba(0,243,255,0.3); border: 1px solid #005b7a; border-top: 4px solid #00f3ff; min-width: 280px; max-width: 360px; backdrop-filter: blur(4px); }
         .tt-header { font-weight: bold; font-size: 15px; margin-bottom: 10px; border-bottom: 1px solid #005b7a; padding-bottom: 6px; color: #00f3ff; text-shadow: 0 0 5px rgba(0,243,255,0.5); }
         .tt-line { display: flex; justify-content: space-between; margin-bottom: 6px; }
         .tt-label { color: #80d8ff; }
@@ -92,8 +92,8 @@
 
     <div id="hud-topo">
         <div class="hud-box">
-            <span class="titulo">Capacidade</span>
-            <span class="valor" id="hud-cap">0</span>
+            <span class="titulo">Valor de Estoque</span>
+            <span class="valor" id="hud-cap">R$ 0,00</span>
         </div>
         <div class="hud-box">
             <span class="titulo">Estoque</span>
@@ -121,10 +121,10 @@
             <span class="fechar" id="kpi-fechar">&times;</span>
         </div>
         <div class="corpo">
-            <div class="linha"><span class="rotulo">Produto</span><span class="valor" id="kpi-produto">-</span></div>
+            <div class="linha"><span class="rotulo">Produtos</span><span class="valor" id="kpi-produto">-</span></div>
             <div class="linha"><span class="rotulo">Estoque</span><span class="valor" id="kpi-estoque">-</span></div>
-            <div class="linha"><span class="rotulo">Capacidade</span><span class="valor" id="kpi-capacidade">-</span></div>
-            <div class="linha"><span class="rotulo">Status</span><span class="valor" id="kpi-status">-</span></div>
+            <div class="linha"><span class="rotulo">Valor de Estoque</span><span class="valor" id="kpi-capacidade">R$ 0,00</span></div>
+            <div class="linha"><span class="rotulo">Endereços</span><span class="valor" id="kpi-status">-</span></div>
             <div style="margin-top: 15px;">
                 <div class="linha" style="margin-bottom: 2px;"><span class="rotulo">Ocupação</span><span class="valor" id="kpi-pct">0%</span></div>
                 <div class="barra-fundo" style="margin-top: 5px;"><div class="barra-preenchida" id="kpi-barra"></div></div>
@@ -156,20 +156,47 @@
         let estruturasVisiveis = false;
         const dadosPorNomeBlender = {};
         const dadosPorEndereco = {};
+        const enderecosDoModelo = new Set();
+
+        // =========================================================
+        // CORES - ALTERE SOMENTE ESTES VALORES
+        // =========================================================
+        const COR_ESTRUTURA_PRINCIPAL = 0x1e6f8f; // estrutura principal
+        const COR_ESTRUTURA_SECUNDARIA = 0x2b8fb3; // prateleiras/travessas
+        const COR_ESTRUTURA_VERTICAL = 0x2f7d62; // pilares/montantes
+        const COR_CAIXA_NORMAL = 0x9a6745; // caixa normal
+        const COR_CAIXA_SELECIONADA = 0x7b2f2f; // caixa selecionada (marrom)
+
+        function formatarBRL(v) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0);
+        }
+
+        function calcularMetricasGerais() {
+            let valorEstoque = 0;
+            let qtdEstoque = 0;
+            const enderecosComDados = Object.keys(dadosPorEndereco);
+            enderecosComDados.forEach(end => {
+                (dadosPorEndereco[end] || []).forEach(reg => {
+                    qtdEstoque += Number(reg.estoque) || 0;
+                    valorEstoque += Number(reg.custoTotal) || 0;
+                });
+            });
+
+            const totalEnderecos = enderecosDoModelo.size > 0 ? enderecosDoModelo.size : enderecosComDados.length;
+            const selecionadosValidos = arrSelecionados.length === 0 ? totalEnderecos : arrSelecionados.filter(e => {
+                const k = normalizarNome(e);
+                return enderecosDoModelo.has(k) || enderecosComDados.includes(k);
+            }).length;
+            const ocupacao = totalEnderecos > 0 ? Math.round((selecionadosValidos / totalEnderecos) * 100) : 0;
+            return { valorEstoque, qtdEstoque, totalEnderecos, selecionadosValidos, ocupacao };
+        }
 
         function atualizarHUD(qtdLidos = 0) {
-            let capTotal = 0, estTotal = 0;
-            let objCount = 0;
-            for (const key in dadosMap) {
-                capTotal += Number(dadosMap[key].capacidade) || 0;
-                estTotal += Number(dadosMap[key].estoque) || 0;
-                objCount++;
-            }
-            document.getElementById('hud-cap').innerText = capTotal;
-            document.getElementById('hud-est').innerText = estTotal;
-            const pct = capTotal > 0 ? Math.round((estTotal / capTotal) * 100) : 0;
-            document.getElementById('hud-pct').innerText = pct + '%';
-            document.getElementById('hud-debug').innerText = objCount; 
+            const m = calcularMetricasGerais();
+            document.getElementById('hud-cap').innerText = formatarBRL(m.valorEstoque);
+            document.getElementById('hud-est').innerText = m.qtdEstoque.toLocaleString('pt-BR');
+            document.getElementById('hud-pct').innerText = m.ocupacao + '%';
+            document.getElementById('hud-debug').innerText = qtdLidos;
         }
 
         window.addEventListener('message', function(event) {
@@ -180,6 +207,8 @@
                 }
 
                 dadosMap = {};
+                Object.keys(dadosPorNomeBlender).forEach(k => delete dadosPorNomeBlender[k]);
+                Object.keys(dadosPorEndereco).forEach(k => delete dadosPorEndereco[k]);
                 let countLidos = 0;
                 
                 if (Array.isArray(payload)) {
@@ -214,16 +243,18 @@
                                 validade: d['validade'] || 'N/A',
                                 familia: d['familia'] || 'N/A',
                                 giro: d['giro'] || 'N/A',
-                                capacidade: extrairNum(d['capacidade']),
-                                status: (d['status'] || 'OK').toString().trim()
+                                status: (d['status'] || '').toString().trim()
                             };
 
-                            if(nomeBlenderKey) dadosPorNomeBlender[nomeBlenderKey] = registro;
+                            if(nomeBlenderKey && !dadosPorNomeBlender[nomeBlenderKey]) dadosPorNomeBlender[nomeBlenderKey] = registro;
                             if(endKey) {
-                                dadosPorEndereco[endKey] = registro;
-                                dadosMap[endKey] = registro;
+                                if(!dadosPorEndereco[endKey]) dadosPorEndereco[endKey] = [];
+                                dadosPorEndereco[endKey].push(registro);
+                                if(!dadosMap[endKey]) dadosMap[endKey] = [];
+                                dadosMap[endKey].push(registro);
                             } else if(nomeBlenderKey) {
-                                dadosMap[nomeBlenderKey] = registro;
+                                if(!dadosMap[nomeBlenderKey]) dadosMap[nomeBlenderKey] = [];
+                                dadosMap[nomeBlenderKey].push(registro);
                             }
 
                             countLidos++;
@@ -350,17 +381,19 @@
             controls.update();
 
             modeloGeral.traverse(child => {
+                if (child.name) {
+                    const nome = normalizarNome(child.name);
+                    const match = nome.match(/^([A-Z]\d{2})(?:-N\d{2})?$/);
+                    if (match) enderecosDoModelo.add(match[1]);
+                }
                 if (child.isMesh) {
                     child.material = child.material.clone();
-                    
-                    // Estilo metálico holográfico
                     if ('metalness' in child.material) child.material.metalness = 0.6;
                     if ('roughness' in child.material) child.material.roughness = 0.3;
-                    
                     child.userData.corOriginal = child.material.color ? child.material.color.getHex() : 0xffffff;
-                    aplicarCorEstrutura(child);
                 }
             });
+            aplicarCoresBaseModelo();
 
             criar3PlacasCorredor();
             atualizarVisibilidadePlacas();
@@ -400,6 +433,7 @@
                 if (atual.name) {
                     const nome = normalizarNome(atual.name);
                     if (dadosPorNomeBlender[nome]) return nome;
+                    if (/^[A-Z]\d{2}(?:-N\d{2})?$/.test(nome)) return nome;
                 }
                 atual = atual.parent;
             }
@@ -415,7 +449,7 @@
             while (atual) {
                 if (atual.name) {
                     const upper = normalizarNome(atual.name);
-                    const matchAtual = upper.match(/([A-Z]\d{2}(?:-N\d{2})?)/);
+                    const matchAtual = upper.match(/([A-Z]\d{2})(?:-N\d{2})?/);
                     if (matchAtual) return matchAtual[1];
                 }
                 atual = atual.parent;
@@ -441,25 +475,21 @@
             if (!nome3D) return null;
             const chave = normalizarNome(nome3D);
             if (dadosPorNomeBlender[chave]) return dadosPorNomeBlender[chave];
-            if (dadosPorEndereco[chave]) return dadosPorEndereco[chave];
-            if (dadosMap[chave]) return dadosMap[chave];
-
-            const regex = /([A-Z]\d{2}(?:-N\d{2})?)/;
-            const match3D = chave.match(regex);
-            if (match3D) {
-                const k = match3D[1];
-                if (dadosPorNomeBlender[k]) return dadosPorNomeBlender[k];
-                if (dadosPorEndereco[k]) return dadosPorEndereco[k];
-                if (dadosMap[k]) return dadosMap[k];
-            }
-
-            for (const key in dadosPorNomeBlender) {
-                if (key.includes(chave) || chave.includes(key)) return dadosPorNomeBlender[key];
-            }
-            for (const key in dadosPorEndereco) {
-                if (key.includes(chave) || chave.includes(key)) return dadosPorEndereco[key];
-            }
+            if (dadosPorEndereco[chave] && dadosPorEndereco[chave].length) return dadosPorEndereco[chave][0];
             return null;
+        }
+
+        function buscarRegistrosEndereco(endereco) {
+            return dadosPorEndereco[normalizarNome(endereco)] || [];
+        }
+
+        function somaRegistros(registros) {
+            let estoque = 0, valor = 0;
+            registros.forEach(r => {
+                estoque += Number(r.estoque) || 0;
+                valor += Number(r.custoTotal) || 0;
+            });
+            return { estoque, valor };
         }
 
         function setMaterialColor(material, hex, emissiveHex = 0x000000, emissiveIntensity = 0) {
@@ -471,38 +501,43 @@
             }
         }
 
+        function nomeObjetoTemPalavra(obj, palavras) {
+            const n = normalizarNome(obj && obj.name);
+            return palavras.some(p => n.includes(p));
+        }
+
+        function ehCaixaOuVolume(obj) {
+            if (!obj) return false;
+            const palavras = ['CAIXA','BOX','PALLET','PALETE','VOLUME','PRODUTO','ITEM','ESTOQUE','CX_'];
+            if (nomeObjetoTemPalavra(obj, palavras)) return true;
+            const pai = obj.parent;
+            const nomePai = pai ? normalizarNome(pai.name) : '';
+            if (obj.children && obj.children.length === 0 && nomePai && /^[A-Z]\d{2}(?:-N\d{2})?$/.test(nomePai)) return true;
+            return false;
+        }
+
         function aplicarCorEstrutura(child) {
             if (!child || !child.isMesh) return;
-
-            const data = buscarDadosSeguro(getChaveBlenderDaHierarquia(child));
-            if (data) return; // elementos associados ao estoque preservam sua cor original
-
-            const nome = normalizarNome(child.name || '');
-            let cor = 0x1d6f8a;
-
-            if (/(PILAR|MONTANTE|COLUNA|POSTE|VERTICAL)/.test(nome)) {
-                cor = 0x14b866;
-            } else if (/(PRATELEIRA|TRAVESSA|LONGARINA|BASE|BANDEJA|HORIZONTAL)/.test(nome)) {
-                cor = 0x1e8bb8;
-            } else if (/(ESTRUTURA|RACK|PORTA|FRAME|CHASSI|SUPORTE)/.test(nome)) {
-                cor = 0x237c98;
-            } else {
-                // Heurística geométrica para modelos sem nomes semânticos
-                try {
-                    const box = new THREE.Box3().setFromObject(child);
-                    const size = box.getSize(new THREE.Vector3());
-                    const maior = Math.max(size.x, size.y, size.z);
-                    if (maior > 0) {
-                        if (size.y > size.x * 1.6 && size.y > size.z * 1.6) cor = 0x14b866;
-                        else if (size.x > size.y * 2 || size.z > size.y * 2) cor = 0x1e8bb8;
-                        else cor = 0x237c98;
-                    }
-                } catch (e) {}
+            if (ehCaixaOuVolume(child)) {
+                setMaterialColor(child.material, COR_CAIXA_NORMAL);
+                child.userData.ehCaixa = true;
+                return;
             }
+            const box = new THREE.Box3().setFromObject(child);
+            const size = box.getSize(new THREE.Vector3());
+            let cor = COR_ESTRUTURA_PRINCIPAL;
+            if (size.y > size.x * 1.6 && size.y > size.z * 1.6) cor = COR_ESTRUTURA_VERTICAL;
+            else if (size.x > size.y * 2 || size.z > size.y * 2) cor = COR_ESTRUTURA_SECUNDARIA;
+            setMaterialColor(child.material, cor);
+            child.userData.corEstrutura = cor;
+            child.userData.ehCaixa = false;
+        }
 
-            if (child.material) {
-                setMaterialColor(child.material, cor);
-            }
+        function aplicarCoresBaseModelo() {
+            if (!modeloGeral) return;
+            modeloGeral.traverse(child => {
+                if (child.isMesh) aplicarCorEstrutura(child);
+            });
         }
 
         function getGrupoEstruturaLetra(obj) {
@@ -524,70 +559,29 @@
 
         function aplicarFiltrosECores() {
             if(!modeloGeral) return;
-            meshesCriticos = [];
-            
             modeloGeral.traverse(child => {
                 if (!child.isMesh) return;
-                
-                const endFull = getEnderecoDaHierarquia(child);
-                
-                // Se não tiver endereço, é uma estrutura (pilar, viga). Mantemos 100% visível sempre.
-                if (!endFull) {
-                    child.material.transparent = false;
-                    child.material.opacity = 1.0;
-                    return;
-                }
-
-                let estaSelecionado = false;
-                if (arrSelecionados.length === 0) {
-                    estaSelecionado = true;
-                } else {
-                    const regex = /([A-Z]\d{2}-N\d{2})/;
-                    const matchEnd = endFull.match(regex);
-                    estaSelecionado = arrSelecionados.some(sel => {
-                        if (sel === endFull || endFull.includes(sel) || sel.includes(endFull)) return true;
-                        const matchSel = sel.match(regex);
-                        if (matchEnd && matchSel && matchEnd[1] === matchSel[1]) return true;
-                        return false;
+                const endereco = getEnderecoDaHierarquia(child);
+                const ehCaixa = child.userData.ehCaixa === true;
+                let selecionado = arrSelecionados.length === 0;
+                if (!selecionado && endereco) {
+                    const e = normalizarNome(endereco);
+                    selecionado = arrSelecionados.some(sel => {
+                        const ss = normalizarNome(sel);
+                        return ss === e || ss.includes(e) || e.includes(ss);
                     });
                 }
-
-                // Se for uma caixa NÃO selecionada, fica 5% visível (quase oculta)
-                if (!estaSelecionado) {
-                    child.material.transparent = true;
-                    child.material.opacity = 0.05; 
-                    child.material.depthWrite = false;
-                    child.material.color.setHex(0x555555); 
-                    if (child.material.emissive) child.material.emissive.setHex(0x000000);
-                } else {
-                    // Caixa selecionada ou filtro vazio
-                    child.material.transparent = false;
-                    child.material.opacity = 1.0;
-                    child.material.depthWrite = true;
-
-                    const info = buscarDadosSeguro(endFull);
-
-                    if (modoStatusAtivo && info) {
-                        const corHex = corPorStatus(info.status);
-                        child.material.color.setHex(corHex);
-                        const statusUpper = (info.status || '').toUpperCase();
-                        
-                        if (statusUpper === 'CRITICO' || statusUpper === 'CRÍTICO') {
-                            if (!child.material.emissive) child.material.emissive = new THREE.Color(0x000000);
-                            child.material.emissive.setHex(corHex);
-                            child.material.emissiveIntensity = 0.8; // Efeito neon ajustável aqui!
-                            meshesCriticos.push(child);
-                        } else {
-                            if (child.material.emissive) child.material.emissive.setHex(0x000000);
-                        }
-                    } else {
-                        if (child.userData.corOriginal !== undefined) {
-                            child.material.color.setHex(child.userData.corOriginal);
-                        }
-                        if (child.material.emissive) child.material.emissive.setHex(0x000000);
-                    }
+                child.material.transparent = false;
+                child.material.opacity = 1;
+                child.material.depthWrite = true;
+                if (ehCaixa) {
+                    setMaterialColor(child.material, selecionado ? COR_CAIXA_SELECIONADA : COR_CAIXA_NORMAL);
+                    return;
                 }
+                setMaterialColor(child.material, child.userData.corEstrutura || COR_ESTRUTURA_PRINCIPAL);
             });
+            atualizarHUD(Object.values(dadosPorEndereco).reduce((a,b)=>a+b.length,0));
+            atualizarPainelKPIs();
         }
 
         // --- 6. GERAR APENAS 3 PLACAS (CORREDOR A, B, C) ---
@@ -607,7 +601,7 @@
                 if (child.isMesh) {
                     const end = getEnderecoDaHierarquia(child);
                     if (end) {
-                        const match = end.match(/([A-Z])\d{2}-N\d{2}/);
+                        const match = end.match(/([A-Z])\d{2}(?:-N\d{2})?/);
                         if (match) {
                             const letra = match[1].toUpperCase(); 
                             if (dadosPorLetra[letra]) {
@@ -655,65 +649,53 @@
         // --- 7.1 TOOLTIP SOBRE O CANVAS WEBGL ---
         renderer.domElement.addEventListener('pointermove', (e) => {
             if (!modeloGeral) return;
-
-            const rect = renderer.domElement.getBoundingClientRect();
-            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
+            atualizarPosicaoMouse(e);
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(modeloGeral.children, true);
-
-            let hit = null;
-            let data = null;
-
+            let endereco = null;
             for (let i = 0; i < intersects.length; i++) {
                 const obj = intersects[i].object;
                 if (!obj || !obj.visible) continue;
-
-                data = buscarDadosSeguro(getChaveBlenderDaHierarquia(obj)) || buscarDadosSeguro(getEnderecoDaHierarquia(obj));
-                if (data) {
-                    hit = obj;
-                    break;
-                }
+                const candidato = getEnderecoDaHierarquia(obj);
+                if (candidato) { endereco = candidato; break; }
             }
-
-            if (!hit || !data) {
-                tooltip.style.display = 'none';
-                return;
-            }
-
-            const endereco = data.endereco || getEnderecoDaHierarquia(hit) || data.nomeBlender || 'N/A';
-            const cap = Number(data.capacidade) || 0;
-            const est = Number(data.estoque) || 0;
-            const pct = cap > 0 ? Math.round((est / cap) * 100) : 0;
-            const corBarra = pct > 90 ? '#ff0055' : (pct > 50 ? '#ffb700' : '#00ff55');
-
+            const registros = endereco ? buscarRegistrosEndereco(endereco) : [];
+            if (!endereco || !registros.length) { tooltip.style.display = 'none'; return; }
+            const resumo = somaRegistros(registros);
+            const rect = renderer.domElement.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
             tooltip.style.display = 'block';
-            tooltip.style.left = Math.min(e.clientX + 18, window.innerWidth - 280) + 'px';
-            tooltip.style.top = Math.min(e.clientY + 18, window.innerHeight - 260) + 'px';
-
+            tooltip.style.left = Math.min(x + 18, rect.width - 370) + 'px';
+            tooltip.style.top = Math.min(y + 18, rect.height - 380) + 'px';
+            let linhas = '';
+            registros.forEach((r, idx) => {
+                linhas += `
+                    <div style="margin-top:${idx ? 10 : 8}px;padding-top:${idx ? 8 : 0};border-top:${idx ? '1px solid #005b7a' : 'none'};">
+                        <div class="tt-line"><span class="tt-label">Código</span><span class="tt-value">${r.codigoProduto || 'N/A'}</span></div>
+                        <div class="tt-line"><span class="tt-label">Produto</span><span class="tt-value">${r.produto || 'N/A'}</span></div>
+                        <div class="tt-line"><span class="tt-label">Unidade</span><span class="tt-value">${r.unidadeMedida || 'N/A'}</span></div>
+                        <div class="tt-line"><span class="tt-label">Qtd.</span><span class="tt-value">${(Number(r.estoque)||0).toLocaleString('pt-BR')}</span></div>
+                        <div class="tt-line"><span class="tt-label">Custo Unit.</span><span class="tt-value">${formatarBRL(r.custoUnitario)}</span></div>
+                        <div class="tt-line"><span class="tt-label">Valor Estoque</span><span class="tt-value">${formatarBRL(r.custoTotal)}</span></div>
+                        <div class="tt-line"><span class="tt-label">Segmento</span><span class="tt-value">${r.segmento || 'N/A'}</span></div>
+                        <div class="tt-line"><span class="tt-label">Validade</span><span class="tt-value">${r.validade || 'N/A'}</span></div>
+                        <div class="tt-line"><span class="tt-label">Família</span><span class="tt-value">${r.familia || 'N/A'}</span></div>
+                        <div class="tt-line"><span class="tt-label">Giro</span><span class="tt-value">${r.giro || 'N/A'}</span></div>
+                    </div>`;
+            });
             tooltip.innerHTML = `
-                <div class="tt-header">${endereco}</div>
-                <div class="tt-line"><span class="tt-label">Código</span><span class="tt-value">${data.codigoProduto || 'N/A'}</span></div>
-                <div class="tt-line"><span class="tt-label">Produto</span><span class="tt-value">${data.produto || 'N/A'}</span></div>
-                <div class="tt-line"><span class="tt-label">Unidade</span><span class="tt-value">${data.unidadeMedida || 'N/A'}</span></div>
-                <div class="tt-line"><span class="tt-label">Estoque</span><span class="tt-value">${data.estoque ?? 0}</span></div>
-                <div class="tt-line"><span class="tt-label">Custo Unit.</span><span class="tt-value">${data.custoUnitario ?? 0}</span></div>
-                <div class="tt-line"><span class="tt-label">Custo Total</span><span class="tt-value">${data.custoTotal ?? 0}</span></div>
-                <div class="tt-line"><span class="tt-label">Segmento</span><span class="tt-value">${data.segmento || 'N/A'}</span></div>
-                <div class="tt-line"><span class="tt-label">Validade</span><span class="tt-value">${data.validade || 'N/A'}</span></div>
-                <div class="tt-line"><span class="tt-label">Família</span><span class="tt-value">${data.familia || 'N/A'}</span></div>
-                <div class="tt-line"><span class="tt-label">Giro</span><span class="tt-value">${data.giro || 'N/A'}</span></div>
-                <div class="tt-line" style="margin-top:10px;"><span class="tt-label">Ocupação</span><span class="tt-value">${pct}%</span></div>
-                <div class="barra-fundo" style="margin-top:2px;"><div class="barra-preenchida" style="width:${Math.min(pct,100)}%; background:${corBarra};"></div></div>
+                <div class="tt-header">${normalizarNome(endereco)}</div>
+                <div class="tt-line"><span class="tt-label">Produtos no endereço</span><span class="tt-value">${registros.length}</span></div>
+                <div class="tt-line"><span class="tt-label">Estoque total</span><span class="tt-value">${resumo.estoque.toLocaleString('pt-BR')}</span></div>
+                <div class="tt-line"><span class="tt-label">Valor de estoque</span><span class="tt-value">${formatarBRL(resumo.valor)}</span></div>
+                ${linhas}
             `;
         });
 
-        renderer.domElement.addEventListener('pointerleave', () => {
-            tooltip.style.display = 'none';
-        });
+        renderer.domElement.addEventListener('pointerleave', () => { tooltip.style.display = 'none'; });
 
-        window.addEventListener('click', (e) => {
+        window.addEventListener('click' , (e) => {
             if (e.target.closest('#ui-controles') || e.target.closest('#painel-kpi') || e.target.closest('#hud-topo')) return;
             if (!modeloGeral) return;
 
@@ -769,7 +751,7 @@
         // Loop de Renderização
         function animate() {
             requestAnimationFrame(animate);
-            controls.update();
+            if (!cinematicoAtivo && !modoWASD && controls.enabled) controls.update();
             renderer.render(scene, camera);
             labelRenderer.render(scene, camera);
         }
