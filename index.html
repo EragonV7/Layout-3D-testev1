@@ -4,341 +4,650 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Layout 3D Holográfico - Power BI</title>
+
     <style>
-        /* Paleta Cyberpunk / Holográfica */
-        body { margin: 0; overflow: hidden; background: #040914; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #canvas-container { width: 100vw; height: 100vh; position: absolute; top:0; left:0; z-index: 1; }
-        
-        /* Painel de Controles */
-        #ui-controles { position: absolute; top: 15px; left: 15px; z-index: 10; display: flex; gap: 8px; flex-wrap: wrap; max-width: 420px; }
-        .btn { background: #0f1724; color: #00f3ff; border: 1px solid #005b7a; padding: 10px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 13px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,243,255,0.1); }
-        .btn:hover { background: #00f3ff; color: #040914; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,243,255,0.4); }
-        .btn:active { transform: translateY(0); }
-        .btn-toggle-ativo { background: #00ff55 !important; color: #040914 !important; border-color: #00ff55 !important; } 
-        .btn-status { background: #6200ea; border-color: #9d46ff; color: #fff; } 
-        .btn-status:hover { background: #9d46ff; color: #fff; }
+        /* =========================================================
+           PALETA / CONFIGURAÇÃO VISUAL
+           ========================================================= */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #040914;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-        /* HUD Global */
-        #hud-topo { position: absolute !important; top: 15px !important; right: 15px !important; left: auto !important; transform: none !important; background: rgba(4, 9, 20, 0.85); display: flex; gap: 25px; padding: 12px 25px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,243,255,0.2); z-index: 20; border: 1px solid #005b7a; border-bottom: 4px solid #00f3ff; backdrop-filter: blur(4px); }
-        .hud-box { text-align: center; color: #fff; min-width: 80px; }
-        .hud-box .titulo { font-size: 11px; color: #80d8ff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; display: block; font-weight: bold; }
-        .hud-box .valor { font-size: 20px; font-weight: bold; text-shadow: 0 0 8px rgba(255,255,255,0.4); }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
 
-        /* Placas de Corredor (CSS2D) */
-        .placa-corredor { background: rgba(4, 9, 20, 0.9); color: #00f3ff; padding: 6px 16px; border-radius: 4px; font-weight: bold; font-size: 16px; border: 1px solid #00f3ff; pointer-events: none; text-align: center; box-shadow: 0 0 15px rgba(0,243,255,0.4); text-transform: uppercase; letter-spacing: 2px; }
+        /* =========================================================
+           PAINEL DE CONTROLES
+           ========================================================= */
+        #ui-controles {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 10;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            max-width: 560px;
+        }
 
-        /* Tooltip Flutuante */
-        #tooltip { position: fixed !important; background: rgba(4, 9, 20, 0.95); color: #e0f7fa; padding: 12px 16px; border-radius: 6px; display: none; pointer-events: none; z-index: 100000 !important; font-size: 13px; box-shadow: 0 0 20px rgba(0,243,255,0.3); border: 1px solid #005b7a; border-top: 4px solid #00f3ff; min-width: 280px; max-width: 360px; backdrop-filter: blur(4px); }
-        .tt-header { font-weight: bold; font-size: 15px; margin-bottom: 10px; border-bottom: 1px solid #005b7a; padding-bottom: 6px; color: #00f3ff; text-shadow: 0 0 5px rgba(0,243,255,0.5); }
-        .tt-line { display: flex; justify-content: space-between; margin-bottom: 6px; }
-        .tt-label { color: #80d8ff; }
-        .tt-value { font-weight: bold; color: #fff; text-align: right; margin-left: 20px; }
+        .btn {
+            background: #0f1724;
+            color: #00f3ff;
+            border: 1px solid #005b7a;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 13px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,243,255,0.1);
+        }
 
-        /* Painel Lateral KPI */
-        #painel-kpi { position: absolute !important; top: 95px !important; right: 15px !important; left: auto !important; transform: none !important; width: 280px; z-index: 30; background: rgba(4, 9, 20, 0.95); border-radius: 8px; box-shadow: 0 0 25px rgba(0,0,0,0.8); display: none; overflow: hidden; border: 1px solid #005b7a; border-top: 4px solid #00f3ff; backdrop-filter: blur(4px); color: #e0f7fa; }
-        #painel-kpi .cabecalho { background: rgba(0, 91, 122, 0.4); padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 16px; border-bottom: 1px solid #005b7a; color: #00f3ff; }
-        #painel-kpi .fechar { cursor: pointer; font-size: 20px; color: #80d8ff; line-height: 1; transition: color 0.2s; }
-        #painel-kpi .fechar:hover { color: #ff0055; text-shadow: 0 0 8px rgba(255,0,85,0.6); }
-        #painel-kpi .corpo { padding: 15px; }
-        #painel-kpi .linha { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
-        #painel-kpi .rotulo { color: #80d8ff; }
-        #painel-kpi .valor { font-weight: bold; color: #fff; text-align: right; }
-        .barra-fundo { background: #0f1724; border-radius: 4px; height: 8px; overflow: hidden; border: 1px solid #005b7a; }
-        .barra-preenchida { height: 100%; border-radius: 3px; transition: width 0.5s ease, background 0.5s ease; box-shadow: 0 0 8px currentColor; }
+        .btn:hover {
+            background: #00f3ff;
+            color: #040914;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,243,255,0.4);
+        }
 
-        /* Legenda flutuante */
-        #hud-legenda { position: absolute !important; bottom: 15px !important; right: 15px !important; left: auto !important; z-index: 20; background: rgba(4, 9, 20, 0.85); color: #e0f7fa; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.5); padding: 12px 16px; font-size: 12px; max-width: 230px; display: none; border: 1px solid #005b7a; border-top: 4px solid #00f3ff; backdrop-filter: blur(4px); }
-        #hud-legenda h4 { margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #00f3ff; }
-        #hud-legenda .legenda-cor-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-        #hud-legenda .swatch { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; box-shadow: 0 0 5px currentColor; }
-        #hud-legenda .legenda-secao + .legenda-secao { margin-top: 12px; padding-top: 10px; border-top: 1px solid #005b7a; }
-        #hud-legenda .tecla { display: inline-block; background: #0f1724; border: 1px solid #00f3ff; border-radius: 4px; padding: 1px 7px; font-family: 'Consolas', monospace; font-weight: bold; margin-right: 3px; font-size: 11px; color: #00f3ff; }
+        .btn:active {
+            transform: translateY(0);
+        }
 
-        /* Tela de carregamento */
-        #tela-carregamento { position: fixed; inset: 0; background: #040914; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-family: 'Segoe UI', Tahoma, sans-serif; transition: opacity 0.7s ease; }
-        #tela-carregamento.escondida { opacity: 0; pointer-events: none; }
-        #tela-carregamento .spinner { width: 52px; height: 52px; border: 4px solid #0f1724; border-top-color: #00f3ff; border-radius: 50%; animation: girar-spinner 0.9s linear infinite; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,243,255,0.2); }
-        #tela-carregamento .texto-carregamento { font-size: 13px; letter-spacing: 2px; color: #80d8ff; text-transform: uppercase; }
-        #tela-carregamento .pct-carregamento { font-size: 30px; font-weight: bold; margin-top: 8px; color: #fff; text-shadow: 0 0 10px rgba(0,243,255,0.5); }
-        @keyframes girar-spinner { to { transform: rotate(360deg); } }
+        .btn-toggle-ativo {
+            background: #00ff55 !important;
+            color: #040914 !important;
+            border-color: #00ff55 !important;
+        }
 
-        .btn-cinema { background: #0f1724; border: 1px solid #005b7a; }
-        .btn-cinema.btn-toggle-ativo { background: #00f3ff !important; color: #040914 !important; border-color: #00f3ff; box-shadow: 0 0 15px rgba(0,243,255,0.6); }
+        .btn-status {
+            background: #6200ea;
+            border-color: #9d46ff;
+            color: #fff;
+        }
+
+        .btn-status:hover {
+            background: #9d46ff;
+            color: #fff;
+        }
+
+        .btn-cinema {
+            background: #0f1724;
+            border: 1px solid #005b7a;
+        }
+
+        .btn-cinema.btn-toggle-ativo {
+            background: #00f3ff !important;
+            color: #040914 !important;
+            border-color: #00f3ff;
+            box-shadow: 0 0 15px rgba(0,243,255,0.6);
+        }
+
+        /* =========================================================
+           HUD GLOBAL
+           ========================================================= */
+        #hud-topo {
+            position: absolute !important;
+            top: 15px !important;
+            right: 15px !important;
+            left: auto !important;
+            transform: none !important;
+            background: rgba(4, 9, 20, 0.85);
+            display: flex;
+            gap: 25px;
+            padding: 12px 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,243,255,0.2);
+            z-index: 20;
+            border: 1px solid #005b7a;
+            border-bottom: 4px solid #00f3ff;
+            backdrop-filter: blur(4px);
+        }
+
+        .hud-box {
+            text-align: center;
+            color: #fff;
+            min-width: 80px;
+        }
+
+        .hud-box .titulo {
+            font-size: 11px;
+            color: #80d8ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            display: block;
+            font-weight: bold;
+        }
+
+        .hud-box .valor {
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(255,255,255,0.4);
+        }
+
+        /* =========================================================
+           PLACAS DE ESTRUTURA
+           ========================================================= */
+        .placa-corredor {
+            background: rgba(4, 9, 20, 0.92);
+            color: #00f3ff;
+            padding: 7px 18px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 16px;
+            border: 1px solid #00f3ff;
+            pointer-events: none;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(0,243,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            white-space: nowrap;
+        }
+
+        /* =========================================================
+           TOOLTIP
+           ========================================================= */
+        #tooltip {
+            position: fixed !important;
+            background: rgba(4, 9, 20, 0.97);
+            color: #e0f7fa;
+            padding: 12px 16px;
+            border-radius: 6px;
+            display: none;
+            pointer-events: none;
+            z-index: 100000 !important;
+            font-size: 13px;
+            line-height: 1.25;
+            box-shadow: 0 0 20px rgba(0,243,255,0.3);
+            border: 1px solid #005b7a;
+            border-top: 4px solid #00f3ff;
+            min-width: 260px;
+            max-width: 420px;
+            max-height: 70vh;
+            overflow-y: auto;
+            backdrop-filter: blur(4px);
+        }
+
+        .tt-header {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #005b7a;
+            padding-bottom: 7px;
+            color: #00f3ff;
+            text-shadow: 0 0 5px rgba(0,243,255,0.5);
+        }
+
+        .tt-produto {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0,91,122,0.65);
+        }
+
+        .tt-produto:first-of-type {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+
+        .tt-produto-titulo {
+            color: #fff;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .tt-line {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 5px;
+        }
+
+        .tt-label {
+            color: #80d8ff;
+            flex-shrink: 0;
+        }
+
+        .tt-value {
+            font-weight: bold;
+            color: #fff;
+            text-align: right;
+            margin-left: 12px;
+            overflow-wrap: anywhere;
+        }
+
+        /* =========================================================
+           PAINEL LATERAL KPI
+           ========================================================= */
+        #painel-kpi {
+            position: absolute !important;
+            top: 95px !important;
+            right: 15px !important;
+            left: auto !important;
+            transform: none !important;
+            width: 300px;
+            z-index: 30;
+            background: rgba(4, 9, 20, 0.95);
+            border-radius: 8px;
+            box-shadow: 0 0 25px rgba(0,0,0,0.8);
+            display: none;
+            overflow: hidden;
+            border: 1px solid #005b7a;
+            border-top: 4px solid #00f3ff;
+            backdrop-filter: blur(4px);
+            color: #e0f7fa;
+        }
+
+        #painel-kpi .cabecalho {
+            background: rgba(0, 91, 122, 0.4);
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 16px;
+            border-bottom: 1px solid #005b7a;
+            color: #00f3ff;
+        }
+
+        #painel-kpi .fechar {
+            cursor: pointer;
+            font-size: 20px;
+            color: #80d8ff;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        #painel-kpi .fechar:hover {
+            color: #ff0055;
+            text-shadow: 0 0 8px rgba(255,0,85,0.6);
+        }
+
+        #painel-kpi .corpo {
+            padding: 15px;
+        }
+
+        #painel-kpi .linha {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        #painel-kpi .rotulo {
+            color: #80d8ff;
+        }
+
+        #painel-kpi .valor {
+            font-weight: bold;
+            color: #fff;
+            text-align: right;
+        }
+
+        .kpi-produtos {
+            max-height: 260px;
+            overflow-y: auto;
+            margin-top: 5px;
+        }
+
+        .kpi-produto-item {
+            border-top: 1px solid #005b7a;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+
+        .barra-fundo {
+            background: #0f1724;
+            border-radius: 4px;
+            height: 8px;
+            overflow: hidden;
+            border: 1px solid #005b7a;
+        }
+
+        .barra-preenchida {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease, background 0.5s ease;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        /* =========================================================
+           LEGENDA
+           ========================================================= */
+        #hud-legenda {
+            position: absolute !important;
+            bottom: 15px !important;
+            right: 15px !important;
+            left: auto !important;
+            z-index: 20;
+            background: rgba(4, 9, 20, 0.85);
+            color: #e0f7fa;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            padding: 12px 16px;
+            font-size: 12px;
+            max-width: 230px;
+            display: none;
+            border: 1px solid #005b7a;
+            border-top: 4px solid #00f3ff;
+            backdrop-filter: blur(4px);
+        }
+
+        #hud-legenda h4 {
+            margin: 0 0 8px 0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #00f3ff;
+        }
+
+        #hud-legenda .legenda-cor-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        #hud-legenda .swatch {
+            width: 13px;
+            height: 13px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            box-shadow: 0 0 5px currentColor;
+        }
+
+        #hud-legenda .legenda-secao + .legenda-secao {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid #005b7a;
+        }
+
+        #hud-legenda .tecla {
+            display: inline-block;
+            background: #0f1724;
+            border: 1px solid #00f3ff;
+            border-radius: 4px;
+            padding: 1px 7px;
+            font-family: 'Consolas', monospace;
+            font-weight: bold;
+            margin-right: 3px;
+            font-size: 11px;
+            color: #00f3ff;
+        }
+
+        /* =========================================================
+           TELA DE CARREGAMENTO
+           ========================================================= */
+        #tela-carregamento {
+            position: fixed;
+            inset: 0;
+            background: #040914;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            transition: opacity 0.7s ease;
+        }
+
+        #tela-carregamento.escondida {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #tela-carregamento .spinner {
+            width: 52px;
+            height: 52px;
+            border: 4px solid #0f1724;
+            border-top-color: #00f3ff;
+            border-radius: 50%;
+            animation: girar-spinner 0.9s linear infinite;
+            margin-bottom: 20px;
+            box-shadow: 0 0 15px rgba(0,243,255,0.2);
+        }
+
+        #tela-carregamento .texto-carregamento {
+            font-size: 13px;
+            letter-spacing: 2px;
+            color: #80d8ff;
+            text-transform: uppercase;
+        }
+
+        #tela-carregamento .pct-carregamento {
+            font-size: 30px;
+            font-weight: bold;
+            margin-top: 8px;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(0,243,255,0.5);
+        }
+
+        @keyframes girar-spinner {
+            to { transform: rotate(360deg); }
+        }
+
+        /* =========================================================
+           RESPONSIVO PARA O VISUAL
+           ========================================================= */
+        @media (max-width: 900px) {
+            #hud-topo {
+                gap: 12px;
+                padding: 10px 12px;
+            }
+
+            .hud-box {
+                min-width: 60px;
+            }
+
+            .hud-box .valor {
+                font-size: 16px;
+            }
+
+            .btn {
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+        }
     </style>
 
-    <!-- Bibliotecas Three.js -->
+    <!-- =========================================================
+         BIBLIOTECAS THREE.JS
+         ========================================================= -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
 </head>
+
 <body>
-    
+
+    <!-- =========================================================
+         LOADING
+         ========================================================= -->
     <div id="tela-carregamento">
         <div class="spinner"></div>
         <div class="texto-carregamento">Sincronizando Malha 3D</div>
         <div class="pct-carregamento" id="pct-carregamento">0%</div>
     </div>
 
+    <!-- =========================================================
+         CONTROLES
+         ========================================================= -->
     <div id="ui-controles">
         <button class="btn" id="btn-frente">Frente</button>
         <button class="btn" id="btn-topo">Topo</button>
         <button class="btn" id="btn-lado">Lado</button>
+        <button class="btn" id="btn-pan">🖐 Mover</button>
         <button class="btn btn-status" id="btn-status">Modo: Status (Desligado)</button>
         <button class="btn" id="btn-estrutura">Estruturas: Ocultas</button>
         <button class="btn" id="btn-wasd">Visão: 1ª Pessoa</button>
         <button class="btn btn-cinema" id="btn-cinema">Modo Cinemático</button>
     </div>
 
+    <!-- =========================================================
+         HUD
+         ========================================================= -->
     <div id="hud-topo">
         <div class="hud-box">
-            <span class="titulo">Valor de Estoque</span>
-            <span class="valor" id="hud-cap">R$ 0,00</span>
+            <span class="titulo">Valor Estoque</span>
+            <span class="valor" id="hud-valor-estoque">R$ 0,00</span>
         </div>
+
         <div class="hud-box">
             <span class="titulo">Estoque</span>
             <span class="valor" id="hud-est">0</span>
         </div>
+
         <div class="hud-box">
             <span class="titulo">Ocupação</span>
-            <span class="valor" id="hud-pct">0%</span>
+            <span class="valor" id="hud-pct">100%</span>
         </div>
+
         <div class="hud-box" style="border-left: 1px solid #005b7a; padding-left: 20px;">
-            <span class="titulo">Lidos do PBI</span>
+            <span class="titulo">Endereços</span>
             <span class="valor" id="hud-debug" style="color: #00ff55; text-shadow: 0 0 8px rgba(0,255,85,0.4);">0</span>
         </div>
+
         <div class="hud-box" style="border-left: 1px solid #005b7a; padding-left: 20px;">
             <span class="titulo">Empilhadeira</span>
             <span class="valor" id="hud-emp" style="color: #00f3ff;">Inativa</span>
         </div>
     </div>
 
+    <!-- =========================================================
+         TOOLTIP
+         ========================================================= -->
     <div id="tooltip"></div>
 
+    <!-- =========================================================
+         KPI AO CLICAR
+         ========================================================= -->
     <div id="painel-kpi">
         <div class="cabecalho">
             <span id="kpi-endereco">Endereço</span>
             <span class="fechar" id="kpi-fechar">&times;</span>
         </div>
+
         <div class="corpo">
-            <div class="linha"><span class="rotulo">Produtos</span><span class="valor" id="kpi-produto">-</span></div>
-            <div class="linha"><span class="rotulo">Estoque</span><span class="valor" id="kpi-estoque">-</span></div>
-            <div class="linha"><span class="rotulo">Valor de Estoque</span><span class="valor" id="kpi-capacidade">R$ 0,00</span></div>
-            <div class="linha"><span class="rotulo">Endereços</span><span class="valor" id="kpi-status">-</span></div>
-            <div style="margin-top: 15px;">
-                <div class="linha" style="margin-bottom: 2px;"><span class="rotulo">Ocupação</span><span class="valor" id="kpi-pct">0%</span></div>
-                <div class="barra-fundo" style="margin-top: 5px;"><div class="barra-preenchida" id="kpi-barra"></div></div>
+            <div class="linha">
+                <span class="rotulo">Produtos</span>
+                <span class="valor" id="kpi-qtd-produtos">0</span>
+            </div>
+
+            <div class="linha">
+                <span class="rotulo">Estoque</span>
+                <span class="valor" id="kpi-estoque">0</span>
+            </div>
+
+            <div class="linha">
+                <span class="rotulo">Valor Estoque</span>
+                <span class="valor" id="kpi-valor-estoque">R$ 0,00</span>
+            </div>
+
+            <div class="linha">
+                <span class="rotulo">Endereço</span>
+                <span class="valor" id="kpi-status">Ativo</span>
+            </div>
+
+            <div class="kpi-produtos" id="kpi-produtos"></div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         CANVAS
+         ========================================================= -->
+    <div id="canvas-container"></div>
+
+    <!-- =========================================================
+         LEGENDA
+         ========================================================= -->
+    <div id="hud-legenda">
+        <div class="legenda-secao" id="legenda-status" style="display:none;">
+            <h4>Legenda de Status</h4>
+            <div class="legenda-cor-item">
+                <span class="swatch" style="background:#00ff55; color:#00ff55;"></span>
+                Normal / OK
+            </div>
+            <div class="legenda-cor-item">
+                <span class="swatch" style="background:#ffb700; color:#ffb700;"></span>
+                Estoque Baixo
+            </div>
+            <div class="legenda-cor-item">
+                <span class="swatch" style="background:#ff0055; color:#ff0055;"></span>
+                Crítico
+            </div>
+        </div>
+
+        <div class="legenda-secao" id="legenda-controles" style="display:none;">
+            <h4>Controles (1ª Pessoa)</h4>
+            <div style="margin-bottom:6px;">
+                <span class="tecla">W</span>
+                <span class="tecla">A</span>
+                <span class="tecla">S</span>
+                <span class="tecla">D</span>
+                mover
+            </div>
+            <div>Mouse (arrastar) — olhar ao redor</div>
+        </div>
+
+        <div class="legenda-secao" id="legenda-estrutura" style="display:none;">
+            <h4>Estruturas</h4>
+            <div class="legenda-cor-item">
+                <span class="swatch" style="background:#237c98; color:#237c98;"></span>
+                Estrutura
+            </div>
+            <div class="legenda-cor-item">
+                <span class="swatch" style="background:#7b2f2f; color:#7b2f2f;"></span>
+                Caixa selecionada
             </div>
         </div>
     </div>
 
-    <div id="canvas-container"></div>
-
-    <div id="hud-legenda">
-        <div class="legenda-secao" id="legenda-status" style="display:none;">
-            <h4>Legenda de Status</h4>
-            <div class="legenda-cor-item"><span class="swatch" style="background:#00ff55; color:#00ff55;"></span> Normal / OK</div>
-            <div class="legenda-cor-item"><span class="swatch" style="background:#ffb700; color:#ffb700;"></span> Estoque Baixo</div>
-            <div class="legenda-cor-item"><span class="swatch" style="background:#ff0055; color:#ff0055;"></span> Crítico</div>
-        </div>
-        <div class="legenda-secao" id="legenda-controles" style="display:none;">
-            <h4>Controles (1ª Pessoa)</h4>
-            <div style="margin-bottom:6px;"><span class="tecla">W</span><span class="tecla">A</span><span class="tecla">S</span><span class="tecla">D</span> mover</div>
-            <div>Mouse (arrastar) — olhar ao redor</div>
-        </div>
-    </div>
-
     <script>
-        // --- 1. ESTADO E COMUNICAÇÃO COM O POWER BI ---
+        /* =========================================================
+           1. CONFIGURAÇÃO PRINCIPAL DE CORES
+
+           >>> É AQUI QUE VOCÊ MUDA AS CORES DA ESTRUTURA. <<<
+           ========================================================= */
+
+        const COR_ESTRUTURA_PRINCIPAL = 0x237c98;
+        const COR_ESTRUTURA_VERTICAL = 0x2f8f70;
+        const COR_ESTRUTURA_HORIZONTAL = 0x1e8bb8;
+
+        /* Caixa normal e caixa selecionada */
+        const COR_CAIXA_NORMAL = 0x9a6745;
+        const COR_CAIXA_SELECIONADA = 0x7b2f2f;
+
+        /* Caixa não selecionada quando existe filtro */
+        const COR_CAIXA_DESFOCADA = 0x4a332b;
+
+        /* Cores dos status */
+        const COR_STATUS_OK = 0x00ff55;
+        const COR_STATUS_BAIXO = 0xffb700;
+        const COR_STATUS_CRITICO = 0xff0055;
+
+        /* =========================================================
+           2. ESTADO E COMUNICAÇÃO COM POWER BI
+           ========================================================= */
+
         let dadosMap = {};
+        let dadosPorEndereco = {};
+        let dadosPorNomeBlender = {};
         let arrSelecionados = [];
         let modoStatusAtivo = false;
         let estruturasVisiveis = false;
-        const dadosPorNomeBlender = {};
-        const dadosPorEndereco = {};
-        const enderecosDoModelo = new Set();
-
-        // =========================================================
-        // CORES - ALTERE SOMENTE ESTES VALORES
-        // =========================================================
-        const COR_ESTRUTURA_PRINCIPAL = 0x1e6f8f; // estrutura principal
-        const COR_ESTRUTURA_SECUNDARIA = 0x2b8fb3; // prateleiras/travessas
-        const COR_ESTRUTURA_VERTICAL = 0x2f7d62; // pilares/montantes
-        const COR_CAIXA_NORMAL = 0x9a6745; // caixa normal
-        const COR_CAIXA_SELECIONADA = 0x7b2f2f; // caixa selecionada (marrom)
-
-        function formatarBRL(v) {
-            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0);
-        }
-
-        function calcularMetricasGerais() {
-            let valorEstoque = 0;
-            let qtdEstoque = 0;
-            const enderecosComDados = Object.keys(dadosPorEndereco);
-            enderecosComDados.forEach(end => {
-                (dadosPorEndereco[end] || []).forEach(reg => {
-                    qtdEstoque += Number(reg.estoque) || 0;
-                    valorEstoque += Number(reg.custoTotal) || 0;
-                });
-            });
-
-            const totalEnderecos = enderecosDoModelo.size > 0 ? enderecosDoModelo.size : enderecosComDados.length;
-            const selecionadosValidos = arrSelecionados.length === 0 ? totalEnderecos : arrSelecionados.filter(e => {
-                const k = normalizarNome(e);
-                return enderecosDoModelo.has(k) || enderecosComDados.includes(k);
-            }).length;
-            const ocupacao = totalEnderecos > 0 ? Math.round((selecionadosValidos / totalEnderecos) * 100) : 0;
-            return { valorEstoque, qtdEstoque, totalEnderecos, selecionadosValidos, ocupacao };
-        }
-
-        function atualizarHUD(qtdLidos = 0) {
-            const m = calcularMetricasGerais();
-            document.getElementById('hud-cap').innerText = formatarBRL(m.valorEstoque);
-            document.getElementById('hud-est').innerText = m.qtdEstoque.toLocaleString('pt-BR');
-            document.getElementById('hud-pct').innerText = m.ocupacao + '%';
-            document.getElementById('hud-debug').innerText = qtdLidos;
-        }
-
-        window.addEventListener('message', function(event) {
-            if (event.data && event.data.tipo === 'dadosPowerBI') {
-                let payload = event.data.dadosEstoque;
-                if (typeof payload === 'string') {
-                    try { payload = JSON.parse(payload); } catch(e) { console.warn("Erro ao ler JSON", e); }
-                }
-
-                dadosMap = {};
-                Object.keys(dadosPorNomeBlender).forEach(k => delete dadosPorNomeBlender[k]);
-                Object.keys(dadosPorEndereco).forEach(k => delete dadosPorEndereco[k]);
-                let countLidos = 0;
-                
-                if (Array.isArray(payload)) {
-                    payload.forEach(item => { 
-                        const d = {};
-                        for (let k in item) { d[k.toLowerCase()] = item[k]; }
-
-                        const nomeBlenderRaw = d['nome_blender'] || d['nome blender'] || d['nome-do-blender'] || '';
-                        const enderecoRaw = d['endereco'] || d['endereço'] || '';
-                        
-                        if(nomeBlenderRaw || enderecoRaw) {
-                            const nomeBlenderKey = nomeBlenderRaw.toString().trim().toUpperCase();
-                            const endKey = enderecoRaw.toString().trim().toUpperCase();
-                            
-                            const extrairNum = (v) => {
-                                if(v == null) return 0;
-                                if(typeof v === 'number') return v;
-                                const str = v.toString().replace(',', '.').replace(/[^\d.-]/g, '');
-                                return parseFloat(str) || 0;
-                            };
-
-                            const registro = {
-                                nomeBlender: nomeBlenderRaw.toString().trim(),
-                                endereco: enderecoRaw.toString().trim(),
-                                codigoProduto: d['codigo produto'] || d['codigo_produto'] || 'N/A',
-                                produto: d['descricao'] || d['produto'] || 'N/A',
-                                unidadeMedida: d['unidade medida'] || d['unidade_medida'] || 'N/A',
-                                estoque: extrairNum(d['saldo atual'] ?? d['estoque']),
-                                custoUnitario: extrairNum(d['custo unitario'] ?? d['custo_unitario']),
-                                custoTotal: extrairNum(d['custo total'] ?? d['custo_total']),
-                                segmento: d['segmento'] || 'N/A',
-                                validade: d['validade'] || 'N/A',
-                                familia: d['familia'] || 'N/A',
-                                giro: d['giro'] || 'N/A',
-                                status: (d['status'] || '').toString().trim()
-                            };
-
-                            if(nomeBlenderKey && !dadosPorNomeBlender[nomeBlenderKey]) dadosPorNomeBlender[nomeBlenderKey] = registro;
-                            if(endKey) {
-                                if(!dadosPorEndereco[endKey]) dadosPorEndereco[endKey] = [];
-                                dadosPorEndereco[endKey].push(registro);
-                                if(!dadosMap[endKey]) dadosMap[endKey] = [];
-                                dadosMap[endKey].push(registro);
-                            } else if(nomeBlenderKey) {
-                                if(!dadosMap[nomeBlenderKey]) dadosMap[nomeBlenderKey] = [];
-                                dadosMap[nomeBlenderKey].push(registro);
-                            }
-
-                            countLidos++;
-                        }
-                    });
-                }
-                
-                let sel = event.data.selecionados;
-                if (sel && typeof sel === 'string' && sel.trim() !== "") {
-                    arrSelecionados = sel.split(',').map(s => s.trim().toUpperCase());
-                } else {
-                    arrSelecionados = [];
-                }
-                
-                atualizarHUD(countLidos);
-                aplicarFiltrosECores();
-                if(typeof atualizarEmpilhadeiraSelecao === 'function') atualizarEmpilhadeiraSelecao();
-            }
-        });
-
-        // --- 2. CONFIGURAÇÃO DA CENA THREE.JS ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x040914); // Azul Abissal Sci-Fi
-        scene.fog = new THREE.FogExp2(0x040914, 0.002); // Névoa holográfica
-
-        // Grade holográfica no chão
-        const gridHelper = new THREE.GridHelper(500, 150, 0x00f3ff, 0x005b7a);
-        gridHelper.position.y = -0.1;
-        gridHelper.material.transparent = true;
-        gridHelper.material.opacity = 0.4;
-        scene.add(gridHelper);
-
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
-        
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
-        
-        const labelRenderer = new THREE.CSS2DRenderer();
-        labelRenderer.setSize(window.innerWidth, window.innerHeight);
-        labelRenderer.domElement.style.position = 'absolute';
-        labelRenderer.domElement.style.top = '0px';
-        labelRenderer.domElement.style.left = '0px';
-        labelRenderer.domElement.style.pointerEvents = 'none'; 
-        document.body.appendChild(labelRenderer.domElement);
-
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        
-        // Iluminação ajustada para tons mais frios/tecnológicos
-        scene.add(new THREE.AmbientLight(0x406080, 1.5));
-        const dirLight = new THREE.DirectionalLight(0x00f3ff, 1.2);
-        dirLight.position.set(50, 150, 50);
-        scene.add(dirLight);
-
-        // --- 2C. TWEEN SUAVE DE CÂMERA ---
-        let tweenCameraAtivo = null;
-        function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
-        function tweenCamera(destPos, destTarget, duracaoMs, callback) {
-            if (tweenCameraAtivo) tweenCameraAtivo.cancelado = true;
-            const origemPos = camera.position.clone();
-            const origemTarget = controls.target.clone();
-            const inicio = performance.now();
-            const estado = { cancelado: false };
-            tweenCameraAtivo = estado;
-
-            function passo(agora) {
-                if (estado.cancelado) return;
-                const t = Math.min((agora - inicio) / duracaoMs, 1);
-                const te = easeInOutCubic(t);
-                camera.position.lerpVectors(origemPos, destPos, te);
-                controls.target.lerpVectors(origemTarget, destTarget, te);
-                controls.update();
-                if (t < 1) {
-                    requestAnimationFrame(passo);
-                } else {
-                    if (tweenCameraAtivo === estado) tweenCameraAtivo = null;
-                    if (callback) callback();
-                }
-            }
-            requestAnimationFrame(passo);
-        }
 
         let modeloGeral = null;
         let boxGeral = null;
@@ -346,490 +655,1985 @@
         let tamanhoMax = 0;
         let placasGeral = [];
 
+        let modoWASD = false;
+        let isPanMode = false;
+        let cinematicoAtivo = false;
+        let anguloCinema = 0;
+
+        const teclas = {
+            w: false,
+            a: false,
+            s: false,
+            d: false
+        };
+
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         const tooltip = document.getElementById('tooltip');
         const painelKPI = document.getElementById('painel-kpi');
 
-        let modoWASD = false;
-        const teclas = { w: false, a: false, s: false, d: false };
+        /* =========================================================
+           3. FUNÇÕES NUMÉRICAS / FORMATAÇÃO
+           ========================================================= */
 
-        // --- 3. CARREGANDO O MODELO GLTF ---
-        const gltfUrl = 'https://raw.githubusercontent.com/EragonV7/Layout-3D-testev1/141e6626bf72aa246d5d86a29bbe763ed7a1e954/Testev1.glb';
-        const loader = new THREE.GLTFLoader();
-        
-        function finalizarTelaCarregamento(mensagem) {
-            const telaCarregamento = document.getElementById('tela-carregamento');
-            const textoEl = document.querySelector('#tela-carregamento .texto-carregamento');
-            if (mensagem && textoEl) textoEl.innerText = mensagem;
-            if (telaCarregamento) telaCarregamento.classList.add('escondida');
+        function extrairNumero(v) {
+            if (v == null || v === '') return 0;
+            if (typeof v === 'number') return isFinite(v) ? v : 0;
+
+            let str = v.toString().trim();
+
+            if (!str) return 0;
+
+            /* Formato brasileiro: 1.234,56 */
+            if (str.includes(',') && str.includes('.')) {
+                str = str.replace(/\./g, '').replace(',', '.');
+            } else {
+                str = str.replace(',', '.');
+            }
+
+            str = str.replace(/[^\d.-]/g, '');
+
+            const num = parseFloat(str);
+            return isFinite(num) ? num : 0;
         }
 
-        loader.load(gltfUrl, function (gltf) {
-            try {
-                modeloGeral = gltf.scene;
-                scene.add(modeloGeral);
+        function formatarNumero(v, casas = 0) {
+            return Number(v || 0).toLocaleString('pt-BR', {
+                minimumFractionDigits: casas,
+                maximumFractionDigits: casas
+            });
+        }
 
-                boxGeral = new THREE.Box3().setFromObject(modeloGeral);
-                centroGeral = boxGeral.getCenter(new THREE.Vector3());
-                const size = boxGeral.getSize(new THREE.Vector3());
-                tamanhoMax = Math.max(size.x, size.y, size.z);
+        function formatarMoeda(v) {
+            return Number(v || 0).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            });
+        }
 
-                controls.target.copy(centroGeral);
-                const posFinalCamera = new THREE.Vector3(
-                    centroGeral.x + (tamanhoMax * 0.8),
-                    centroGeral.y + (tamanhoMax * 0.8),
-                    centroGeral.z + (tamanhoMax * 0.8)
-                );
-                camera.position.set(
-                    centroGeral.x + (tamanhoMax * 2.2),
-                    centroGeral.y + (tamanhoMax * 2.6),
-                    centroGeral.z + (tamanhoMax * 2.2)
-                );
-                controls.update();
-
-                modeloGeral.traverse(child => {
-                    if (child.name) {
-                        const nome = normalizarNome(child.name);
-                        const match = nome.match(/^([A-Z]\d{2})(?:-N\d{2})?$/);
-                        if (match) enderecosDoModelo.add(match[1]);
-                    }
-                    if (child.isMesh) {
-                        if (Array.isArray(child.material)) {
-                            child.material = child.material.map(mat => mat.clone());
-                        } else if (child.material) {
-                            child.material = child.material.clone();
-                        }
-
-                        const materiais = Array.isArray(child.material) ? child.material : [child.material];
-                        const primeiraCor = materiais[0] && materiais[0].color && materiais[0].color.getHex
-                            ? materiais[0].color.getHex()
-                            : 0xffffff;
-                        child.userData.corOriginal = primeiraCor;
-
-                        materiais.forEach(mat => {
-                            if ('metalness' in mat) mat.metalness = 0.6;
-                            if ('roughness' in mat) mat.roughness = 0.3;
-                        });
-                    }
-                });
-
-                aplicarCoresBaseModelo();
-                criar3PlacasCorredor();
-                atualizarVisibilidadePlacas();
-                if (typeof calcularInfoCorredores === 'function') calcularInfoCorredores();
-                if (typeof criarEmpilhadeiraGrupo === 'function') criarEmpilhadeiraGrupo();
-                aplicarFiltrosECores();
-
-                finalizarTelaCarregamento();
-                tweenCamera(posFinalCamera, centroGeral.clone(), 2200);
-            } catch (err) {
-                console.error('[VISUAL] Erro durante a preparação do modelo 3D:', err);
-                finalizarTelaCarregamento('Erro ao preparar o modelo 3D');
-            }
-        }, function (xhr) {
-            const pctEl = document.getElementById('pct-carregamento');
-            if (pctEl && xhr && xhr.total > 0) {
-                const pct = Math.min(99, Math.round((xhr.loaded / xhr.total) * 100));
-                pctEl.innerText = pct + '%';
-            }
-        }, function (erro) {
-            console.error('[VISUAL] Falha ao carregar o modelo 3D:', erro);
-            const textoEl = document.querySelector('#tela-carregamento .texto-carregamento');
-            if (textoEl) textoEl.innerText = 'Erro ao carregar o modelo 3D';
-            const pctEl = document.getElementById('pct-carregamento');
-            if (pctEl) pctEl.innerText = 'ERRO';
-            const telaCarregamento = document.getElementById('tela-carregamento');
-            if (telaCarregamento) telaCarregamento.classList.add('escondida');
-        });
-
-        // --- 4. FUNÇÕES DE SUPORTE E LEITURA DE NOMES ---
-        function corPorStatus(status) {
-            const s = (status || '').toUpperCase();
-            if (s === 'CRITICO' || s === 'CRÍTICO') return 0xff0055; // Rosa Neon
-            if (s === 'BAIXO') return 0xffb700; // Laranja/Amarelo Neon
-            return 0x00ff55; // Verde Neon 
+        function escaparHTML(v) {
+            return (v == null ? '' : String(v))
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
         function normalizarNome(v) {
-            return (v == null ? '' : v.toString()).trim().toUpperCase();
+            return (v == null ? '' : String(v)).trim().toUpperCase();
+        }
+
+        /* =========================================================
+           4. CHAVE / ENDEREÇO DO BLENDER
+           ========================================================= */
+
+        function extrairChaveEndereco(v) {
+            const texto = normalizarNome(v);
+            if (!texto) return null;
+
+            /* Aceita A01 e também A01-N01 no futuro */
+            const match = texto.match(/([A-Z]\d{2}(?:-N\d{2})?)/);
+            return match ? match[1] : null;
         }
 
         function getNomeBlenderDaHierarquia(obj) {
             let atual = obj;
+
             while (atual) {
                 if (atual.name) {
                     const nome = normalizarNome(atual.name);
-                    if (dadosPorNomeBlender[nome]) return nome;
-                    if (/^[A-Z]\d{2}(?:-N\d{2})?$/.test(nome)) return nome;
+
+                    if (dadosPorNomeBlender[nome]) {
+                        return nome;
+                    }
+
+                    /* Mesmo sem o campo NOME_BLENDER no DAX,
+                       reconhece nomes do formato A01 */
+                    if (/^[A-Z]\d{2}(?:-N\d{2})?$/.test(nome)) {
+                        return nome;
+                    }
                 }
+
                 atual = atual.parent;
             }
+
             return null;
         }
 
         function getEnderecoDaHierarquia(obj) {
             const nomeBlender = getNomeBlenderDaHierarquia(obj);
+
             if (nomeBlender && dadosPorNomeBlender[nomeBlender]) {
-                return normalizarNome(dadosPorNomeBlender[nomeBlender].endereco || nomeBlender);
+                const reg = dadosPorNomeBlender[nomeBlender];
+                const endereco = reg.endereco || nomeBlender;
+                return extrairChaveEndereco(endereco) || normalizarNome(endereco);
             }
+
             let atual = obj;
+
             while (atual) {
                 if (atual.name) {
-                    const upper = normalizarNome(atual.name);
-                    const matchAtual = upper.match(/([A-Z]\d{2})(?:-N\d{2})?/);
-                    if (matchAtual) return matchAtual[1];
+                    const chave = extrairChaveEndereco(atual.name);
+                    if (chave) return chave;
                 }
+
                 atual = atual.parent;
             }
+
             return null;
         }
 
         function getChaveBlenderDaHierarquia(obj) {
             const nome = getNomeBlenderDaHierarquia(obj);
             if (nome) return nome;
-            let atual = obj;
-            while (atual) {
-                if (atual.name) {
-                    const upper = normalizarNome(atual.name);
-                    if (/^[A-Z]\d{2}(?:-N\d{2})?$/.test(upper)) return upper;
-                }
-                atual = atual.parent;
+            return null;
+        }
+
+        /* =========================================================
+           5. STATUS
+           ========================================================= */
+
+        function corPorStatus(status) {
+            const s = normalizarNome(status);
+
+            if (s === 'CRITICO' || s === 'CRÍTICO') {
+                return COR_STATUS_CRITICO;
             }
-            return null;
+
+            if (s === 'BAIXO') {
+                return COR_STATUS_BAIXO;
+            }
+
+            return COR_STATUS_OK;
         }
 
-        function buscarDadosSeguro(nome3D) {
-            if (!nome3D) return null;
-            const chave = normalizarNome(nome3D);
-            if (dadosPorNomeBlender[chave]) return dadosPorNomeBlender[chave];
-            if (dadosPorEndereco[chave] && dadosPorEndereco[chave].length) return dadosPorEndereco[chave][0];
-            return null;
+        /* =========================================================
+           6. LEITURA DOS DADOS DO POWER BI
+           ========================================================= */
+
+        function limparEstruturasDeDados() {
+            dadosMap = {};
+            dadosPorEndereco = {};
+            dadosPorNomeBlender = {};
         }
 
-        function buscarRegistrosEndereco(endereco) {
-            return dadosPorEndereco[normalizarNome(endereco)] || [];
+        function adicionarRegistroAoEndereco(endKey, registro) {
+            if (!endKey) return;
+
+            if (!dadosPorEndereco[endKey]) {
+                dadosPorEndereco[endKey] = [];
+            }
+
+            dadosPorEndereco[endKey].push(registro);
         }
 
-        function somaRegistros(registros) {
-            let estoque = 0, valor = 0;
-            registros.forEach(r => {
-                estoque += Number(r.estoque) || 0;
-                valor += Number(r.custoTotal) || 0;
+        function adicionarRegistroAoNomeBlender(nomeKey, registro) {
+            if (!nomeKey) return;
+
+            /* Para um mesmo NOME_BLENDER podem existir vários produtos. */
+            if (!dadosPorNomeBlender[nomeKey]) {
+                dadosPorNomeBlender[nomeKey] = [];
+            }
+
+            dadosPorNomeBlender[nomeKey].push(registro);
+        }
+
+        window.addEventListener('message', function(event) {
+            try {
+                if (!event.data || event.data.tipo !== 'dadosPowerBI') {
+                    return;
+                }
+
+                let payload = event.data.dadosEstoque;
+
+                if (typeof payload === 'string') {
+                    try {
+                        payload = JSON.parse(payload);
+                    } catch (e) {
+                        console.warn('[VISUAL] Erro ao interpretar JSON do Power BI:', e);
+                        return;
+                    }
+                }
+
+                limparEstruturasDeDados();
+
+                let countLidos = 0;
+
+                if (Array.isArray(payload)) {
+                    payload.forEach(item => {
+                        const d = {};
+
+                        for (const k in item) {
+                            d[k.toLowerCase().trim()] = item[k];
+                        }
+
+                        const nomeBlenderRaw =
+                            d['nome_blender'] ||
+                            d['nome blender'] ||
+                            d['nome-do-blender'] ||
+                            '';
+
+                        const enderecoRaw =
+                            d['endereco'] ||
+                            d['endereço'] ||
+                            '';
+
+                        const endereco =
+                            enderecoRaw.toString().trim() ||
+                            nomeBlenderRaw.toString().trim();
+
+                        const nomeBlender =
+                            nomeBlenderRaw.toString().trim() ||
+                            endereco;
+
+                        if (!endereco && !nomeBlender) {
+                            return;
+                        }
+
+                        const registro = {
+                            nomeBlender: nomeBlender,
+                            endereco: endereco,
+                            codigoProduto:
+                                d['codigo produto'] ??
+                                d['codigo_produto'] ??
+                                'N/A',
+                            produto:
+                                d['descricao'] ??
+                                d['produto'] ??
+                                'N/A',
+                            unidadeMedida:
+                                d['unidade medida'] ??
+                                d['unidade_medida'] ??
+                                'N/A',
+                            estoque:
+                                extrairNumero(
+                                    d['saldo atual'] ??
+                                    d['saldo_atual'] ??
+                                    d['estoque']
+                                ),
+                            custoUnitario:
+                                extrairNumero(
+                                    d['custo unitario'] ??
+                                    d['custo_unitario']
+                                ),
+                            custoTotal:
+                                extrairNumero(
+                                    d['custo total'] ??
+                                    d['custo_total']
+                                ),
+                            segmento:
+                                d['segmento'] ??
+                                'N/A',
+                            validade:
+                                d['validade'] ??
+                                'N/A',
+                            familia:
+                                d['familia'] ??
+                                'N/A',
+                            giro:
+                                d['giro'] ??
+                                'N/A'
+                        };
+
+                        const endKey =
+                            extrairChaveEndereco(endereco) ||
+                            normalizarNome(endereco);
+
+                        const blenderKey =
+                            normalizarNome(nomeBlender);
+
+                        adicionarRegistroAoEndereco(endKey, registro);
+                        adicionarRegistroAoNomeBlender(blenderKey, registro);
+
+                        /* Compatibilidade com código antigo */
+                        if (!dadosMap[endKey]) {
+                            dadosMap[endKey] = [];
+                        }
+
+                        dadosMap[endKey].push(registro);
+
+                        countLidos++;
+                    });
+                }
+
+                let sel = event.data.selecionados;
+
+                if (sel && typeof sel === 'string' && sel.trim() !== '') {
+                    arrSelecionados = sel
+                        .split(',')
+                        .map(s => {
+                            const chave = extrairChaveEndereco(s);
+                            return chave || normalizarNome(s);
+                        })
+                        .filter(Boolean);
+                } else if (Array.isArray(sel)) {
+                    arrSelecionados = sel
+                        .map(s => extrairChaveEndereco(s) || normalizarNome(s))
+                        .filter(Boolean);
+                } else {
+                    arrSelecionados = [];
+                }
+
+                atualizarHUD(countLidos);
+                aplicarFiltrosECores();
+                atualizarEmpilhadeiraSelecao();
+            } catch (erro) {
+                console.error('[VISUAL] Erro ao processar dados do Power BI:', erro);
+            }
+        });
+
+        /* =========================================================
+           7. CENA THREE.JS
+           ========================================================= */
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x040914);
+        scene.fog = new THREE.FogExp2(0x040914, 0.002);
+
+        const gridHelper = new THREE.GridHelper(
+            500,
+            150,
+            0x00f3ff,
+            0x005b7a
+        );
+
+        gridHelper.position.y = -0.1;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.4;
+        scene.add(gridHelper);
+
+        const camera = new THREE.PerspectiveCamera(
+            45,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            2000
+        );
+
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.domElement.style.display = 'block';
+        renderer.domElement.style.touchAction = 'none';
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const labelRenderer = new THREE.CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        labelRenderer.domElement.style.zIndex = '5';
+        document.body.appendChild(labelRenderer.domElement);
+
+        const controls = new THREE.OrbitControls(
+            camera,
+            renderer.domElement
+        );
+
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enablePan = true;
+        controls.enableZoom = true;
+        controls.rotateSpeed = 0.8;
+        controls.panSpeed = 0.8;
+
+        scene.add(
+            new THREE.AmbientLight(
+                0x406080,
+                1.5
+            )
+        );
+
+        const dirLight = new THREE.DirectionalLight(
+            0x00f3ff,
+            1.2
+        );
+
+        dirLight.position.set(50, 150, 50);
+        scene.add(dirLight);
+
+        /* =========================================================
+           8. TWEEN DE CÂMERA
+           ========================================================= */
+
+        let tweenCameraAtivo = null;
+
+        function easeInOutCubic(t) {
+            return t < 0.5
+                ? 4 * t * t * t
+                : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
+        function tweenCamera(
+            destPos,
+            destTarget,
+            duracaoMs,
+            callback
+        ) {
+            if (tweenCameraAtivo) {
+                tweenCameraAtivo.cancelado = true;
+            }
+
+            const origemPos = camera.position.clone();
+            const origemTarget = controls.target.clone();
+            const inicio = performance.now();
+            const estado = { cancelado: false };
+
+            tweenCameraAtivo = estado;
+
+            function passo(agora) {
+                if (estado.cancelado) return;
+
+                const t = Math.min(
+                    (agora - inicio) / duracaoMs,
+                    1
+                );
+
+                const te = easeInOutCubic(t);
+
+                camera.position.lerpVectors(
+                    origemPos,
+                    destPos,
+                    te
+                );
+
+                controls.target.lerpVectors(
+                    origemTarget,
+                    destTarget,
+                    te
+                );
+
+                controls.update();
+
+                if (t < 1) {
+                    requestAnimationFrame(passo);
+                } else {
+                    if (tweenCameraAtivo === estado) {
+                        tweenCameraAtivo = null;
+                    }
+
+                    if (callback) callback();
+                }
+            }
+
+            requestAnimationFrame(passo);
+        }
+
+        /* =========================================================
+           9. CORREÇÃO DE MATERIAIS E CORES DA ESTRUTURA
+           ========================================================= */
+
+        function clonarMaterial(material) {
+            if (Array.isArray(material)) {
+                return material.map(m => {
+                    try {
+                        return m && typeof m.clone === 'function'
+                            ? m.clone()
+                            : m;
+                    } catch (e) {
+                        return m;
+                    }
+                });
+            }
+
+            try {
+                return material && typeof material.clone === 'function'
+                    ? material.clone()
+                    : material;
+            } catch (e) {
+                return material;
+            }
+        }
+
+        function percorrerMateriais(child, callback) {
+            if (!child || !child.material) return;
+
+            const mats = Array.isArray(child.material)
+                ? child.material
+                : [child.material];
+
+            mats.forEach(mat => {
+                if (mat) callback(mat);
             });
-            return { estoque, valor };
         }
 
-        function setMaterialColor(material, hex, emissiveHex = 0x000000, emissiveIntensity = 0) {
-            if (!material) return;
-            const materiais = Array.isArray(material) ? material : [material];
-            materiais.forEach(mat => {
-                if (!mat) return;
-                if (mat.color && mat.color.setHex) mat.color.setHex(hex);
-                if (mat.emissive && mat.emissive.setHex) {
-                    mat.emissive.setHex(emissiveHex);
-                    mat.emissiveIntensity = emissiveIntensity;
+        function aplicarCorNosMateriais(child, hex) {
+            percorrerMateriais(child, material => {
+                if (material.color && material.color.setHex) {
+                    material.color.setHex(hex);
                 }
             });
         }
 
-        function nomeObjetoTemPalavra(obj, palavras) {
-            const n = normalizarNome(obj && obj.name);
-            return palavras.some(p => n.includes(p));
+        function desligarEmissive(child) {
+            percorrerMateriais(child, material => {
+                if (material.emissive && material.emissive.setHex) {
+                    material.emissive.setHex(0x000000);
+                    material.emissiveIntensity = 0;
+                }
+            });
         }
 
-        function ehCaixaOuVolume(obj) {
-            if (!obj) return false;
-            const palavras = ['CAIXA','BOX','PALLET','PALETE','VOLUME','PRODUTO','ITEM','ESTOQUE','CX_'];
-            if (nomeObjetoTemPalavra(obj, palavras)) return true;
-            const pai = obj.parent;
-            const nomePai = pai ? normalizarNome(pai.name) : '';
-            if (obj.children && obj.children.length === 0 && nomePai && /^[A-Z]\d{2}(?:-N\d{2})?$/.test(nomePai)) return true;
-            return false;
+        function aplicarEmissive(child, hex, intensidade) {
+            percorrerMateriais(child, material => {
+                if (material.emissive && material.emissive.setHex) {
+                    material.emissive.setHex(hex);
+                    material.emissiveIntensity = intensidade;
+                }
+            });
+        }
+
+        function ehEstrutura(child) {
+            if (!child || !child.isMesh) return true;
+
+            const nome = normalizarNome(child.name || '');
+
+            const nomeEndereco =
+                getNomeBlenderDaHierarquia(child);
+
+            /* Se o objeto pertence a um endereço conhecido,
+               consideramos que é uma caixa/posição de estoque. */
+            if (nomeEndereco) {
+                return false;
+            }
+
+            if (/(PILAR|MONTANTE|COLUNA|POSTE|TRAVESSA|LONGARINA|PRATELEIRA|RACK|ESTRUTURA|FRAME|SUPORTE|BASE|BANDEJA)/.test(nome)) {
+                return true;
+            }
+
+            return true;
         }
 
         function aplicarCorEstrutura(child) {
             if (!child || !child.isMesh) return;
-            if (ehCaixaOuVolume(child)) {
-                setMaterialColor(child.material, COR_CAIXA_NORMAL);
-                child.userData.ehCaixa = true;
-                return;
-            }
-            const box = new THREE.Box3().setFromObject(child);
-            const size = box.getSize(new THREE.Vector3());
+
+            if (!ehEstrutura(child)) return;
+
             let cor = COR_ESTRUTURA_PRINCIPAL;
-            if (size.y > size.x * 1.6 && size.y > size.z * 1.6) cor = COR_ESTRUTURA_VERTICAL;
-            else if (size.x > size.y * 2 || size.z > size.y * 2) cor = COR_ESTRUTURA_SECUNDARIA;
-            setMaterialColor(child.material, cor);
-            child.userData.corEstrutura = cor;
-            child.userData.ehCaixa = false;
+            const nome = normalizarNome(child.name || '');
+
+            if (/(PILAR|MONTANTE|COLUNA|POSTE|VERTICAL)/.test(nome)) {
+                cor = COR_ESTRUTURA_VERTICAL;
+            }
+            else if (/(TRAVESSA|LONGARINA|PRATELEIRA|BANDEJA|HORIZONTAL|BASE)/.test(nome)) {
+                cor = COR_ESTRUTURA_HORIZONTAL;
+            }
+
+            aplicarCorNosMateriais(child, cor);
+            desligarEmissive(child);
         }
 
-        function aplicarCoresBaseModelo() {
-            if (!modeloGeral) return;
+        /* =========================================================
+           10. DADOS PARA UM ENDEREÇO
+           ========================================================= */
+
+        function obterRegistrosDoObjeto(obj) {
+            if (!obj) return [];
+
+            const nomeBlender =
+                getChaveBlenderDaHierarquia(obj);
+
+            if (nomeBlender && dadosPorNomeBlender[nomeBlender]) {
+                return dadosPorNomeBlender[nomeBlender];
+            }
+
+            const endereco =
+                getEnderecoDaHierarquia(obj);
+
+            if (endereco && dadosPorEndereco[endereco]) {
+                return dadosPorEndereco[endereco];
+            }
+
+            return [];
+        }
+
+        function obterRegistrosDoEndereco(endereco) {
+            const chave = extrairChaveEndereco(endereco) || normalizarNome(endereco);
+            return dadosPorEndereco[chave] || [];
+        }
+
+        function buscarDadosSeguro(nome3D) {
+            if (!nome3D) return [];
+
+            const chave = normalizarNome(nome3D);
+
+            if (dadosPorNomeBlender[chave]) {
+                return dadosPorNomeBlender[chave];
+            }
+
+            if (dadosPorEndereco[chave]) {
+                return dadosPorEndereco[chave];
+            }
+
+            if (dadosMap[chave]) {
+                return dadosMap[chave];
+            }
+
+            const enderecoExtraido = extrairChaveEndereco(chave);
+
+            if (enderecoExtraido) {
+                if (dadosPorEndereco[enderecoExtraido]) {
+                    return dadosPorEndereco[enderecoExtraido];
+                }
+            }
+
+            return [];
+        }
+
+        /* =========================================================
+           11. IDENTIFICAÇÃO DE ENDEREÇOS EXISTENTES NO 3D
+           ========================================================= */
+
+        function obterEnderecosDoModelo() {
+            const enderecos = new Set();
+
+            if (!modeloGeral) {
+                return enderecos;
+            }
+
             modeloGeral.traverse(child => {
-                if (child.isMesh) aplicarCorEstrutura(child);
+                if (!child.name) return;
+
+                const chave = extrairChaveEndereco(child.name);
+
+                if (chave) {
+                    enderecos.add(chave);
+                }
+            });
+
+            return enderecos;
+        }
+
+        function obterLetrasEstruturasDoModelo() {
+            const letras = new Set();
+
+            if (!modeloGeral) {
+                return letras;
+            }
+
+            modeloGeral.traverse(child => {
+                if (!child.name) return;
+
+                const nome = normalizarNome(child.name);
+                const match = nome.match(/^([A-Z])\d{2}(?:-N\d{2})?/);
+
+                if (match) {
+                    letras.add(match[1]);
+                }
+            });
+
+            return letras;
+        }
+
+        /* =========================================================
+           12. HUD
+           ========================================================= */
+
+        function atualizarHUD() {
+            let estoqueTotal = 0;
+            let valorEstoqueTotal = 0;
+
+            const enderecosNoPBI = new Set(
+                Object.keys(dadosPorEndereco)
+            );
+
+            enderecosNoPBI.forEach(endereco => {
+                const registros =
+                    dadosPorEndereco[endereco] || [];
+
+                registros.forEach(registro => {
+                    estoqueTotal +=
+                        Number(registro.estoque) || 0;
+
+                    valorEstoqueTotal +=
+                        Number(registro.custoTotal) || 0;
+                });
+            });
+
+            const enderecosModelo =
+                obterEnderecosDoModelo();
+
+            const totalEnderecos =
+                enderecosModelo.size > 0
+                    ? enderecosModelo.size
+                    : enderecosNoPBI.size;
+
+            let enderecosVisiveis = 0;
+
+            enderecosNoPBI.forEach(endereco => {
+                if (estaSelecionadoEndereco(endereco)) {
+                    enderecosVisiveis++;
+                }
+            });
+
+            let ocupacao = 100;
+
+            if (totalEnderecos > 0) {
+                ocupacao = Math.round(
+                    (enderecosVisiveis / totalEnderecos) * 100
+                );
+            }
+
+            if (arrSelecionados.length === 0) {
+                ocupacao = 100;
+            }
+
+            document.getElementById('hud-valor-estoque').innerText =
+                formatarMoeda(valorEstoqueTotal);
+
+            document.getElementById('hud-est').innerText =
+                formatarNumero(estoqueTotal, 0);
+
+            document.getElementById('hud-pct').innerText =
+                ocupacao + '%';
+
+            document.getElementById('hud-debug').innerText =
+                enderecosNoPBI.size;
+        }
+
+        /* =========================================================
+           13. FILTRO / CORES DOS ENDEREÇOS
+           ========================================================= */
+
+        function estaSelecionadoEndereco(endereco) {
+            if (arrSelecionados.length === 0) {
+                return true;
+            }
+
+            const chave =
+                extrairChaveEndereco(endereco) ||
+                normalizarNome(endereco);
+
+            return arrSelecionados.some(sel => {
+                const s =
+                    extrairChaveEndereco(sel) ||
+                    normalizarNome(sel);
+
+                if (!s) return false;
+
+                return s === chave ||
+                       chave.includes(s) ||
+                       s.includes(chave);
             });
         }
 
-        function getGrupoEstruturaLetra(obj) {
-            const nome = getChaveBlenderDaHierarquia(obj) || normalizarNome(obj.name || '');
-            const m = nome.match(/^([A-Z])\d{2}/);
-            return m ? m[1] : null;
+        function determinarCorCaixa(child, endereco) {
+            const selecionado =
+                estaSelecionadoEndereco(endereco);
+
+            if (!selecionado && arrSelecionados.length > 0) {
+                return COR_CAIXA_DESFOCADA;
+            }
+
+            if (modoStatusAtivo) {
+                const registros =
+                    obterRegistrosDoEndereco(endereco);
+
+                if (registros.length > 0) {
+                    /* Se existir algum crítico, usa crítico.
+                       Depois baixo. Caso contrário OK. */
+                    let statusMaisAlto = 'OK';
+
+                    registros.forEach(r => {
+                        const status =
+                            normalizarNome(r.status);
+
+                        if (status === 'CRITICO' || status === 'CRÍTICO') {
+                            statusMaisAlto = 'CRITICO';
+                        }
+                        else if (
+                            status === 'BAIXO' &&
+                            statusMaisAlto !== 'CRITICO'
+                        ) {
+                            statusMaisAlto = 'BAIXO';
+                        }
+                    });
+
+                    return corPorStatus(statusMaisAlto);
+                }
+            }
+
+            /* Endereço que está selecionado:
+               MARROM de caixa. */
+            if (arrSelecionados.length > 0 && selecionado) {
+                return COR_CAIXA_SELECIONADA;
+            }
+
+            return COR_CAIXA_NORMAL;
+        }
+
+        function aplicarFiltrosECores() {
+            if (!modeloGeral) return;
+
+            modeloGeral.traverse(child => {
+                if (!child.isMesh) return;
+
+                /* Estrutura */
+                if (ehEstrutura(child)) {
+                    aplicarCorEstrutura(child);
+                    return;
+                }
+
+                const endereco =
+                    getEnderecoDaHierarquia(child);
+
+                if (!endereco) {
+                    /* Segurança para objetos sem endereço */
+                    aplicarCorNosMateriais(
+                        child,
+                        COR_ESTRUTURA_PRINCIPAL
+                    );
+                    return;
+                }
+
+                const selecionado =
+                    estaSelecionadoEndereco(endereco);
+
+                const cor =
+                    determinarCorCaixa(child, endereco);
+
+                /* Caixa */
+                aplicarCorNosMateriais(child, cor);
+
+                percorrerMateriais(child, material => {
+                    material.transparent = false;
+                    material.opacity = 1.0;
+                    material.depthWrite = true;
+                });
+
+                if (!selecionado && arrSelecionados.length > 0) {
+                    percorrerMateriais(child, material => {
+                        material.transparent = true;
+                        material.opacity = 0.16;
+                        material.depthWrite = false;
+                    });
+
+                    desligarEmissive(child);
+                }
+                else if (
+                    arrSelecionados.length > 0 &&
+                    selecionado
+                ) {
+                    /* Destaque marrom + leve brilho */
+                    aplicarEmissive(
+                        child,
+                        COR_CAIXA_SELECIONADA,
+                        0.15
+                    );
+                }
+                else {
+                    desligarEmissive(child);
+                }
+            });
+
+            atualizarHUD();
+        }
+
+        /* =========================================================
+           14. PLACAS DE TODAS AS ESTRUTURAS
+           ========================================================= */
+
+        function criarPlacasTodasEstruturas() {
+            placasGeral.forEach(placa => {
+                if (placa.parent) {
+                    placa.parent.remove(placa);
+                }
+            });
+
+            placasGeral = [];
+
+            if (!modeloGeral) return;
+
+            const letras =
+                obterLetrasEstruturasDoModelo();
+
+            letras.forEach(letra => {
+                const pontos = [];
+                let maxY = -Infinity;
+
+                modeloGeral.traverse(child => {
+                    if (!child.isMesh) return;
+
+                    const endereco =
+                        extrairChaveEndereco(child.name);
+
+                    if (!endereco) return;
+
+                    const match =
+                        endereco.match(/^([A-Z])\d{2}/);
+
+                    if (!match || match[1] !== letra) {
+                        return;
+                    }
+
+                    const pos =
+                        new THREE.Vector3();
+
+                    child.getWorldPosition(pos);
+                    pontos.push(pos);
+
+                    try {
+                        const box =
+                            new THREE.Box3().setFromObject(child);
+
+                        if (box.max.y > maxY) {
+                            maxY = box.max.y;
+                        }
+                    } catch (e) {}
+                });
+
+                if (pontos.length === 0) return;
+
+                const centro =
+                    new THREE.Vector3();
+
+                pontos.forEach(p => centro.add(p));
+                centro.divideScalar(pontos.length);
+
+                if (!isFinite(maxY)) {
+                    maxY = centro.y;
+                }
+
+                const div =
+                    document.createElement('div');
+
+                div.className = 'placa-corredor';
+                div.innerText = 'Estrutura ' + letra;
+                div.style.display =
+                    estruturasVisiveis
+                        ? 'block'
+                        : 'none';
+
+                const placaCSS =
+                    new THREE.CSS2DObject(div);
+
+                placaCSS.position.set(
+                    centro.x,
+                    maxY + 3.0,
+                    centro.z
+                );
+
+                placaCSS.userData.elemento = div;
+                placaCSS.userData.letra = letra;
+
+                scene.add(placaCSS);
+                placasGeral.push(placaCSS);
+            });
         }
 
         function atualizarVisibilidadePlacas() {
             placasGeral.forEach(placa => {
-                if (placa.userData && placa.userData.elemento) {
-                    placa.userData.elemento.style.display = estruturasVisiveis ? 'block' : 'none';
+                if (
+                    placa.userData &&
+                    placa.userData.elemento
+                ) {
+                    placa.userData.elemento.style.display =
+                        estruturasVisiveis
+                            ? 'block'
+                            : 'none';
                 }
             });
         }
 
-                // --- 5. APLICAR FILTROS (CORREÇÃO DO VISUAL) ---
-        let meshesCriticos = [];
+        /* =========================================================
+           15. TOOLTIP MULTIPRODUTO
+           ========================================================= */
 
-        function aplicarFiltrosECores() {
-            if(!modeloGeral) return;
-            modeloGeral.traverse(child => {
-                if (!child.isMesh) return;
-                const endereco = getEnderecoDaHierarquia(child);
-                const ehCaixa = child.userData.ehCaixa === true;
-                let selecionado = arrSelecionados.length === 0;
-                if (!selecionado && endereco) {
-                    const e = normalizarNome(endereco);
-                    selecionado = arrSelecionados.some(sel => {
-                        const ss = normalizarNome(sel);
-                        return ss === e || ss.includes(e) || e.includes(ss);
-                    });
-                }
-                child.material.transparent = false;
-                child.material.opacity = 1;
-                child.material.depthWrite = true;
-                if (ehCaixa) {
-                    setMaterialColor(child.material, selecionado ? COR_CAIXA_SELECIONADA : COR_CAIXA_NORMAL);
+        function montarHTMLTooltip(endereco, registros) {
+            let html = '';
+
+            html += '<div class="tt-header">' +
+                escaparHTML(endereco) +
+                '</div>';
+
+            if (!registros || registros.length === 0) {
+                html +=
+                    '<div class="tt-line">' +
+                    '<span class="tt-label">Dados</span>' +
+                    '<span class="tt-value">Sem dados</span>' +
+                    '</div>';
+
+                return html;
+            }
+
+            html +=
+                '<div class="tt-line">' +
+                '<span class="tt-label">Produtos</span>' +
+                '<span class="tt-value">' +
+                formatarNumero(registros.length, 0) +
+                '</span></div>';
+
+            registros.forEach((registro, index) => {
+                html +=
+                    '<div class="tt-produto">';
+
+                html +=
+                    '<div class="tt-produto-titulo">' +
+                    escaparHTML(
+                        registro.produto ||
+                        'Produto ' + (index + 1)
+                    ) +
+                    '</div>';
+
+                html +=
+                    '<div class="tt-line">' +
+                    '<span class="tt-label">Código</span>' +
+                    '<span class="tt-value">' +
+                    escaparHTML(registro.codigoProduto) +
+                    '</span></div>';
+
+                html +=
+                    '<div class="tt-line">' +
+                    '<span class="tt-label">Unidade</span>' +
+                    '<span class="tt-value">' +
+                    escaparHTML(registro.unidadeMedida) +
+                    '</span></div>';
+
+                html +=
+                    '<div class="tt-line">' +
+                    '<span class="tt-label">Saldo Atual</span>' +
+                    '<span class="tt-value">' +
+                    formatarNumero(registro.estoque, 0) +
+                    '</span></div>';
+
+                html +=
+                    '<div class="tt-line">' +
+                    '<span class="tt-label">Custo Unit.</span>' +
+                    '<span class="tt-value">' +
+                    formatarMoeda(registro.custoUnitario) +
+                    '</span></div>';
+
+                html +=
+                    '<div class="tt-line">' +
+                    '<span class="tt-label">Custo Total</span>' +
+                    '<span class="tt-value">' +
+                    formatarMoeda(registro.custoTotal) +
+                    '</span></div>';
+
+                html +=
+                    '<div class="tt-line">' +
+                    '<span class="tt-label">Segmento</span>' +
+                    '<span class="tt-value">' +
+                    escaparHTML(registro.segmento) +
+                    '</span></div>';
+
+                html +=
+                    '<div class="tt-line">' +
+                    '<span class="tt-label">Validade</span>' +
+                    '<span class="tt-value">' +
+                    escaparHTML(registro.validade) +
+                    '</span></div>';
+
+                html +=
+                    '<div class="tt-line">' +
+                    '<span class="tt-label">Família</span>' +
+                    '<span class="tt-value">' +
+                    escaparHTML(registro.familia) +
+                    '</span></div>';
+
+                html +=
+                    '<div class="tt-line">' +
+                    '<span class="tt-label">Giro</span>' +
+                    '<span class="tt-value">' +
+                    escaparHTML(registro.giro) +
+                    '</span></div>';
+
+                html += '</div>';
+            });
+
+            return html;
+        }
+
+        function encontrarIntersecaoComEndereco() {
+            if (!modeloGeral) return null;
+
+            const intersects =
+                raycaster.intersectObject(
+                    modeloGeral,
+                    true
+                );
+
+            for (let i = 0; i < intersects.length; i++) {
+                const obj = intersects[i].object;
+
+                if (!obj || !obj.visible) continue;
+
+                const endereco =
+                    getEnderecoDaHierarquia(obj);
+
+                if (!endereco) continue;
+
+                const registros =
+                    obterRegistrosDoEndereco(endereco);
+
+                /* Mesmo que esteja sem dados, retornamos o endereço
+                   para possibilitar diagnóstico do modelo. */
+                return {
+                    object: obj,
+                    endereco: endereco,
+                    registros: registros
+                };
+            }
+
+            return null;
+        }
+
+        function atualizarPosicaoMouse(e) {
+            const rect =
+                renderer.domElement.getBoundingClientRect();
+
+            if (!rect.width || !rect.height) return;
+
+            mouse.x =
+                ((e.clientX - rect.left) /
+                rect.width) * 2 - 1;
+
+            mouse.y =
+                -((e.clientY - rect.top) /
+                rect.height) * 2 + 1;
+        }
+
+        renderer.domElement.addEventListener(
+            'pointermove',
+            function(e) {
+                if (!modeloGeral) {
+                    tooltip.style.display = 'none';
                     return;
                 }
-                setMaterialColor(child.material, child.userData.corEstrutura || COR_ESTRUTURA_PRINCIPAL);
+
+                atualizarPosicaoMouse(e);
+
+                raycaster.setFromCamera(
+                    mouse,
+                    camera
+                );
+
+                const hit =
+                    encontrarIntersecaoComEndereco();
+
+                if (!hit) {
+                    tooltip.style.display = 'none';
+                    return;
+                }
+
+                tooltip.innerHTML =
+                    montarHTMLTooltip(
+                        hit.endereco,
+                        hit.registros
+                    );
+
+                tooltip.style.display = 'block';
+
+                const larguraTooltip =
+                    tooltip.offsetWidth || 320;
+
+                const alturaTooltip =
+                    tooltip.offsetHeight || 250;
+
+                let left = e.clientX + 18;
+                let top = e.clientY + 18;
+
+                if (
+                    left + larguraTooltip >
+                    window.innerWidth - 10
+                ) {
+                    left =
+                        e.clientX - larguraTooltip - 18;
+                }
+
+                if (
+                    top + alturaTooltip >
+                    window.innerHeight - 10
+                ) {
+                    top =
+                        window.innerHeight -
+                        alturaTooltip - 10;
+                }
+
+                tooltip.style.left =
+                    Math.max(10, left) + 'px';
+
+                tooltip.style.top =
+                    Math.max(10, top) + 'px';
+            },
+            { passive: true }
+        );
+
+        renderer.domElement.addEventListener(
+            'pointerleave',
+            function() {
+                tooltip.style.display = 'none';
+            }
+        );
+
+        /* =========================================================
+           16. PAINEL KPI AO CLICAR
+           ========================================================= */
+
+        function exibirKPI(enderecoVisual, registros) {
+            const lista =
+                Array.isArray(registros)
+                    ? registros
+                    : [];
+
+            const totalEstoque =
+                lista.reduce(
+                    (soma, registro) =>
+                        soma +
+                        (Number(registro.estoque) || 0),
+                    0
+                );
+
+            const valorEstoque =
+                lista.reduce(
+                    (soma, registro) =>
+                        soma +
+                        (Number(registro.custoTotal) || 0),
+                    0
+                );
+
+            document.getElementById('kpi-endereco').innerText =
+                enderecoVisual;
+
+            document.getElementById('kpi-qtd-produtos').innerText =
+                lista.length;
+
+            document.getElementById('kpi-estoque').innerText =
+                formatarNumero(totalEstoque, 0);
+
+            document.getElementById('kpi-valor-estoque').innerText =
+                formatarMoeda(valorEstoque);
+
+            document.getElementById('kpi-status').innerText =
+                'Ativo';
+
+            const produtosEl =
+                document.getElementById('kpi-produtos');
+
+            let html = '';
+
+            lista.forEach((registro, index) => {
+                html +=
+                    '<div class="kpi-produto-item">';
+
+                html +=
+                    '<div class="linha">' +
+                    '<span class="rotulo">Produto</span>' +
+                    '<span class="valor">' +
+                    escaparHTML(registro.produto) +
+                    '</span></div>';
+
+                html +=
+                    '<div class="linha">' +
+                    '<span class="rotulo">Código</span>' +
+                    '<span class="valor">' +
+                    escaparHTML(registro.codigoProduto) +
+                    '</span></div>';
+
+                html +=
+                    '<div class="linha">' +
+                    '<span class="rotulo">Saldo Atual</span>' +
+                    '<span class="valor">' +
+                    formatarNumero(registro.estoque, 0) +
+                    '</span></div>';
+
+                html +=
+                    '<div class="linha">' +
+                    '<span class="rotulo">Custo Total</span>' +
+                    '<span class="valor">' +
+                    formatarMoeda(registro.custoTotal) +
+                    '</span></div>';
+
+                html += '</div>';
             });
-            atualizarHUD(Object.values(dadosPorEndereco).reduce((a,b)=>a+b.length,0));
-            atualizarPainelKPIs();
+
+            produtosEl.innerHTML =
+                html ||
+                '<div class="kpi-produto-item">Sem produtos neste endereço.</div>';
+
+            painelKPI.style.display = 'block';
         }
 
-        // --- 6. GERAR APENAS 3 PLACAS (CORREDOR A, B, C) ---
-        function criar3PlacasCorredor() {
-            placasGeral.forEach(p => scene.remove(p));
-            placasGeral = [];
+        renderer.domElement.addEventListener(
+            'click',
+            function(e) {
+                if (!modeloGeral) return;
 
-            const dadosPorLetra = {
-                'A': { soma: new THREE.Vector3(), count: 0, maxY: -Infinity },
-                'B': { soma: new THREE.Vector3(), count: 0, maxY: -Infinity },
-                'C': { soma: new THREE.Vector3(), count: 0, maxY: -Infinity }
-            };
+                atualizarPosicaoMouse(e);
 
-            if (!modeloGeral) return;
+                raycaster.setFromCamera(
+                    mouse,
+                    camera
+                );
 
-            modeloGeral.traverse(child => {
-                if (child.isMesh) {
-                    const end = getEnderecoDaHierarquia(child);
-                    if (end) {
-                        const match = end.match(/([A-Z])\d{2}(?:-N\d{2})?/);
-                        if (match) {
-                            const letra = match[1].toUpperCase(); 
-                            if (dadosPorLetra[letra]) {
-                                const pos = new THREE.Vector3();
-                                child.getWorldPosition(pos);
-                                dadosPorLetra[letra].soma.add(pos);
-                                dadosPorLetra[letra].count++;
+                const hit =
+                    encontrarIntersecaoComEndereco();
 
-                                const box = new THREE.Box3().setFromObject(child);
-                                if (box.max.y > dadosPorLetra[letra].maxY) {
-                                    dadosPorLetra[letra].maxY = box.max.y;
-                                }
+                if (hit) {
+                    exibirKPI(
+                        hit.endereco,
+                        hit.registros
+                    );
+                }
+            }
+        );
+
+        document.getElementById('kpi-fechar')
+            .addEventListener('click', function() {
+                painelKPI.style.display = 'none';
+            });
+
+        /* =========================================================
+           17. CARREGAMENTO DO GLB
+           ========================================================= */
+
+        const gltfUrl =
+            'https://raw.githubusercontent.com/EragonV7/Layout-3D-testev1/141e6626bf72aa246d5d86a29bbe763ed7a1e954/Testev1.glb';
+
+        const loader = new THREE.GLTFLoader();
+
+        function finalizarCarregamento(texto = 'Modelo carregado') {
+            const pctEl =
+                document.getElementById('pct-carregamento');
+
+            const textoEl =
+                document.querySelector(
+                    '#tela-carregamento .texto-carregamento'
+                );
+
+            if (pctEl) {
+                pctEl.innerText = '100%';
+            }
+
+            if (textoEl) {
+                textoEl.innerText = texto;
+            }
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const tela =
+                        document.getElementById('tela-carregamento');
+
+                    if (tela) {
+                        tela.classList.add('escondida');
+                    }
+                });
+            });
+        }
+
+        loader.load(
+            gltfUrl,
+
+            function(gltf) {
+                try {
+                    modeloGeral = gltf.scene;
+                    scene.add(modeloGeral);
+
+                    boxGeral =
+                        new THREE.Box3().setFromObject(modeloGeral);
+
+                    centroGeral =
+                        boxGeral.getCenter(
+                            new THREE.Vector3()
+                        );
+
+                    const size =
+                        boxGeral.getSize(
+                            new THREE.Vector3()
+                        );
+
+                    tamanhoMax = Math.max(
+                        size.x,
+                        size.y,
+                        size.z
+                    );
+
+                    if (!isFinite(tamanhoMax) || tamanhoMax <= 0) {
+                        tamanhoMax = 100;
+                    }
+
+                    controls.target.copy(centroGeral);
+
+                    const posFinalCamera =
+                        new THREE.Vector3(
+                            centroGeral.x +
+                                tamanhoMax * 0.8,
+                            centroGeral.y +
+                                tamanhoMax * 0.8,
+                            centroGeral.z +
+                                tamanhoMax * 0.8
+                        );
+
+                    camera.position.set(
+                        centroGeral.x +
+                            tamanhoMax * 2.2,
+                        centroGeral.y +
+                            tamanhoMax * 2.6,
+                        centroGeral.z +
+                            tamanhoMax * 2.2
+                    );
+
+                    camera.lookAt(centroGeral);
+                    controls.update();
+
+                    /*
+                       Preparação de materiais com suporte para
+                       material único OU array de materiais.
+                    */
+                    modeloGeral.traverse(child => {
+                        if (!child.isMesh) return;
+
+                        child.material =
+                            clonarMaterial(child.material);
+
+                        percorrerMateriais(child, material => {
+                            if ('metalness' in material) {
+                                material.metalness = 0.6;
                             }
-                        }
+
+                            if ('roughness' in material) {
+                                material.roughness = 0.3;
+                            }
+                        });
+
+                        aplicarCorEstrutura(child);
+                    });
+
+                    criarPlacasTodasEstruturas();
+                    atualizarVisibilidadePlacas();
+                    aplicarFiltrosECores();
+                    atualizarHUD();
+                    criarEmpilhadeiraGrupo();
+
+                    finalizarCarregamento('Malha 3D carregada');
+
+                    tweenCamera(
+                        posFinalCamera,
+                        centroGeral.clone(),
+                        2200
+                    );
+                }
+                catch (erro) {
+                    console.error(
+                        '[VISUAL] Erro durante preparação do modelo 3D:',
+                        erro
+                    );
+
+                    const textoEl =
+                        document.querySelector(
+                            '#tela-carregamento .texto-carregamento'
+                        );
+
+                    if (textoEl) {
+                        textoEl.innerText =
+                            'Erro ao preparar modelo 3D';
+                    }
+
+                    const pctEl =
+                        document.getElementById('pct-carregamento');
+
+                    if (pctEl) {
+                        pctEl.innerText = 'ERRO';
+                    }
+                }
+            },
+
+            function(xhr) {
+                const pctEl =
+                    document.getElementById('pct-carregamento');
+
+                if (pctEl && xhr && xhr.total) {
+                    const pct = Math.min(
+                        99,
+                        Math.round(
+                            (xhr.loaded / xhr.total) * 100
+                        )
+                    );
+
+                    pctEl.innerText = pct + '%';
+                }
+            },
+
+            function(erro) {
+                console.error(
+                    '[VISUAL] Falha ao carregar o modelo 3D:',
+                    erro
+                );
+
+                const textoEl =
+                    document.querySelector(
+                        '#tela-carregamento .texto-carregamento'
+                    );
+
+                const pctEl =
+                    document.getElementById('pct-carregamento');
+
+                if (textoEl) {
+                    textoEl.innerText =
+                        'Erro ao carregar o modelo 3D';
+                }
+
+                if (pctEl) {
+                    pctEl.innerText = 'ERRO';
+                }
+            }
+        );
+
+        /* =========================================================
+           18. CONTROLES DE VISUALIZAÇÃO
+           ========================================================= */
+
+        document.getElementById('btn-frente')
+            .addEventListener('click', function() {
+                if (!modeloGeral) return;
+
+                cinematicoAtivo = false;
+                document.getElementById('btn-cinema')
+                    .classList.remove('btn-toggle-ativo');
+
+                controls.enabled = true;
+
+                tweenCamera(
+                    new THREE.Vector3(
+                        centroGeral.x,
+                        centroGeral.y,
+                        centroGeral.z +
+                            tamanhoMax * 1.5
+                    ),
+                    centroGeral,
+                    1000
+                );
+            });
+
+        document.getElementById('btn-topo')
+            .addEventListener('click', function() {
+                if (!modeloGeral) return;
+
+                cinematicoAtivo = false;
+                document.getElementById('btn-cinema')
+                    .classList.remove('btn-toggle-ativo');
+
+                controls.enabled = true;
+
+                tweenCamera(
+                    new THREE.Vector3(
+                        centroGeral.x,
+                        centroGeral.y +
+                            tamanhoMax * 1.5,
+                        centroGeral.z
+                    ),
+                    centroGeral,
+                    1000
+                );
+            });
+
+        document.getElementById('btn-lado')
+            .addEventListener('click', function() {
+                if (!modeloGeral) return;
+
+                cinematicoAtivo = false;
+                document.getElementById('btn-cinema')
+                    .classList.remove('btn-toggle-ativo');
+
+                controls.enabled = true;
+
+                tweenCamera(
+                    new THREE.Vector3(
+                        centroGeral.x +
+                            tamanhoMax * 1.5,
+                        centroGeral.y,
+                        centroGeral.z
+                    ),
+                    centroGeral,
+                    1000
+                );
+            });
+
+        /* =========================================================
+           19. MODO MÃO / PAN — RESTAURADO
+           ========================================================= */
+
+        document.getElementById('btn-pan')
+            .addEventListener('click', function(e) {
+                isPanMode = !isPanMode;
+
+                e.target.classList.toggle(
+                    'btn-toggle-ativo',
+                    isPanMode
+                );
+
+                if (isPanMode) {
+                    controls.mouseButtons = {
+                        LEFT: THREE.MOUSE.PAN,
+                        MIDDLE: THREE.MOUSE.DOLLY,
+                        RIGHT: THREE.MOUSE.ROTATE
+                    };
+                }
+                else {
+                    controls.mouseButtons = {
+                        LEFT: THREE.MOUSE.ROTATE,
+                        MIDDLE: THREE.MOUSE.DOLLY,
+                        RIGHT: THREE.MOUSE.PAN
+                    };
+                }
+            });
+
+        /* =========================================================
+           20. MODO STATUS
+           ========================================================= */
+
+        document.getElementById('btn-status')
+            .addEventListener('click', function(e) {
+                modoStatusAtivo = !modoStatusAtivo;
+
+                if (modoStatusAtivo) {
+                    e.target.innerText =
+                        'Modo: Status (Ligado)';
+
+                    e.target.classList.add(
+                        'btn-toggle-ativo'
+                    );
+
+                    document.getElementById(
+                        'legenda-status'
+                    ).style.display = 'block';
+
+                    document.getElementById(
+                        'hud-legenda'
+                    ).style.display = 'block';
+                }
+                else {
+                    e.target.innerText =
+                        'Modo: Status (Desligado)';
+
+                    e.target.classList.remove(
+                        'btn-toggle-ativo'
+                    );
+
+                    document.getElementById(
+                        'legenda-status'
+                    ).style.display = 'none';
+
+                    if (!estruturasVisiveis && !modoWASD) {
+                        document.getElementById(
+                            'hud-legenda'
+                        ).style.display = 'none';
+                    }
+                }
+
+                aplicarFiltrosECores();
+            });
+
+        /* =========================================================
+           21. BOTÃO DAS ESTRUTURAS
+           ========================================================= */
+
+        document.getElementById('btn-estrutura')
+            .addEventListener('click', function(e) {
+                estruturasVisiveis =
+                    !estruturasVisiveis;
+
+                e.target.innerText =
+                    estruturasVisiveis
+                        ? 'Estruturas: Visíveis'
+                        : 'Estruturas: Ocultas';
+
+                e.target.classList.toggle(
+                    'btn-toggle-ativo',
+                    estruturasVisiveis
+                );
+
+                atualizarVisibilidadePlacas();
+
+                document.getElementById(
+                    'legenda-estrutura'
+                ).style.display =
+                    estruturasVisiveis
+                        ? 'block'
+                        : 'none';
+
+                if (
+                    estruturasVisiveis ||
+                    modoStatusAtivo ||
+                    modoWASD
+                ) {
+                    document.getElementById(
+                        'hud-legenda'
+                    ).style.display = 'block';
+                }
+                else {
+                    document.getElementById(
+                        'hud-legenda'
+                    ).style.display = 'none';
+                }
+            });
+
+        /* =========================================================
+           22. MODO CINEMÁTICO — CORRIGIDO
+           ========================================================= */
+
+        document.getElementById('btn-cinema')
+            .addEventListener('click', function(e) {
+                cinematicoAtivo =
+                    !cinematicoAtivo;
+
+                e.target.classList.toggle(
+                    'btn-toggle-ativo',
+                    cinematicoAtivo
+                );
+
+                if (cinematicoAtivo) {
+                    modoWASD = false;
+
+                    document.getElementById('btn-wasd')
+                        .classList.remove(
+                            'btn-toggle-ativo'
+                        );
+
+                    document.getElementById(
+                        'legenda-controles'
+                    ).style.display = 'none';
+
+                    /* OrbitControls não pode disputar com
+                       a câmera durante o modo cinemático. */
+                    controls.enabled = false;
+                    anguloCinema = 0;
+                }
+                else {
+                    controls.enabled = true;
+
+                    /* Reativa a rotação normal */
+                    controls.update();
+                }
+            });
+
+        /* =========================================================
+           23. MODO 1ª PESSOA / WASD
+           ========================================================= */
+
+        document.getElementById('btn-wasd')
+            .addEventListener('click', function(e) {
+                modoWASD = !modoWASD;
+
+                e.target.classList.toggle(
+                    'btn-toggle-ativo',
+                    modoWASD
+                );
+
+                if (modoWASD) {
+                    cinematicoAtivo = false;
+
+                    document.getElementById('btn-cinema')
+                        .classList.remove(
+                            'btn-toggle-ativo'
+                        );
+
+                    controls.enabled = true;
+
+                    document.getElementById(
+                        'legenda-controles'
+                    ).style.display = 'block';
+
+                    document.getElementById(
+                        'hud-legenda'
+                    ).style.display = 'block';
+                }
+                else {
+                    document.getElementById(
+                        'legenda-controles'
+                    ).style.display = 'none';
+
+                    if (!modoStatusAtivo && !estruturasVisiveis) {
+                        document.getElementById(
+                            'hud-legenda'
+                        ).style.display = 'none';
                     }
                 }
             });
 
-            ['A', 'B', 'C'].forEach(letra => {
-                const d = dadosPorLetra[letra];
-                if (d.count > 0) {
-                    const centro = d.soma.divideScalar(d.count);
-                    const div = document.createElement('div');
-                    div.className = 'placa-corredor';
-                    div.innerText = `Estrutura ${letra}`;
-                    div.style.display = estruturasVisiveis ? 'block' : 'none';
+        window.addEventListener('keydown', function(e) {
+            const key = e.key.toLowerCase();
 
-                    const placaCSS = new THREE.CSS2DObject(div);
-                    placaCSS.position.set(centro.x, d.maxY + 3.0, centro.z);
-                    placaCSS.userData.elemento = div;
-                    placaCSS.userData.letra = letra;
-                    scene.add(placaCSS);
-                    placasGeral.push(placaCSS);
-                }
-            });
-        }
-
-        // --- 7. MOUSE, TOOLTIP E CLIQUE ---
-        function atualizarPosicaoMouse(e) {
-            const rect = renderer.domElement.getBoundingClientRect();
-            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-        }
-
-        // --- 7.1 TOOLTIP SOBRE O CANVAS WEBGL ---
-        renderer.domElement.addEventListener('pointermove', (e) => {
-            if (!modeloGeral) return;
-            atualizarPosicaoMouse(e);
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(modeloGeral.children, true);
-            let endereco = null;
-            for (let i = 0; i < intersects.length; i++) {
-                const obj = intersects[i].object;
-                if (!obj || !obj.visible) continue;
-                const candidato = getEnderecoDaHierarquia(obj);
-                if (candidato) { endereco = candidato; break; }
-            }
-            const registros = endereco ? buscarRegistrosEndereco(endereco) : [];
-            if (!endereco || !registros.length) { tooltip.style.display = 'none'; return; }
-            const resumo = somaRegistros(registros);
-            const rect = renderer.domElement.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            tooltip.style.display = 'block';
-            tooltip.style.left = Math.min(x + 18, rect.width - 370) + 'px';
-            tooltip.style.top = Math.min(y + 18, rect.height - 380) + 'px';
-            let linhas = '';
-            registros.forEach((r, idx) => {
-                linhas += `
-                    <div style="margin-top:${idx ? 10 : 8}px;padding-top:${idx ? 8 : 0};border-top:${idx ? '1px solid #005b7a' : 'none'};">
-                        <div class="tt-line"><span class="tt-label">Código</span><span class="tt-value">${r.codigoProduto || 'N/A'}</span></div>
-                        <div class="tt-line"><span class="tt-label">Produto</span><span class="tt-value">${r.produto || 'N/A'}</span></div>
-                        <div class="tt-line"><span class="tt-label">Unidade</span><span class="tt-value">${r.unidadeMedida || 'N/A'}</span></div>
-                        <div class="tt-line"><span class="tt-label">Qtd.</span><span class="tt-value">${(Number(r.estoque)||0).toLocaleString('pt-BR')}</span></div>
-                        <div class="tt-line"><span class="tt-label">Custo Unit.</span><span class="tt-value">${formatarBRL(r.custoUnitario)}</span></div>
-                        <div class="tt-line"><span class="tt-label">Valor Estoque</span><span class="tt-value">${formatarBRL(r.custoTotal)}</span></div>
-                        <div class="tt-line"><span class="tt-label">Segmento</span><span class="tt-value">${r.segmento || 'N/A'}</span></div>
-                        <div class="tt-line"><span class="tt-label">Validade</span><span class="tt-value">${r.validade || 'N/A'}</span></div>
-                        <div class="tt-line"><span class="tt-label">Família</span><span class="tt-value">${r.familia || 'N/A'}</span></div>
-                        <div class="tt-line"><span class="tt-label">Giro</span><span class="tt-value">${r.giro || 'N/A'}</span></div>
-                    </div>`;
-            });
-            tooltip.innerHTML = `
-                <div class="tt-header">${normalizarNome(endereco)}</div>
-                <div class="tt-line"><span class="tt-label">Produtos no endereço</span><span class="tt-value">${registros.length}</span></div>
-                <div class="tt-line"><span class="tt-label">Estoque total</span><span class="tt-value">${resumo.estoque.toLocaleString('pt-BR')}</span></div>
-                <div class="tt-line"><span class="tt-label">Valor de estoque</span><span class="tt-value">${formatarBRL(resumo.valor)}</span></div>
-                ${linhas}
-            `;
-        });
-
-        renderer.domElement.addEventListener('pointerleave', () => { tooltip.style.display = 'none'; });
-
-        window.addEventListener('click' , (e) => {
-            if (e.target.closest('#ui-controles') || e.target.closest('#painel-kpi') || e.target.closest('#hud-topo')) return;
-            if (!modeloGeral) return;
-
-            atualizarPosicaoMouse(e);
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(modeloGeral.children, true);
-
-            if (intersects.length > 0) {
-                let endFull = null;
-                for (let i = 0; i < intersects.length; i++) {
-                    endFull = getEnderecoDaHierarquia(intersects[i].object);
-                    if (endFull) break;
-                }
-
-                if (endFull) {
-                    const info = buscarDadosSeguro(endFull) || {};
-                    let tituloVisual = endFull;
-                    const matchVisual = endFull.match(/([A-Z]\d{2}-N\d{2})/);
-                    if(matchVisual) tituloVisual = matchVisual[1];
-
-                    exibirKPI(tituloVisual, info);
-                }
+            if (Object.prototype.hasOwnProperty.call(teclas, key)) {
+                teclas[key] = true;
             }
         });
 
-        function exibirKPI(enderecoVisual, d) {
-            document.getElementById('kpi-endereco').innerText = enderecoVisual;
-            document.getElementById('kpi-produto').innerText = d.produto || 'N/A';
-            document.getElementById('kpi-estoque').innerText = d.estoque ?? 0;
-            document.getElementById('kpi-capacidade').innerText = d.capacidade ?? 0;
-            document.getElementById('kpi-status').innerText = d.status || 'N/A';
+        window.addEventListener('keyup', function(e) {
+            const key = e.key.toLowerCase();
 
-            const cap = Number(d.capacidade) || 0;
-            const est = Number(d.estoque) || 0;
-            const pct = cap > 0 ? Math.round((est / cap) * 100) : 0;
-            
-            // Cores de status baseadas no Cyberpunk para o KPI
-            let corBarra = '#00ff55';
-            if(pct > 50) corBarra = '#ffb700';
-            if(pct > 90) corBarra = '#ff0055';
-
-            document.getElementById('kpi-pct').innerText = pct + '%';
-            document.getElementById('kpi-barra').style.width = Math.min(pct, 100) + '%';
-            document.getElementById('kpi-barra').style.background = corBarra;
-            
-            painelKPI.style.display = 'block';
-        }
-
-        document.getElementById('kpi-fechar').addEventListener('click', () => {
-            painelKPI.style.display = 'none';
+            if (Object.prototype.hasOwnProperty.call(teclas, key)) {
+                teclas[key] = false;
+            }
         });
 
-        // Loop de Renderização
+        /* =========================================================
+           24. EMPILHADEIRA — MÓDULO DE COMPATIBILIDADE
+           ========================================================= */
+
+        function criarEmpilhadeiraGrupo() {
+            const hud =
+                document.getElementById('hud-emp');
+
+            if (!hud) return;
+
+            hud.innerText =
+                'Pronta (Aguardando)';
+
+            hud.style.color = '#00ff55';
+        }
+
+        function calcularInfoCorredores() {
+            /* Reservado para expansão futura. */
+        }
+
+        function atualizarEmpilhadeiraSelecao() {
+            const hud =
+                document.getElementById('hud-emp');
+
+            if (!hud) return;
+
+            if (arrSelecionados.length > 0) {
+                hud.innerText =
+                    'Em Rota: ' +
+                    arrSelecionados[0];
+
+                hud.style.color = '#ffb700';
+            }
+            else {
+                hud.innerText =
+                    'Em Espera';
+
+                hud.style.color = '#00f3ff';
+            }
+        }
+
+        /* =========================================================
+           25. LOOP DE RENDERIZAÇÃO
+           ========================================================= */
+
         function animate() {
             requestAnimationFrame(animate);
-            if (!cinematicoAtivo && !modoWASD && controls.enabled) controls.update();
-            renderer.render(scene, camera);
-            labelRenderer.render(scene, camera);
+
+            /* -----------------------------------------
+               MODO CINEMÁTICO
+               ----------------------------------------- */
+            if (cinematicoAtivo && modeloGeral) {
+                anguloCinema += 0.002;
+
+                const distancia =
+                    tamanhoMax * 1.8;
+
+                const altura =
+                    centroGeral.y +
+                    tamanhoMax * 0.75;
+
+                camera.position.x =
+                    centroGeral.x +
+                    distancia *
+                    Math.cos(anguloCinema);
+
+                camera.position.y =
+                    altura;
+
+                camera.position.z =
+                    centroGeral.z +
+                    distancia *
+                    Math.sin(anguloCinema);
+
+                camera.lookAt(centroGeral);
+            }
+
+            /* -----------------------------------------
+               MODO WASD
+               ----------------------------------------- */
+            if (modoWASD && !cinematicoAtivo) {
+                const speed =
+                    Math.max(0.5, tamanhoMax * 0.008);
+
+                if (teclas.w) {
+                    camera.translateZ(-speed);
+                }
+
+                if (teclas.s) {
+                    camera.translateZ(speed);
+                }
+
+                if (teclas.a) {
+                    camera.translateX(-speed);
+                }
+
+                if (teclas.d) {
+                    camera.translateX(speed);
+                }
+            }
+
+            /* OrbitControls só controla a câmera quando
+               não estamos no modo cinemático. */
+            if (!cinematicoAtivo && controls.enabled) {
+                controls.update();
+            }
+
+            renderer.render(
+                scene,
+                camera
+            );
+
+            labelRenderer.render(
+                scene,
+                camera
+            );
         }
+
         animate();
 
-        // Tratamento de redimensionamento da janela
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
+        /* =========================================================
+           26. REDIMENSIONAMENTO
+           ========================================================= */
+
+        window.addEventListener('resize', function() {
+            camera.aspect =
+                window.innerWidth /
+                window.innerHeight;
+
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+
+            renderer.setSize(
+                window.innerWidth,
+                window.innerHeight
+            );
+
+            labelRenderer.setSize(
+                window.innerWidth,
+                window.innerHeight
+            );
         });
 
-        // Controles de Botões Visuais Básicos (Frente, Topo, Lado)
-        document.getElementById('btn-frente').addEventListener('click', () => {
-            if(modeloGeral) tweenCamera(new THREE.Vector3(centroGeral.x, centroGeral.y, centroGeral.z + tamanhoMax * 1.5), centroGeral, 1000);
-        });
-        document.getElementById('btn-topo').addEventListener('click', () => {
-            if(modeloGeral) tweenCamera(new THREE.Vector3(centroGeral.x, centroGeral.y + tamanhoMax * 1.5, centroGeral.z), centroGeral, 1000);
-        });
-        document.getElementById('btn-lado').addEventListener('click', () => {
-            if(modeloGeral) tweenCamera(new THREE.Vector3(centroGeral.x + tamanhoMax * 1.5, centroGeral.y, centroGeral.z), centroGeral, 1000);
-        });
-        document.getElementById('btn-estrutura').addEventListener('click', (e) => {
-            estruturasVisiveis = !estruturasVisiveis;
-            e.target.innerText = estruturasVisiveis ? 'Estruturas: Visíveis' : 'Estruturas: Ocultas';
-            e.target.classList.toggle('btn-toggle-ativo', estruturasVisiveis);
-            atualizarVisibilidadePlacas();
-        });
+        /* =========================================================
+           27. SEGURANÇA FINAL DO LOADING
+           Se o navegador já tiver concluído o download e alguma
+           rotina visual tiver demorado, o modelo continua sendo
+           exibido sem deixar o usuário preso no 100%.
+           ========================================================= */
 
-        document.getElementById('btn-status').addEventListener('click', (e) => {
-            modoStatusAtivo = !modoStatusAtivo;
-            if(modoStatusAtivo) {
-                e.target.innerText = "Modo: Status (Ligado)";
-                e.target.classList.add('btn-toggle-ativo');
-                document.getElementById('legenda-status').style.display = 'block';
-                document.getElementById('hud-legenda').style.display = 'block';
-            } else {
-                e.target.innerText = "Modo: Status (Desligado)";
-                e.target.classList.remove('btn-toggle-ativo');
-                document.getElementById('legenda-status').style.display = 'none';
-                document.getElementById('hud-legenda').style.display = 'none';
+        setTimeout(function() {
+            if (
+                modeloGeral &&
+                modeloGeral.parent &&
+                !document
+                    .getElementById('tela-carregamento')
+                    .classList.contains('escondida')
+            ) {
+                finalizarCarregamento(
+                    'Malha 3D carregada'
+                );
             }
-            aplicarFiltrosECores();
-        });
-
+        }, 7000);
     </script>
 </body>
 </html>
