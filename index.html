@@ -230,12 +230,15 @@
            PAINEL LATERAL KPI
            ========================================================= */
         #painel-kpi {
-            position: absolute !important;
-            top: 95px !important;
-            right: 15px !important;
+            position: fixed !important;
+            top: auto !important;
+            right: 12px !important;
+            bottom: 12px !important;
             left: auto !important;
             transform: none !important;
-            width: 300px;
+            width: 250px;
+            max-width: calc(100vw - 24px);
+            max-height: 58vh;
             z-index: 30;
             background: rgba(4, 9, 20, 0.95);
             border-radius: 8px;
@@ -274,7 +277,8 @@
         }
 
         #painel-kpi .corpo {
-            padding: 15px;
+            padding: 11px;
+            overflow: hidden;
         }
 
         #painel-kpi .linha {
@@ -296,7 +300,7 @@
         }
 
         .kpi-produtos {
-            max-height: 260px;
+            max-height: 190px;
             overflow-y: auto;
             margin-top: 5px;
         }
@@ -320,6 +324,14 @@
             border-radius: 3px;
             transition: width 0.5s ease, background 0.5s ease;
             box-shadow: 0 0 8px currentColor;
+        }
+
+        @media (max-width: 800px) {
+            #painel-kpi {
+                width: 230px;
+                bottom: 10px !important;
+                right: 10px !important;
+            }
         }
 
         /* =========================================================
@@ -654,6 +666,7 @@
         let centroGeral = new THREE.Vector3();
         let tamanhoMax = 0;
         let placasGeral = [];
+        let guiasEstrutura = [];
 
         let modoWASD = false;
         let isPanMode = false;
@@ -977,6 +990,7 @@
 
                 atualizarHUD(countLidos);
                 aplicarFiltrosECores();
+                atualizarVisibilidadePlacas();
                 atualizarEmpilhadeiraSelecao();
             } catch (erro) {
                 console.error('[VISUAL] Erro ao processar dados do Power BI:', erro);
@@ -1494,6 +1508,9 @@
                 const selecionado =
                     estaSelecionadoEndereco(endereco);
 
+                child.userData.enderecoPowerBI = endereco;
+                child.userData.selecionadoPowerBI = selecionado;
+
                 const cor =
                     determinarCorCaixa(child, endereco);
 
@@ -1507,9 +1524,16 @@
                 });
 
                 if (!selecionado && arrSelecionados.length > 0) {
+                    /* Tudo que não pertence ao filtro fica
+                       deliberadamente desaturado/escurecido. */
+                    aplicarCorNosMateriais(
+                        child,
+                        COR_CAIXA_DESFOCADA
+                    );
+
                     percorrerMateriais(child, material => {
                         material.transparent = true;
-                        material.opacity = 0.16;
+                        material.opacity = 0.10;
                         material.depthWrite = false;
                     });
 
@@ -1519,11 +1543,22 @@
                     arrSelecionados.length > 0 &&
                     selecionado
                 ) {
-                    /* Destaque marrom + leve brilho */
+                    /* Endereço selecionado fica claramente marrom. */
+                    aplicarCorNosMateriais(
+                        child,
+                        COR_CAIXA_SELECIONADA
+                    );
+
+                    percorrerMateriais(child, material => {
+                        material.transparent = false;
+                        material.opacity = 1.0;
+                        material.depthWrite = true;
+                    });
+
                     aplicarEmissive(
                         child,
                         COR_CAIXA_SELECIONADA,
-                        0.15
+                        0.12
                     );
                 }
                 else {
@@ -1539,21 +1574,34 @@
            ========================================================= */
 
         function criarPlacasTodasEstruturas() {
+            /* Remove placas e linhas anteriores. */
             placasGeral.forEach(placa => {
                 if (placa.parent) {
                     placa.parent.remove(placa);
                 }
             });
 
+            guiasEstrutura.forEach(guia => {
+                if (guia.parent) {
+                    guia.parent.remove(guia);
+                }
+            });
+
             placasGeral = [];
+            guiasEstrutura = [];
 
             if (!modeloGeral) return;
 
             const letras =
-                obterLetrasEstruturasDoModelo();
+                Array.from(obterLetrasEstruturasDoModelo())
+                    .sort();
 
             letras.forEach(letra => {
                 const pontos = [];
+                let minX = Infinity;
+                let maxX = -Infinity;
+                let minZ = Infinity;
+                let maxZ = -Infinity;
                 let maxY = -Infinity;
 
                 modeloGeral.traverse(child => {
@@ -1571,9 +1619,7 @@
                         return;
                     }
 
-                    const pos =
-                        new THREE.Vector3();
-
+                    const pos = new THREE.Vector3();
                     child.getWorldPosition(pos);
                     pontos.push(pos);
 
@@ -1581,17 +1627,18 @@
                         const box =
                             new THREE.Box3().setFromObject(child);
 
-                        if (box.max.y > maxY) {
-                            maxY = box.max.y;
-                        }
-                    } catch (e) {}
+                        minX = Math.min(minX, box.min.x);
+                        maxX = Math.max(maxX, box.max.x);
+                        minZ = Math.min(minZ, box.min.z);
+                        maxZ = Math.max(maxZ, box.max.z);
+                        maxY = Math.max(maxY, box.max.y);
+                    }
+                    catch (e) {}
                 });
 
                 if (pontos.length === 0) return;
 
-                const centro =
-                    new THREE.Vector3();
-
+                const centro = new THREE.Vector3();
                 pontos.forEach(p => centro.add(p));
                 centro.divideScalar(pontos.length);
 
@@ -1599,15 +1646,25 @@
                     maxY = centro.y;
                 }
 
-                const div =
-                    document.createElement('div');
+                if (!isFinite(minX) || !isFinite(maxX)) {
+                    minX = centro.x - tamanhoMax * 0.25;
+                    maxX = centro.x + tamanhoMax * 0.25;
+                }
 
+                if (!isFinite(minZ) || !isFinite(maxZ)) {
+                    minZ = centro.z;
+                    maxZ = centro.z;
+                }
+
+                /* -------------------------------------------------
+                   PLACA: somente a letra A/B/C/... 
+                   ------------------------------------------------- */
+                const div = document.createElement('div');
                 div.className = 'placa-corredor';
-                div.innerText = 'Estrutura ' + letra;
-                div.style.display =
-                    estruturasVisiveis
-                        ? 'block'
-                        : 'none';
+                div.innerText = letra;
+                div.style.display = estruturasVisiveis
+                    ? 'block'
+                    : 'none';
 
                 const placaCSS =
                     new THREE.CSS2DObject(div);
@@ -1620,9 +1677,63 @@
 
                 placaCSS.userData.elemento = div;
                 placaCSS.userData.letra = letra;
+                placaCSS.userData.tipo = 'placa';
 
                 scene.add(placaCSS);
                 placasGeral.push(placaCSS);
+
+                /* -------------------------------------------------
+                   LINHA PONTILHADA: delimita a extensão da estrutura
+                   ------------------------------------------------- */
+                const margem = Math.max(
+                    tamanhoMax * 0.015,
+                    0.25
+                );
+
+                const yLinha = maxY + 0.45;
+
+                const p1 = new THREE.Vector3(
+                    minX - margem,
+                    yLinha,
+                    centro.z
+                );
+
+                const p2 = new THREE.Vector3(
+                    maxX + margem,
+                    yLinha,
+                    centro.z
+                );
+
+                const geometry =
+                    new THREE.BufferGeometry().setFromPoints([
+                        p1,
+                        p2
+                    ]);
+
+                const material =
+                    new THREE.LineDashedMaterial({
+                        color: 0x00f3ff,
+                        dashSize: Math.max(tamanhoMax * 0.025, 0.35),
+                        gapSize: Math.max(tamanhoMax * 0.015, 0.2),
+                        transparent: true,
+                        opacity: 0.85,
+                        depthTest: false
+                    });
+
+                const linha =
+                    new THREE.Line(
+                        geometry,
+                        material
+                    );
+
+                linha.computeLineDistances();
+                linha.frustumCulled = false;
+                linha.visible = estruturasVisiveis;
+                linha.userData.letra = letra;
+                linha.userData.tipo = 'guia';
+
+                scene.add(linha);
+                guiasEstrutura.push(linha);
             });
         }
 
@@ -1637,6 +1748,10 @@
                             ? 'block'
                             : 'none';
                 }
+            });
+
+            guiasEstrutura.forEach(guia => {
+                guia.visible = estruturasVisiveis;
             });
         }
 
