@@ -621,7 +621,7 @@
                 Estrutura
             </div>
             <div class="legenda-cor-item">
-                <span class="swatch" style="background:#7b2f2f; color:#7b2f2f;"></span>
+                <span class="swatch" style="background:#ffaa00; color:#ffaa00;"></span>
                 Caixa selecionada
             </div>
         </div>
@@ -630,17 +630,15 @@
     <script>
         /* =========================================================
            1. CONFIGURAÇÃO PRINCIPAL DE CORES
-
-           >>> É AQUI QUE VOCÊ MUDA AS CORES DA ESTRUTURA. <<<
            ========================================================= */
 
         const COR_ESTRUTURA_PRINCIPAL = 0x237c98;
         const COR_ESTRUTURA_VERTICAL = 0x2f8f70;
         const COR_ESTRUTURA_HORIZONTAL = 0x1e8bb8;
 
-        /* Caixa normal e caixa selecionada */
+        /* Caixa normal e caixa selecionada - AJUSTADO PARA LARANJA NEON */
         const COR_CAIXA_NORMAL = 0x9a6745;
-        const COR_CAIXA_SELECIONADA = 0x7b2f2f;
+        const COR_CAIXA_SELECIONADA = 0xffaa00; 
 
         /* Caixa não selecionada quando existe filtro */
         const COR_CAIXA_DESFOCADA = 0x4a332b;
@@ -697,7 +695,6 @@
 
             if (!str) return 0;
 
-            /* Formato brasileiro: 1.234,56 */
             if (str.includes(',') && str.includes('.')) {
                 str = str.replace(/\./g, '').replace(',', '.');
             } else {
@@ -745,7 +742,6 @@
             const texto = normalizarNome(v);
             if (!texto) return null;
 
-            /* Aceita A01 e também A01-N01 no futuro */
             const match = texto.match(/([A-Z]\d{2}(?:-N\d{2})?)/);
             return match ? match[1] : null;
         }
@@ -761,16 +757,12 @@
                         return nome;
                     }
 
-                    /* Mesmo sem o campo NOME_BLENDER no DAX,
-                       reconhece nomes do formato A01 */
                     if (/^[A-Z]\d{2}(?:-N\d{2})?$/.test(nome)) {
                         return nome;
                     }
                 }
-
                 atual = atual.parent;
             }
-
             return null;
         }
 
@@ -790,10 +782,8 @@
                     const chave = extrairChaveEndereco(atual.name);
                     if (chave) return chave;
                 }
-
                 atual = atual.parent;
             }
-
             return null;
         }
 
@@ -837,18 +827,15 @@
             if (!dadosPorEndereco[endKey]) {
                 dadosPorEndereco[endKey] = [];
             }
-
             dadosPorEndereco[endKey].push(registro);
         }
 
         function adicionarRegistroAoNomeBlender(nomeKey, registro) {
             if (!nomeKey) return;
 
-            /* Para um mesmo NOME_BLENDER podem existir vários produtos. */
             if (!dadosPorNomeBlender[nomeKey]) {
                 dadosPorNomeBlender[nomeKey] = [];
             }
-
             dadosPorNomeBlender[nomeKey].push(registro);
         }
 
@@ -959,7 +946,6 @@
                         adicionarRegistroAoEndereco(endKey, registro);
                         adicionarRegistroAoNomeBlender(blenderKey, registro);
 
-                        /* Compatibilidade com código antigo */
                         if (!dadosMap[endKey]) {
                             dadosMap[endKey] = [];
                         }
@@ -1206,12 +1192,8 @@
             if (!child || !child.isMesh) return true;
 
             const nome = normalizarNome(child.name || '');
+            const nomeEndereco = getNomeBlenderDaHierarquia(child);
 
-            const nomeEndereco =
-                getNomeBlenderDaHierarquia(child);
-
-            /* Se o objeto pertence a um endereço conhecido,
-               consideramos que é uma caixa/posição de estoque. */
             if (nomeEndereco) {
                 return false;
             }
@@ -1249,16 +1231,12 @@
         function obterRegistrosDoObjeto(obj) {
             if (!obj) return [];
 
-            const nomeBlender =
-                getChaveBlenderDaHierarquia(obj);
-
+            const nomeBlender = getChaveBlenderDaHierarquia(obj);
             if (nomeBlender && dadosPorNomeBlender[nomeBlender]) {
                 return dadosPorNomeBlender[nomeBlender];
             }
 
-            const endereco =
-                getEnderecoDaHierarquia(obj);
-
+            const endereco = getEnderecoDaHierarquia(obj);
             if (endereco && dadosPorEndereco[endereco]) {
                 return dadosPorEndereco[endereco];
             }
@@ -1306,15 +1284,11 @@
         function obterEnderecosDoModelo() {
             const enderecos = new Set();
 
-            if (!modeloGeral) {
-                return enderecos;
-            }
+            if (!modeloGeral) return enderecos;
 
             modeloGeral.traverse(child => {
                 if (!child.name) return;
-
                 const chave = extrairChaveEndereco(child.name);
-
                 if (chave) {
                     enderecos.add(chave);
                 }
@@ -1326,16 +1300,12 @@
         function obterLetrasEstruturasDoModelo() {
             const letras = new Set();
 
-            if (!modeloGeral) {
-                return letras;
-            }
+            if (!modeloGeral) return letras;
 
             modeloGeral.traverse(child => {
                 if (!child.name) return;
-
                 const nome = normalizarNome(child.name);
                 const match = nome.match(/^([A-Z])\d{2}(?:-N\d{2})?/);
-
                 if (match) {
                     letras.add(match[1]);
                 }
@@ -1357,20 +1327,15 @@
             );
 
             enderecosNoPBI.forEach(endereco => {
-                const registros =
-                    dadosPorEndereco[endereco] || [];
+                const registros = dadosPorEndereco[endereco] || [];
 
                 registros.forEach(registro => {
-                    estoqueTotal +=
-                        Number(registro.estoque) || 0;
-
-                    valorEstoqueTotal +=
-                        Number(registro.custoTotal) || 0;
+                    estoqueTotal += Number(registro.estoque) || 0;
+                    valorEstoqueTotal += Number(registro.custoTotal) || 0;
                 });
             });
 
-            const enderecosModelo =
-                obterEnderecosDoModelo();
+            const enderecosModelo = obterEnderecosDoModelo();
 
             const totalEnderecos =
                 enderecosModelo.size > 0
@@ -1397,17 +1362,10 @@
                 ocupacao = 100;
             }
 
-            document.getElementById('hud-valor-estoque').innerText =
-                formatarMoeda(valorEstoqueTotal);
-
-            document.getElementById('hud-est').innerText =
-                formatarNumero(estoqueTotal, 0);
-
-            document.getElementById('hud-pct').innerText =
-                ocupacao + '%';
-
-            document.getElementById('hud-debug').innerText =
-                enderecosNoPBI.size;
+            document.getElementById('hud-valor-estoque').innerText = formatarMoeda(valorEstoqueTotal);
+            document.getElementById('hud-est').innerText = formatarNumero(estoqueTotal, 0);
+            document.getElementById('hud-pct').innerText = ocupacao + '%';
+            document.getElementById('hud-debug').innerText = enderecosNoPBI.size;
         }
 
         /* =========================================================
@@ -1419,63 +1377,42 @@
                 return true;
             }
 
-            const chave =
-                extrairChaveEndereco(endereco) ||
-                normalizarNome(endereco);
+            const chave = extrairChaveEndereco(endereco) || normalizarNome(endereco);
 
             return arrSelecionados.some(sel => {
-                const s =
-                    extrairChaveEndereco(sel) ||
-                    normalizarNome(sel);
-
+                const s = extrairChaveEndereco(sel) || normalizarNome(sel);
                 if (!s) return false;
-
-                return s === chave ||
-                       chave.includes(s) ||
-                       s.includes(chave);
+                return s === chave || chave.includes(s) || s.includes(chave);
             });
         }
 
         function determinarCorCaixa(child, endereco) {
-            const selecionado =
-                estaSelecionadoEndereco(endereco);
+            const selecionado = estaSelecionadoEndereco(endereco);
 
             if (!selecionado && arrSelecionados.length > 0) {
                 return COR_CAIXA_DESFOCADA;
             }
 
+            // PRIORIDADE PARA FILTROS DO BI (Supera o status)
+            if (arrSelecionados.length > 0 && selecionado) {
+                return COR_CAIXA_SELECIONADA;
+            }
+
             if (modoStatusAtivo) {
-                const registros =
-                    obterRegistrosDoEndereco(endereco);
-
+                const registros = obterRegistrosDoEndereco(endereco);
                 if (registros.length > 0) {
-                    /* Se existir algum crítico, usa crítico.
-                       Depois baixo. Caso contrário OK. */
                     let statusMaisAlto = 'OK';
-
                     registros.forEach(r => {
-                        const status =
-                            normalizarNome(r.status);
-
+                        const status = normalizarNome(r.status);
                         if (status === 'CRITICO' || status === 'CRÍTICO') {
                             statusMaisAlto = 'CRITICO';
                         }
-                        else if (
-                            status === 'BAIXO' &&
-                            statusMaisAlto !== 'CRITICO'
-                        ) {
+                        else if (status === 'BAIXO' && statusMaisAlto !== 'CRITICO') {
                             statusMaisAlto = 'BAIXO';
                         }
                     });
-
                     return corPorStatus(statusMaisAlto);
                 }
-            }
-
-            /* Endereço que está selecionado:
-               MARROM de caixa. */
-            if (arrSelecionados.length > 0 && selecionado) {
-                return COR_CAIXA_SELECIONADA;
             }
 
             return COR_CAIXA_NORMAL;
@@ -1487,34 +1424,25 @@
             modeloGeral.traverse(child => {
                 if (!child.isMesh) return;
 
-                /* Estrutura */
                 if (ehEstrutura(child)) {
                     aplicarCorEstrutura(child);
                     return;
                 }
 
-                const endereco =
-                    getEnderecoDaHierarquia(child);
+                const endereco = getEnderecoDaHierarquia(child);
 
                 if (!endereco) {
-                    /* Segurança para objetos sem endereço */
-                    aplicarCorNosMateriais(
-                        child,
-                        COR_ESTRUTURA_PRINCIPAL
-                    );
+                    aplicarCorNosMateriais(child, COR_ESTRUTURA_PRINCIPAL);
                     return;
                 }
 
-                const selecionado =
-                    estaSelecionadoEndereco(endereco);
+                const selecionado = estaSelecionadoEndereco(endereco);
 
                 child.userData.enderecoPowerBI = endereco;
                 child.userData.selecionadoPowerBI = selecionado;
 
-                const cor =
-                    determinarCorCaixa(child, endereco);
+                const cor = determinarCorCaixa(child, endereco);
 
-                /* Caixa */
                 aplicarCorNosMateriais(child, cor);
 
                 percorrerMateriais(child, material => {
@@ -1524,42 +1452,23 @@
                 });
 
                 if (!selecionado && arrSelecionados.length > 0) {
-                    /* Tudo que não pertence ao filtro fica
-                       deliberadamente desaturado/escurecido. */
-                    aplicarCorNosMateriais(
-                        child,
-                        COR_CAIXA_DESFOCADA
-                    );
-
+                    aplicarCorNosMateriais(child, COR_CAIXA_DESFOCADA);
                     percorrerMateriais(child, material => {
                         material.transparent = true;
                         material.opacity = 0.10;
                         material.depthWrite = false;
                     });
-
                     desligarEmissive(child);
                 }
-                else if (
-                    arrSelecionados.length > 0 &&
-                    selecionado
-                ) {
-                    /* Endereço selecionado fica claramente marrom. */
-                    aplicarCorNosMateriais(
-                        child,
-                        COR_CAIXA_SELECIONADA
-                    );
-
+                else if (arrSelecionados.length > 0 && selecionado) {
+                    aplicarCorNosMateriais(child, COR_CAIXA_SELECIONADA);
                     percorrerMateriais(child, material => {
                         material.transparent = false;
                         material.opacity = 1.0;
                         material.depthWrite = true;
                     });
-
-                    aplicarEmissive(
-                        child,
-                        COR_CAIXA_SELECIONADA,
-                        0.12
-                    );
+                    // BRILHO FORTE NO ITEM FILTRADO
+                    aplicarEmissive(child, COR_CAIXA_SELECIONADA, 0.7);
                 }
                 else {
                     desligarEmissive(child);
@@ -1574,7 +1483,6 @@
            ========================================================= */
 
         function criarPlacasTodasEstruturas() {
-            /* Remove placas e linhas anteriores. */
             placasGeral.forEach(placa => {
                 if (placa.parent) {
                     placa.parent.remove(placa);
@@ -1592,9 +1500,7 @@
 
             if (!modeloGeral) return;
 
-            const letras =
-                Array.from(obterLetrasEstruturasDoModelo())
-                    .sort();
+            const letras = Array.from(obterLetrasEstruturasDoModelo()).sort();
 
             letras.forEach(letra => {
                 const pontos = [];
@@ -1607,26 +1513,18 @@
                 modeloGeral.traverse(child => {
                     if (!child.isMesh) return;
 
-                    const endereco =
-                        extrairChaveEndereco(child.name);
-
+                    const endereco = extrairChaveEndereco(child.name);
                     if (!endereco) return;
 
-                    const match =
-                        endereco.match(/^([A-Z])\d{2}/);
-
-                    if (!match || match[1] !== letra) {
-                        return;
-                    }
+                    const match = endereco.match(/^([A-Z])\d{2}/);
+                    if (!match || match[1] !== letra) return;
 
                     const pos = new THREE.Vector3();
                     child.getWorldPosition(pos);
                     pontos.push(pos);
 
                     try {
-                        const box =
-                            new THREE.Box3().setFromObject(child);
-
+                        const box = new THREE.Box3().setFromObject(child);
                         minX = Math.min(minX, box.min.x);
                         maxX = Math.max(maxX, box.max.x);
                         minZ = Math.min(minZ, box.min.z);
@@ -1642,9 +1540,7 @@
                 pontos.forEach(p => centro.add(p));
                 centro.divideScalar(pontos.length);
 
-                if (!isFinite(maxY)) {
-                    maxY = centro.y;
-                }
+                if (!isFinite(maxY)) maxY = centro.y;
 
                 if (!isFinite(minX) || !isFinite(maxX)) {
                     minX = centro.x - tamanhoMax * 0.25;
@@ -1657,23 +1553,22 @@
                 }
 
                 /* -------------------------------------------------
-                   PLACA: somente a letra A/B/C/... 
+                   PLACA: Distribuída p/ não encavalar
                    ------------------------------------------------- */
                 const div = document.createElement('div');
                 div.className = 'placa-corredor';
                 div.innerText = letra;
-                div.style.display = estruturasVisiveis
-                    ? 'block'
-                    : 'none';
+                div.style.display = estruturasVisiveis ? 'block' : 'none';
 
-                const placaCSS =
-                    new THREE.CSS2DObject(div);
+                const placaCSS = new THREE.CSS2DObject(div);
 
-                placaCSS.position.set(
-                    centro.x,
-                    maxY + 3.0,
-                    centro.z
-                );
+                // Lógica Stagger (degraus) baseada na letra
+                const hash = letra.charCodeAt(0);
+                const staggerY = (hash % 4) * 2.5; 
+                const alturaPlaca = maxY + 4.0 + staggerY;
+
+                placaCSS.position.set(centro.x, alturaPlaca, centro.z);
+                placaCSS.visible = estruturasVisiveis; // Bloqueio nativo do ThreeJS
 
                 placaCSS.userData.elemento = div;
                 placaCSS.userData.letra = letra;
@@ -1683,35 +1578,27 @@
                 placasGeral.push(placaCSS);
 
                 /* -------------------------------------------------
-                   LINHA PONTILHADA: delimita a extensão da estrutura
+                   LINHA PONTILHADA: Verifica eixo maior da prateleira
                    ------------------------------------------------- */
-                const margem = Math.max(
-                    tamanhoMax * 0.015,
-                    0.25
-                );
-
+                const margem = Math.max(tamanhoMax * 0.015, 0.25);
                 const yLinha = maxY + 0.45;
+                
+                const dx = maxX - minX;
+                const dz = maxZ - minZ;
 
-                const p1 = new THREE.Vector3(
-                    minX - margem,
-                    yLinha,
-                    centro.z
-                );
+                let p1, p2;
+                if (dx > dz) {
+                    // Prateleira esticada no eixo X (Horizontal)
+                    p1 = new THREE.Vector3(minX - margem, yLinha, centro.z);
+                    p2 = new THREE.Vector3(maxX + margem, yLinha, centro.z);
+                } else {
+                    // Prateleira esticada no eixo Z (Vertical)
+                    p1 = new THREE.Vector3(centro.x, yLinha, minZ - margem);
+                    p2 = new THREE.Vector3(centro.x, yLinha, maxZ + margem);
+                }
 
-                const p2 = new THREE.Vector3(
-                    maxX + margem,
-                    yLinha,
-                    centro.z
-                );
-
-                const geometry =
-                    new THREE.BufferGeometry().setFromPoints([
-                        p1,
-                        p2
-                    ]);
-
-                const material =
-                    new THREE.LineDashedMaterial({
+                const geometry = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+                const material = new THREE.LineDashedMaterial({
                         color: 0x00f3ff,
                         dashSize: Math.max(tamanhoMax * 0.025, 0.35),
                         gapSize: Math.max(tamanhoMax * 0.015, 0.2),
@@ -1720,12 +1607,7 @@
                         depthTest: false
                     });
 
-                const linha =
-                    new THREE.Line(
-                        geometry,
-                        material
-                    );
-
+                const linha = new THREE.Line(geometry, material);
                 linha.computeLineDistances();
                 linha.frustumCulled = false;
                 linha.visible = estruturasVisiveis;
@@ -1739,14 +1621,9 @@
 
         function atualizarVisibilidadePlacas() {
             placasGeral.forEach(placa => {
-                if (
-                    placa.userData &&
-                    placa.userData.elemento
-                ) {
-                    placa.userData.elemento.style.display =
-                        estruturasVisiveis
-                            ? 'block'
-                            : 'none';
+                placa.visible = estruturasVisiveis; // Força no WebGL
+                if (placa.userData && placa.userData.elemento) {
+                    placa.userData.elemento.style.display = estruturasVisiveis ? 'block' : 'none';
                 }
             });
 
@@ -1886,8 +1763,6 @@
                 const registros =
                     obterRegistrosDoEndereco(endereco);
 
-                /* Mesmo que esteja sem dados, retornamos o endereço
-                   para possibilitar diagnóstico do modelo. */
                 return {
                     object: obj,
                     endereco: endereco,
@@ -2107,8 +1982,7 @@
            17. CARREGAMENTO DO GLB
            ========================================================= */
 
-        const gltfUrl =
-            'https://raw.githubusercontent.com/EragonV7/Layout-3D-testev1/141e6626bf72aa246d5d86a29bbe763ed7a1e954/Testev1.glb';
+        const gltfUrl = 'Testev1.glb';
 
         const loader = new THREE.GLTFLoader();
 
@@ -2196,10 +2070,6 @@
                     camera.lookAt(centroGeral);
                     controls.update();
 
-                    /*
-                       Preparação de materiais com suporte para
-                       material único OU array de materiais.
-                    */
                     modeloGeral.traverse(child => {
                         if (!child.isMesh) return;
 
@@ -2514,15 +2384,11 @@
                         'legenda-controles'
                     ).style.display = 'none';
 
-                    /* OrbitControls não pode disputar com
-                       a câmera durante o modo cinemático. */
                     controls.enabled = false;
                     anguloCinema = 0;
                 }
                 else {
                     controls.enabled = true;
-
-                    /* Reativa a rotação normal */
                     controls.update();
                 }
             });
@@ -2592,14 +2458,9 @@
            ========================================================= */
 
         function criarEmpilhadeiraGrupo() {
-            const hud =
-                document.getElementById('hud-emp');
-
+            const hud = document.getElementById('hud-emp');
             if (!hud) return;
-
-            hud.innerText =
-                'Pronta (Aguardando)';
-
+            hud.innerText = 'Pronta (Aguardando)';
             hud.style.color = '#00ff55';
         }
 
@@ -2608,22 +2469,15 @@
         }
 
         function atualizarEmpilhadeiraSelecao() {
-            const hud =
-                document.getElementById('hud-emp');
-
+            const hud = document.getElementById('hud-emp');
             if (!hud) return;
 
             if (arrSelecionados.length > 0) {
-                hud.innerText =
-                    'Em Rota: ' +
-                    arrSelecionados[0];
-
+                hud.innerText = 'Em Rota: ' + arrSelecionados[0];
                 hud.style.color = '#ffb700';
             }
             else {
-                hud.innerText =
-                    'Em Espera';
-
+                hud.innerText = 'Em Espera';
                 hud.style.color = '#00f3ff';
             }
         }
@@ -2635,74 +2489,33 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            /* -----------------------------------------
-               MODO CINEMÁTICO
-               ----------------------------------------- */
             if (cinematicoAtivo && modeloGeral) {
                 anguloCinema += 0.002;
 
-                const distancia =
-                    tamanhoMax * 1.8;
+                const distancia = tamanhoMax * 1.8;
+                const altura = centroGeral.y + tamanhoMax * 0.75;
 
-                const altura =
-                    centroGeral.y +
-                    tamanhoMax * 0.75;
-
-                camera.position.x =
-                    centroGeral.x +
-                    distancia *
-                    Math.cos(anguloCinema);
-
-                camera.position.y =
-                    altura;
-
-                camera.position.z =
-                    centroGeral.z +
-                    distancia *
-                    Math.sin(anguloCinema);
-
+                camera.position.x = centroGeral.x + distancia * Math.cos(anguloCinema);
+                camera.position.y = altura;
+                camera.position.z = centroGeral.z + distancia * Math.sin(anguloCinema);
                 camera.lookAt(centroGeral);
             }
 
-            /* -----------------------------------------
-               MODO WASD
-               ----------------------------------------- */
             if (modoWASD && !cinematicoAtivo) {
-                const speed =
-                    Math.max(0.5, tamanhoMax * 0.008);
+                const speed = Math.max(0.5, tamanhoMax * 0.008);
 
-                if (teclas.w) {
-                    camera.translateZ(-speed);
-                }
-
-                if (teclas.s) {
-                    camera.translateZ(speed);
-                }
-
-                if (teclas.a) {
-                    camera.translateX(-speed);
-                }
-
-                if (teclas.d) {
-                    camera.translateX(speed);
-                }
+                if (teclas.w) camera.translateZ(-speed);
+                if (teclas.s) camera.translateZ(speed);
+                if (teclas.a) camera.translateX(-speed);
+                if (teclas.d) camera.translateX(speed);
             }
 
-            /* OrbitControls só controla a câmera quando
-               não estamos no modo cinemático. */
             if (!cinematicoAtivo && controls.enabled) {
                 controls.update();
             }
 
-            renderer.render(
-                scene,
-                camera
-            );
-
-            labelRenderer.render(
-                scene,
-                camera
-            );
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
         }
 
         animate();
@@ -2712,41 +2525,23 @@
            ========================================================= */
 
         window.addEventListener('resize', function() {
-            camera.aspect =
-                window.innerWidth /
-                window.innerHeight;
-
+            camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
-
-            renderer.setSize(
-                window.innerWidth,
-                window.innerHeight
-            );
-
-            labelRenderer.setSize(
-                window.innerWidth,
-                window.innerHeight
-            );
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
         });
 
         /* =========================================================
            27. SEGURANÇA FINAL DO LOADING
-           Se o navegador já tiver concluído o download e alguma
-           rotina visual tiver demorado, o modelo continua sendo
-           exibido sem deixar o usuário preso no 100%.
            ========================================================= */
 
         setTimeout(function() {
             if (
                 modeloGeral &&
                 modeloGeral.parent &&
-                !document
-                    .getElementById('tela-carregamento')
-                    .classList.contains('escondida')
+                !document.getElementById('tela-carregamento').classList.contains('escondida')
             ) {
-                finalizarCarregamento(
-                    'Malha 3D carregada'
-                );
+                finalizarCarregamento('Malha 3D carregada');
             }
         }, 7000);
     </script>
