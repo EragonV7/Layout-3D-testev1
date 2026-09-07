@@ -36,7 +36,8 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
-            max-width: 560px;
+            /* Nunca cresce a ponto de invadir a área do HUD (direita) */
+            max-width: min(480px, calc(100vw - 320px));
         }
 
         .btn {
@@ -103,20 +104,49 @@
             transform: none !important;
             background: rgba(4, 9, 20, 0.85);
             display: flex;
-            gap: 25px;
-            padding: 12px 25px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-content: flex-start;
+            gap: 10px 18px;
+            padding: 10px 18px;
             border-radius: 8px;
             box-shadow: 0 0 15px rgba(0,243,255,0.2);
             z-index: 20;
             border: 1px solid #005b7a;
             border-bottom: 4px solid #00f3ff;
             backdrop-filter: blur(4px);
+            /* Redimensiona e nunca ultrapassa a largura da tela,
+               isso evita que o card sobreponha os botões da esquerda */
+            max-width: min(400px, calc(100vw - 30px));
         }
 
         .hud-box {
             text-align: center;
             color: #fff;
-            min-width: 80px;
+            min-width: 58px;
+        }
+
+        /* Banner de filtro nativo ativo - quebra para uma nova linha
+           dentro do próprio HUD (flex-basis: 100%) */
+        #hud-filtro-ativo {
+            flex-basis: 100%;
+            display: none;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #ffaa00;
+            background: rgba(255, 170, 0, 0.12);
+            border: 1px solid #ffaa00;
+            border-radius: 6px;
+            padding: 5px 10px;
+            letter-spacing: 0.4px;
+            box-shadow: 0 0 10px rgba(255,170,0,0.35);
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        #hud-filtro-ativo.ativo {
+            display: block;
         }
 
         .hud-box .titulo {
@@ -455,12 +485,12 @@
            ========================================================= */
         @media (max-width: 900px) {
             #hud-topo {
-                gap: 12px;
-                padding: 10px 12px;
+                gap: 8px 12px;
+                padding: 8px 12px;
             }
 
             .hud-box {
-                min-width: 60px;
+                min-width: 48px;
             }
 
             .hud-box .valor {
@@ -470,6 +500,24 @@
             .btn {
                 padding: 8px 10px;
                 font-size: 12px;
+            }
+        }
+
+        /* Em telas bem estreitas o HUD desce para uma faixa própria,
+           abaixo dos controles, ao invés de tentar caber ao lado */
+        @media (max-width: 700px) {
+            #ui-controles {
+                max-width: calc(100vw - 30px);
+            }
+
+            #hud-topo {
+                position: absolute !important;
+                top: auto !important;
+                bottom: 15px !important;
+                right: 15px !important;
+                left: 15px !important;
+                justify-content: center;
+                max-width: calc(100vw - 30px);
             }
         }
     </style>
@@ -535,6 +583,10 @@
         <div class="hud-box" style="border-left: 1px solid #005b7a; padding-left: 20px;">
             <span class="titulo">Empilhadeira</span>
             <span class="valor" id="hud-emp" style="color: #00f3ff;">Inativa</span>
+        </div>
+
+        <div id="hud-filtro-ativo">
+            🔍 Filtro ativo (Power BI): <span id="hud-filtro-texto">—</span>
         </div>
     </div>
 
@@ -656,6 +708,7 @@
         let dadosPorEndereco = {};
         let dadosPorNomeBlender = {};
         let arrSelecionados = [];
+        let objetosDestacados = []; // meshes atualmente com realce de filtro nativo (glow pulsante)
         let modoStatusAtivo = false;
         let estruturasVisiveis = false;
 
@@ -1421,6 +1474,8 @@
         function aplicarFiltrosECores() {
             if (!modeloGeral) return;
 
+            objetosDestacados = [];
+
             modeloGeral.traverse(child => {
                 if (!child.isMesh) return;
 
@@ -1467,8 +1522,10 @@
                         material.opacity = 1.0;
                         material.depthWrite = true;
                     });
-                    // BRILHO FORTE NO ITEM FILTRADO
+                    // BRILHO FORTE NO ITEM FILTRADO (a intensidade "respira"
+                    // no loop de animação — ver atualizarPulsoRealce)
                     aplicarEmissive(child, COR_CAIXA_SELECIONADA, 0.7);
+                    objetosDestacados.push(child);
                 }
                 else {
                     desligarEmissive(child);
@@ -1476,6 +1533,42 @@
             });
 
             atualizarHUD();
+            atualizarBannerFiltroAtivo();
+        }
+
+        /* =========================================================
+           13.1 REALCE DO FILTRO NATIVO (Power BI)
+           ========================================================= */
+
+        function atualizarBannerFiltroAtivo() {
+            const banner = document.getElementById('hud-filtro-ativo');
+            const texto = document.getElementById('hud-filtro-texto');
+
+            if (!banner || !texto) return;
+
+            if (arrSelecionados.length > 0) {
+                texto.innerText = arrSelecionados.join(', ');
+                banner.classList.add('ativo');
+            } else {
+                banner.classList.remove('ativo');
+            }
+        }
+
+        // Chamada a cada frame (ver LOOP DE RENDERIZAÇÃO) para fazer o
+        // brilho dos itens selecionados "pulsar", garantindo que o
+        // realce do filtro do Power BI seja sempre bem visível.
+        function atualizarPulsoRealce() {
+            if (!objetosDestacados.length) return;
+
+            const pulso = 0.55 + Math.sin(Date.now() * 0.005) * 0.35; // ~0.20 a 0.90
+
+            objetosDestacados.forEach(obj => {
+                percorrerMateriais(obj, material => {
+                    if (material.emissive && material.emissive.setHex) {
+                        material.emissiveIntensity = pulso;
+                    }
+                });
+            });
         }
 
         /* =========================================================
@@ -1502,7 +1595,7 @@
 
             const letras = Array.from(obterLetrasEstruturasDoModelo()).sort();
 
-            letras.forEach(letra => {
+            letras.forEach((letra, indice) => {
                 const pontos = [];
                 let minX = Infinity;
                 let maxX = -Infinity;
@@ -1552,6 +1645,31 @@
                     maxZ = centro.z;
                 }
 
+                const dx = maxX - minX;
+                const dz = maxZ - minZ;
+                const corredorHorizontal = dx > dz; // true = prateleira esticada no eixo X
+
+                /* -------------------------------------------------
+                   DISTRIBUIÇÃO LATERAL: evita placas sobrepostas
+                   Alterna as placas em 3 grupos (esquerda / centro / direita),
+                   deslocando no eixo PERPENDICULAR ao corredor. Assim,
+                   corredores vizinhos nunca ficam com a letra empilhada
+                   uma sobre a outra, mesmo vistos de cima.
+                   ------------------------------------------------- */
+                const grupoLateral = indice % 3; // 0 = esquerda, 1 = centro, 2 = direita
+                const passoLateral = Math.max(tamanhoMax * 0.055, 1.6);
+
+                let offsetLateral = 0;
+                if (grupoLateral === 0) offsetLateral = -passoLateral;
+                else if (grupoLateral === 2) offsetLateral = passoLateral;
+
+                const centroPlaca = centro.clone();
+                if (corredorHorizontal) {
+                    centroPlaca.z += offsetLateral;
+                } else {
+                    centroPlaca.x += offsetLateral;
+                }
+
                 /* -------------------------------------------------
                    PLACA: Distribuída p/ não encavalar
                    ------------------------------------------------- */
@@ -1562,12 +1680,13 @@
 
                 const placaCSS = new THREE.CSS2DObject(div);
 
-                // Lógica Stagger (degraus) baseada na letra
+                // Stagger vertical (degraus) baseado na letra + grupo lateral,
+                // reforça ainda mais a separação visual entre placas vizinhas
                 const hash = letra.charCodeAt(0);
-                const staggerY = (hash % 4) * 2.5; 
+                const staggerY = (hash % 4) * 2.5 + grupoLateral * 1.3;
                 const alturaPlaca = maxY + 4.0 + staggerY;
 
-                placaCSS.position.set(centro.x, alturaPlaca, centro.z);
+                placaCSS.position.set(centroPlaca.x, alturaPlaca, centroPlaca.z);
                 placaCSS.visible = estruturasVisiveis; // Bloqueio nativo do ThreeJS
 
                 placaCSS.userData.elemento = div;
@@ -1578,16 +1697,40 @@
                 placasGeral.push(placaCSS);
 
                 /* -------------------------------------------------
+                   LINHA INDICADORA: quando a placa é deslocada p/ o
+                   lado, uma linha fina liga ela até o centro real da
+                   estrutura, mantendo claro a qual corredor pertence
+                   ------------------------------------------------- */
+                if (offsetLateral !== 0) {
+                    const pIndicA = new THREE.Vector3(centro.x, maxY + 0.6, centro.z);
+                    const pIndicB = new THREE.Vector3(centroPlaca.x, alturaPlaca - 0.3, centroPlaca.z);
+
+                    const geometryIndic = new THREE.BufferGeometry().setFromPoints([pIndicA, pIndicB]);
+                    const materialIndic = new THREE.LineBasicMaterial({
+                        color: 0x00f3ff,
+                        transparent: true,
+                        opacity: 0.5,
+                        depthTest: false
+                    });
+
+                    const linhaIndic = new THREE.Line(geometryIndic, materialIndic);
+                    linhaIndic.frustumCulled = false;
+                    linhaIndic.visible = estruturasVisiveis;
+                    linhaIndic.userData.letra = letra;
+                    linhaIndic.userData.tipo = 'guia';
+
+                    scene.add(linhaIndic);
+                    guiasEstrutura.push(linhaIndic);
+                }
+
+                /* -------------------------------------------------
                    LINHA PONTILHADA: Verifica eixo maior da prateleira
                    ------------------------------------------------- */
                 const margem = Math.max(tamanhoMax * 0.015, 0.25);
                 const yLinha = maxY + 0.45;
-                
-                const dx = maxX - minX;
-                const dz = maxZ - minZ;
 
                 let p1, p2;
-                if (dx > dz) {
+                if (corredorHorizontal) {
                     // Prateleira esticada no eixo X (Horizontal)
                     p1 = new THREE.Vector3(minX - margem, yLinha, centro.z);
                     p2 = new THREE.Vector3(maxX + margem, yLinha, centro.z);
@@ -2513,6 +2656,8 @@
             if (!cinematicoAtivo && controls.enabled) {
                 controls.update();
             }
+
+            atualizarPulsoRealce();
 
             renderer.render(scene, camera);
             labelRenderer.render(scene, camera);
