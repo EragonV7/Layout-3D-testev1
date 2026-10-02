@@ -12,7 +12,7 @@
         body {
             margin: 0;
             overflow: hidden;
-            background: #040914;
+            background: #1a2d4a;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
@@ -41,7 +41,7 @@
         }
 
         .btn {
-            background: #0f1724;
+            background: #213a5e;
             color: #00f3ff;
             border: 1px solid #005b7a;
             padding: 10px 15px;
@@ -82,7 +82,7 @@
         }
 
         .btn-cinema {
-            background: #0f1724;
+            background: #213a5e;
             border: 1px solid #005b7a;
         }
 
@@ -102,7 +102,7 @@
             right: 15px !important;
             left: auto !important;
             transform: none !important;
-            background: rgba(4, 9, 20, 0.85);
+            background: rgba(22, 40, 66, 0.85);
             display: flex;
             flex-wrap: wrap;
             justify-content: flex-end;
@@ -169,7 +169,7 @@
            PLACAS DE ESTRUTURA
            ========================================================= */
         .placa-corredor {
-            background: rgba(4, 9, 20, 0.92);
+            background: rgba(22, 40, 66, 0.92);
             color: #00f3ff;
             padding: 7px 18px;
             border-radius: 4px;
@@ -189,7 +189,7 @@
            ========================================================= */
         #tooltip {
             position: fixed !important;
-            background: rgba(4, 9, 20, 0.97);
+            background: rgba(22, 40, 66, 0.97);
             color: #e0f7fa;
             padding: 12px 16px;
             border-radius: 6px;
@@ -270,7 +270,7 @@
             max-width: calc(100vw - 24px);
             max-height: 58vh;
             z-index: 30;
-            background: rgba(4, 9, 20, 0.95);
+            background: rgba(22, 40, 66, 0.95);
             border-radius: 8px;
             box-shadow: 0 0 25px rgba(0,0,0,0.8);
             display: none;
@@ -342,7 +342,7 @@
         }
 
         .barra-fundo {
-            background: #0f1724;
+            background: #213a5e;
             border-radius: 4px;
             height: 8px;
             overflow: hidden;
@@ -373,7 +373,7 @@
             right: 15px !important;
             left: auto !important;
             z-index: 20;
-            background: rgba(4, 9, 20, 0.85);
+            background: rgba(22, 40, 66, 0.85);
             color: #e0f7fa;
             border-radius: 8px;
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
@@ -417,7 +417,7 @@
 
         #hud-legenda .tecla {
             display: inline-block;
-            background: #0f1724;
+            background: #213a5e;
             border: 1px solid #00f3ff;
             border-radius: 4px;
             padding: 1px 7px;
@@ -453,7 +453,7 @@
         #tela-carregamento .spinner {
             width: 52px;
             height: 52px;
-            border: 4px solid #0f1724;
+            border: 4px solid #213a5e;
             border-top-color: #00f3ff;
             border-radius: 50%;
             animation: girar-spinner 0.9s linear infinite;
@@ -684,16 +684,21 @@
            1. CONFIGURAÇÃO PRINCIPAL DE CORES
            ========================================================= */
 
-        const COR_ESTRUTURA_PRINCIPAL = 0x237c98;
-        const COR_ESTRUTURA_VERTICAL = 0x2f8f70;
-        const COR_ESTRUTURA_HORIZONTAL = 0x1e8bb8;
+        /* ---- TEMA CLARO (02/10/2026) ----
+           Todas as cores do 3D ficam aqui. As luzes agora são neutras
+           (antes eram azul/ciano e deixavam o marrom com cara de verde). */
+        const COR_FUNDO_CENA = 0x1a2d4a;
 
-        /* Caixa normal e caixa selecionada - AJUSTADO PARA LARANJA NEON */
-        const COR_CAIXA_NORMAL = 0x9a6745;
-        const COR_CAIXA_SELECIONADA = 0xffaa00; 
+        const COR_ESTRUTURA_PRINCIPAL = 0x4a9fc4;
+        const COR_ESTRUTURA_VERTICAL = 0x5aa7cf;   /* era verde (0x2f8f70) */
+        const COR_ESTRUTURA_HORIZONTAL = 0x6dbbe0;
+
+        /* Caixa normal (marrom papelão) e caixa selecionada (laranja) */
+        const COR_CAIXA_NORMAL = 0x9b6a42;
+        const COR_CAIXA_SELECIONADA = 0xffaa00;
 
         /* Caixa não selecionada quando existe filtro */
-        const COR_CAIXA_DESFOCADA = 0x4a332b;
+        const COR_CAIXA_DESFOCADA = 0x8f8a86;
 
         /* Cores dos status */
         const COR_STATUS_OK = 0x00ff55;
@@ -1041,8 +1046,8 @@
            ========================================================= */
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x040914);
-        scene.fog = new THREE.FogExp2(0x040914, 0.002);
+        scene.background = new THREE.Color(COR_FUNDO_CENA);
+        scene.fog = new THREE.FogExp2(COR_FUNDO_CENA, 0.0012);
 
         const gridHelper = new THREE.GridHelper(
             500,
@@ -1095,20 +1100,37 @@
         controls.rotateSpeed = 0.8;
         controls.panSpeed = 0.8;
 
+        /* Iluminação neutra: mantém marrom como marrom e azul como azul */
         scene.add(
             new THREE.AmbientLight(
-                0x406080,
-                1.5
+                0xffffff,
+                0.42
+            )
+        );
+
+        scene.add(
+            new THREE.HemisphereLight(
+                0xeaf2ff,   /* céu */
+                0x6b5543,   /* chão (tom quente) */
+                0.42
             )
         );
 
         const dirLight = new THREE.DirectionalLight(
-            0x00f3ff,
-            1.2
+            0xfff3e2,
+            0.8
         );
 
         dirLight.position.set(50, 150, 50);
         scene.add(dirLight);
+
+        const dirLightFill = new THREE.DirectionalLight(
+            0xffffff,
+            0.3
+        );
+
+        dirLightFill.position.set(-80, 100, -60);
+        scene.add(dirLightFill);
 
         /* =========================================================
            8. TWEEN DE CÂMERA
@@ -1453,7 +1475,10 @@
 
             if (modoStatusAtivo) {
                 const registros = obterRegistrosDoEndereco(endereco);
-                if (registros.length > 0) {
+                /* Só pinta por status se o Power BI realmente enviou o campo "status".
+                   Antes, sem esse campo, tudo caía em "OK" e ficava verde. */
+                const temStatus = registros.some(r => r.status != null && String(r.status).trim() !== '');
+                if (registros.length > 0 && temStatus) {
                     let statusMaisAlto = 'OK';
                     registros.forEach(r => {
                         const status = normalizarNome(r.status);
@@ -1510,7 +1535,7 @@
                     aplicarCorNosMateriais(child, COR_CAIXA_DESFOCADA);
                     percorrerMateriais(child, material => {
                         material.transparent = true;
-                        material.opacity = 0.10;
+                        material.opacity = 0.15;
                         material.depthWrite = false;
                     });
                     desligarEmissive(child);
@@ -1524,7 +1549,7 @@
                     });
                     // BRILHO FORTE NO ITEM FILTRADO (a intensidade "respira"
                     // no loop de animação — ver atualizarPulsoRealce)
-                    aplicarEmissive(child, COR_CAIXA_SELECIONADA, 0.7);
+                    aplicarEmissive(child, COR_CAIXA_SELECIONADA, 0.35);
                     objetosDestacados.push(child);
                 }
                 else {
@@ -1560,7 +1585,7 @@
         function atualizarPulsoRealce() {
             if (!objetosDestacados.length) return;
 
-            const pulso = 0.55 + Math.sin(Date.now() * 0.005) * 0.35; // ~0.20 a 0.90
+            const pulso = 0.30 + Math.sin(Date.now() * 0.005) * 0.18; // ~0.12 a 0.48 (tema claro: menos brilho)
 
             objetosDestacados.forEach(obj => {
                 percorrerMateriais(obj, material => {
@@ -2221,11 +2246,11 @@
 
                         percorrerMateriais(child, material => {
                             if ('metalness' in material) {
-                                material.metalness = 0.6;
+                                material.metalness = 0.1;
                             }
 
                             if ('roughness' in material) {
-                                material.roughness = 0.3;
+                                material.roughness = 0.7;
                             }
                         });
 
@@ -2692,3 +2717,4 @@
     </script>
 </body>
 </html>
+
