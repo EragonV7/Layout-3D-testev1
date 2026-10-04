@@ -520,6 +520,166 @@
                 max-width: calc(100vw - 30px);
             }
         }
+        /* =========================================================
+           LAYOUT NOVO (04/10/2026): câmera compacta, barra "Colorir por",
+           menu de opções, legenda por modo, HUD em 3 níveis
+           ========================================================= */
+        #btn-status { display: none !important; }
+
+        #ui-camera {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: flex-start;
+        }
+
+        .btn-cam {
+            text-align: left;
+            padding: 7px 11px;
+            font-size: 12px;
+            min-width: 108px;
+            background: rgba(22, 40, 66, 0.72);
+            backdrop-filter: blur(3px);
+        }
+
+        .btn-cam.btn-toggle-ativo {
+            background: #00f3ff !important;
+            color: #0b1626 !important;
+            border-color: #00f3ff !important;
+        }
+
+        #menu-opcoes {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            padding: 8px;
+            border: 1px solid #005b7a;
+            border-radius: 6px;
+            background: rgba(22, 40, 66, 0.96);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+        }
+
+        #menu-opcoes.aberto { display: flex; }
+
+        #menu-opcoes .btn {
+            font-size: 12px;
+            text-align: left;
+            padding: 7px 10px;
+            white-space: nowrap;
+        }
+
+        #menu-opcoes .btn.btn-toggle-ativo {
+            background: #00f3ff !important;
+            color: #0b1626 !important;
+            border-color: #00f3ff !important;
+        }
+
+        #barra-modos {
+            position: absolute;
+            left: 50%;
+            bottom: 18px;
+            transform: translateX(-50%);
+            z-index: 25;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 7px 12px;
+            max-width: calc(100vw - 24px);
+            background: rgba(22, 40, 66, 0.9);
+            border: 1px solid #005b7a;
+            border-radius: 999px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+            backdrop-filter: blur(4px);
+        }
+
+        #barra-modos .rotulo-barra {
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #80d8ff;
+            margin: 0 6px 0 2px;
+            font-weight: 700;
+        }
+
+        .modo {
+            border: 1px solid transparent;
+            background: transparent;
+            color: #cfe9f5;
+            padding: 7px 13px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            white-space: nowrap;
+        }
+
+        .modo:hover { background: rgba(0,243,255,0.14); border-color: #005b7a; }
+
+        .modo.ativo {
+            background: #00f3ff;
+            color: #0b1626;
+            box-shadow: 0 0 12px rgba(0,243,255,0.5);
+        }
+
+        .modo.sem-dado { opacity: 0.42; }
+
+        .modo .selo {
+            display: inline-block;
+            min-width: 16px;
+            padding: 0 5px;
+            margin-left: 6px;
+            border-radius: 9px;
+            background: #e74c3c;
+            color: #fff;
+            font-size: 10px;
+            line-height: 16px;
+            text-align: center;
+        }
+
+        #legenda-modo {
+            position: absolute;
+            left: 15px;
+            bottom: 18px;
+            z-index: 20;
+            display: none;
+            background: rgba(22, 40, 66, 0.9);
+            border: 1px solid #005b7a;
+            border-top: 4px solid #00f3ff;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: #e0f7fa;
+            width: 210px;
+            max-width: calc(50vw - 40px);
+            backdrop-filter: blur(4px);
+        }
+
+        #legenda-modo h4 {
+            margin: 0 0 8px;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #00f3ff;
+        }
+
+        #legenda-modo .it { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+        #legenda-modo .sw { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+        #legenda-modo .n { margin-left: auto; color: #80d8ff; font-variant-numeric: tabular-nums; }
+        #legenda-modo .grad { height: 10px; border-radius: 5px; background: linear-gradient(90deg, #ffe9a8, #ff9f1c, #c1121f); margin: 4px 0 6px; }
+        #legenda-modo .nota { color: #9fc3d6; font-size: 11px; margin-top: 6px; line-height: 1.3; }
+
+        /* HUD em 3 níveis (menu ⚙ > HUD) */
+        #hud-topo.hud-compacto .hud-box:nth-child(n+3) { display: none; }
+        #hud-topo.hud-oculto { background: none; border: none; box-shadow: none; backdrop-filter: none; padding: 0; }
+        #hud-topo.hud-oculto .hud-box { display: none; }
     </style>
 
     <!-- =========================================================
@@ -545,15 +705,21 @@
     <!-- =========================================================
          CONTROLES
          ========================================================= -->
-    <div id="ui-controles">
-        <button class="btn" id="btn-frente">Frente</button>
-        <button class="btn" id="btn-topo">Topo</button>
-        <button class="btn" id="btn-lado">Lado</button>
-        <button class="btn" id="btn-pan">🖐 Mover</button>
+    <div id="ui-camera">
+        <button class="btn btn-cam" id="btn-frente" title="Vista frontal">&#9645; Frente</button>
+        <button class="btn btn-cam" id="btn-topo" title="Vista de cima">&#11026; Topo</button>
+        <button class="btn btn-cam" id="btn-lado" title="Vista lateral">&#9680; Lado</button>
+        <button class="btn btn-cam" id="btn-enquadrar" title="Enquadrar o galpão inteiro">&#10530; Enquadrar</button>
+        <button class="btn btn-cam" id="btn-pan" title="Arrastar para mover o mapa">&#9995; Mover</button>
+        <button class="btn btn-cam" id="btn-wasd" title="Visão em 1ª pessoa (teclas W A S D)">&#9684; 1ª Pessoa</button>
+        <button class="btn btn-cam" id="btn-opcoes" title="Mais opções">&#9881; Opções</button>
+        <div id="menu-opcoes">
+            <button class="btn" id="btn-estrutura">Estruturas: Ocultas</button>
+            <button class="btn btn-cinema" id="btn-cinema">Modo Cinemático</button>
+            <button class="btn" id="btn-hud" title="Alterna o painel de números do canto superior direito">HUD: Completo</button>
+            <button class="btn btn-toggle-ativo" id="btn-lembrar" title="Ao filtrar no Power BI o mapa recarrega; esta opção mantém a câmera e o modo de cor">Lembrar câmera: Sim</button>
+        </div>
         <button class="btn btn-status" id="btn-status">Modo: Status (Desligado)</button>
-        <button class="btn" id="btn-estrutura">Estruturas: Ocultas</button>
-        <button class="btn" id="btn-wasd">Visão: 1ª Pessoa</button>
-        <button class="btn btn-cinema" id="btn-cinema">Modo Cinemático</button>
     </div>
 
     <!-- =========================================================
@@ -571,16 +737,21 @@
         </div>
 
         <div class="hud-box">
-            <span class="titulo">Ocupação</span>
+            <span class="titulo" title="Endereços com saldo ÷ endereços do galpão (no filtro atual)">Ocupação</span>
             <span class="valor" id="hud-pct">100%</span>
         </div>
 
         <div class="hud-box" style="border-left: 1px solid #005b7a; padding-left: 20px;">
-            <span class="titulo">Endereços</span>
+            <span class="titulo" title="Endereços com saldo no filtro atual">End. c/ saldo</span>
             <span class="valor" id="hud-debug" style="color: #00ff55; text-shadow: 0 0 8px rgba(0,255,85,0.4);">0</span>
         </div>
 
-        <div class="hud-box" style="border-left: 1px solid #005b7a; padding-left: 20px;">
+        <div class="hud-box" style="border-left: 1px solid #005b7a; padding-left: 20px;" title="Quantidade de produtos diferentes no filtro atual">
+            <span class="titulo">Produtos</span>
+            <span class="valor" id="hud-itens" style="color: #ffaa00;">0</span>
+        </div>
+
+        <div class="hud-box" id="hud-box-emp" style="display:none; border-left: 1px solid #005b7a; padding-left: 20px;">
             <span class="titulo">Empilhadeira</span>
             <span class="valor" id="hud-emp" style="color: #00f3ff;">Inativa</span>
         </div>
@@ -593,6 +764,20 @@
     <!-- =========================================================
          TOOLTIP
          ========================================================= -->
+    <!-- BARRA "COLORIR POR" -->
+    <div id="barra-modos">
+        <span class="rotulo-barra">Colorir por</span>
+        <button class="modo ativo" data-modo="padrao" title="Cores padrão: caixa marrom, filtro em laranja">Padrão</button>
+        <button class="modo" data-modo="valor" title="Mapa de calor do valor em estoque">Valor</button>
+        <button class="modo" data-modo="obsoleto" title="Classe de obsolescência (meses sem movimento)">Obsoleto</button>
+        <button class="modo" data-modo="validade" title="Situação da validade dos lotes">Validade</button>
+        <button class="modo" data-modo="giro" title="Status do giro (Slowmove)">Giro</button>
+        <button class="modo" data-modo="familia" title="Família do produto">Família</button>
+        <button class="modo" data-modo="filial" title="Filial">Filial</button>
+        <button class="modo" data-modo="diverg" title="Conferência entre Saldo por Endereço, Saldo Atual, Posição e Slowmove">Divergência</button>
+    </div>
+    <div id="legenda-modo"></div>
+
     <div id="tooltip"></div>
 
     <!-- =========================================================
@@ -716,6 +901,12 @@
         let objetosDestacados = []; // meshes atualmente com realce de filtro nativo (glow pulsante)
         let modoStatusAtivo = false;
         let estruturasVisiveis = false;
+
+        /* Modo de cor da barra "Colorir por", HUD e memória de câmera */
+        let modoCor = 'padrao';
+        let infoEnd = {};
+        let hudModo = 'completo';
+        let lembrarCamera = true;
 
         let modeloGeral = null;
         let boxGeral = null;
@@ -991,7 +1182,17 @@
                                 'N/A',
                             giro:
                                 d['giro'] ??
-                                'N/A'
+                                'N/A',
+
+                            /* Campos opcionais: o Power BI envia quando existirem */
+                            filial: d['filial'] ?? '',
+                            armazem: d['armazem'] ?? '',
+                            fonte: d['fonte'] ?? '',
+                            valorObsoleto: extrairNumero(d['valor_obsoleto']),
+                            classeObsol: d['classe_obsoleto'] ?? '',
+                            diverg: d['diverg'] ?? '',
+                            qtdSistema: d['qtd_sistema'] ?? '',
+                            diferenca: d['diferenca'] ?? ''
                         };
 
                         const endKey =
@@ -1032,6 +1233,7 @@
                     arrSelecionados = [];
                 }
 
+                atualizarModosUI();
                 atualizarHUD(countLidos);
                 aplicarFiltrosECores();
                 atualizarVisibilidadePlacas();
@@ -1417,30 +1619,25 @@
                     ? enderecosModelo.size
                     : enderecosNoPBI.size;
 
-            let enderecosVisiveis = 0;
+            /* Ocupação real: endereços com saldo ÷ endereços do galpão.
+               (Antes ficava sempre em 100% quando não havia filtro.) */
+            const ocupacao = totalEnderecos > 0
+                ? Math.min(100, Math.round((enderecosNoPBI.size / totalEnderecos) * 100))
+                : 0;
 
+            const produtos = new Set();
             enderecosNoPBI.forEach(endereco => {
-                if (estaSelecionadoEndereco(endereco)) {
-                    enderecosVisiveis++;
-                }
+                (dadosPorEndereco[endereco] || []).forEach(registro => {
+                    if (registro.codigoProduto) produtos.add(registro.codigoProduto);
+                });
             });
-
-            let ocupacao = 100;
-
-            if (totalEnderecos > 0) {
-                ocupacao = Math.round(
-                    (enderecosVisiveis / totalEnderecos) * 100
-                );
-            }
-
-            if (arrSelecionados.length === 0) {
-                ocupacao = 100;
-            }
 
             document.getElementById('hud-valor-estoque').innerText = formatarMoeda(valorEstoqueTotal);
             document.getElementById('hud-est').innerText = formatarNumero(estoqueTotal, 0);
             document.getElementById('hud-pct').innerText = ocupacao + '%';
-            document.getElementById('hud-debug').innerText = enderecosNoPBI.size;
+            document.getElementById('hud-debug').innerText = formatarNumero(enderecosNoPBI.size, 0);
+            const elItens = document.getElementById('hud-itens');
+            if (elItens) elItens.innerText = formatarNumero(produtos.size, 0);
         }
 
         /* =========================================================
@@ -1466,6 +1663,11 @@
 
             if (!selecionado && arrSelecionados.length > 0) {
                 return COR_CAIXA_DESFOCADA;
+            }
+
+            /* Modo "Colorir por" (barra de baixo): manda na cor dos selecionados */
+            if (modoCor !== 'padrao') {
+                return corDoModo(endereco);
             }
 
             // PRIORIDADE PARA FILTROS DO BI (Supera o status)
@@ -1541,7 +1743,7 @@
                     desligarEmissive(child);
                 }
                 else if (arrSelecionados.length > 0 && selecionado) {
-                    aplicarCorNosMateriais(child, COR_CAIXA_SELECIONADA);
+                    aplicarCorNosMateriais(child, cor);
                     percorrerMateriais(child, material => {
                         material.transparent = false;
                         material.opacity = 1.0;
@@ -1549,7 +1751,7 @@
                     });
                     // BRILHO FORTE NO ITEM FILTRADO (a intensidade "respira"
                     // no loop de animação — ver atualizarPulsoRealce)
-                    aplicarEmissive(child, COR_CAIXA_SELECIONADA, 0.35);
+                    aplicarEmissive(child, cor, 0.35);
                     objetosDestacados.push(child);
                 }
                 else {
@@ -1572,7 +1774,10 @@
             if (!banner || !texto) return;
 
             if (arrSelecionados.length > 0) {
-                texto.innerText = arrSelecionados.join(', ');
+                /* Resumo: lista só os 6 primeiros para o banner não crescer sem fim */
+                texto.innerText = arrSelecionados.length > 6
+                    ? arrSelecionados.slice(0, 6).join(', ') + ' … (+' + (arrSelecionados.length - 6) + ')'
+                    : arrSelecionados.join(', ');
                 banner.classList.add('ativo');
             } else {
                 banner.classList.remove('ativo');
@@ -2216,15 +2421,8 @@
 
                     controls.target.copy(centroGeral);
 
-                    const posFinalCamera =
-                        new THREE.Vector3(
-                            centroGeral.x +
-                                tamanhoMax * 0.8,
-                            centroGeral.y +
-                                tamanhoMax * 0.8,
-                            centroGeral.z +
-                                tamanhoMax * 0.8
-                        );
+                    /* Enquadramento mais próximo (antes 0.8): o galpão ocupa mais da tela */
+                    const posFinalCamera = posEnquadrada();
 
                     camera.position.set(
                         centroGeral.x +
@@ -2265,11 +2463,21 @@
 
                     finalizarCarregamento('Malha 3D carregada');
 
-                    tweenCamera(
-                        posFinalCamera,
-                        centroGeral.clone(),
-                        2200
-                    );
+                    const estSalvo = lerEstado();
+
+                    if (estSalvo && estSalvo.cam && lembrarCamera) {
+                        /* Mantém a câmera de antes do recarregamento (filtro do Power BI) */
+                        camera.position.fromArray(estSalvo.cam);
+                        controls.target.fromArray(estSalvo.tgt || centroGeral.toArray());
+                        controls.update();
+                    }
+                    else {
+                        tweenCamera(
+                            posFinalCamera,
+                            centroGeral.clone(),
+                            2200
+                        );
+                    }
                 }
                 catch (erro) {
                     console.error(
@@ -2689,6 +2897,415 @@
         }
 
         animate();
+
+        /* =========================================================
+           25.1 MODOS DE COR (barra "Colorir por"), OPÇÕES E MEMÓRIA
+           ========================================================= */
+
+        const MODOS = {
+            padrao:   { rotulo: 'Padrão' },
+            valor:    { rotulo: 'Valor em estoque' },
+            obsoleto: { rotulo: 'Obsolescência' },
+            validade: { rotulo: 'Validade' },
+            giro:     { rotulo: 'Giro' },
+            familia:  { rotulo: 'Família' },
+            filial:   { rotulo: 'Filial' },
+            diverg:   { rotulo: 'Divergência' }
+        };
+
+        const COR_VAZIO = 0x3f4a57;      /* endereço sem saldo */
+        const COR_SEM_DADO = 0x9aa5b1;   /* tem saldo, mas o campo do modo não veio */
+        const PALETA_CAT = [0x4cc9f0, 0xf72585, 0x7209b7, 0x3a86ff, 0x06d6a0, 0xffd166, 0xef476f, 0x118ab2, 0x8338ec, 0xfb8500];
+        const ORDEM_GIRO = ['NOVO', 'ALTO', 'MEDIO', 'BAIXO', 'SEM VENDA'];
+        const COR_GIRO = { 'NOVO': 0x3498db, 'ALTO': 0x2ecc71, 'MEDIO': 0xf1c40f, 'BAIXO': 0xe67e22, 'SEM VENDA': 0xe74c3c };
+        const ORDEM_OBSOL = ['<3', '>3', '>6', '>9', '>12', '>24', '>36'];
+        const COR_OBSOL = { '<3': 0x2ecc71, '>3': 0x9bdc5a, '>6': 0xf1c40f, '>9': 0xffa500, '>12': 0xff7f0e, '>24': 0xe74c3c, '>36': 0x8e0e1d };
+
+        let cacheModo = { cor: {}, legenda: [], temDado: false, grad: false, max: 0 };
+
+        function hexCss(n) {
+            return '#' + n.toString(16).padStart(6, '0');
+        }
+
+        function corPorHash(txt) {
+            let h = 0;
+            const s = String(txt);
+            for (let i = 0; i < s.length; i++) {
+                h = (h * 31 + s.charCodeAt(i)) | 0;
+            }
+            return PALETA_CAT[Math.abs(h) % PALETA_CAT.length];
+        }
+
+        function lerpCor(c1, c2, t) {
+            return new THREE.Color(c1).lerp(new THREE.Color(c2), t).getHex();
+        }
+
+        function rampaValor(t) {
+            t = Math.max(0, Math.min(1, t));
+            return t < 0.5
+                ? lerpCor(0xffe9a8, 0xff9f1c, t / 0.5)
+                : lerpCor(0xff9f1c, 0xc1121f, (t - 0.5) / 0.5);
+        }
+
+        function classeGiro(txt) {
+            const s = normalizarNome(txt).normalize('NFD').replace(/[̀-ͯ]/g, '');
+            if (!s || s === 'N/A') return null;
+            if (s.indexOf('SEM VENDA') >= 0) return 'SEM VENDA';
+            if (s.indexOf('ALTO') >= 0) return 'ALTO';
+            if (s.indexOf('MEDIO') >= 0) return 'MEDIO';
+            if (s.indexOf('BAIXO') >= 0) return 'BAIXO';
+            if (s.indexOf('NOVO') >= 0) return 'NOVO';
+            return null;
+        }
+
+        function parseDataBR(txt) {
+            const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(txt || '').trim());
+            return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
+        }
+
+        /* Resume cada endereço (um passo só) para todos os modos */
+        function analisarEnderecos() {
+            const info = {};
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+
+            Object.keys(dadosPorEndereco).forEach(k => {
+                const regs = dadosPorEndereco[k] || [];
+                const o = {
+                    total: 0, giro: null, rankGiro: -1, dias: null,
+                    fam: null, filial: null, obsol: null, rankObs: -1,
+                    obsolVal: 0, div: null
+                };
+                const famAcc = {};
+                const filAcc = {};
+
+                regs.forEach(r => {
+                    const v = Number(r.custoTotal) || 0;
+                    o.total += v;
+
+                    const g = classeGiro(r.giro);
+                    if (g) {
+                        const rk = ORDEM_GIRO.indexOf(g);
+                        if (rk > o.rankGiro) { o.giro = g; o.rankGiro = rk; }
+                    }
+
+                    const d = parseDataBR(r.validade);
+                    if (d) {
+                        const dias = Math.floor((d - hoje) / 86400000);
+                        if (o.dias === null || dias < o.dias) o.dias = dias;
+                    }
+
+                    const f = String(r.familia || '').trim();
+                    if (f && normalizarNome(f) !== 'N/A') famAcc[f] = (famAcc[f] || 0) + v;
+
+                    const fl = String(r.filial || '').trim();
+                    if (fl) filAcc[fl] = (filAcc[fl] || 0) + v;
+
+                    const cl = String(r.classeObsol || '').trim();
+                    if (cl) {
+                        const rk = ORDEM_OBSOL.indexOf(cl);
+                        if (rk > o.rankObs) { o.obsol = cl; o.rankObs = rk; }
+                        else if (rk < 0 && o.obsol === null) { o.obsol = cl; }
+                    }
+                    o.obsolVal += Number(r.valorObsoleto) || 0;
+
+                    const dv = normalizarNome(r.diverg);
+                    if (dv === 'DIVERGE' || dv === 'DIVERGENTE') o.div = 'DIVERGE';
+                    else if (dv === 'OK' && o.div !== 'DIVERGE') o.div = 'OK';
+                });
+
+                const topo = acc => {
+                    let melhor = null;
+                    let mv = -1;
+                    Object.keys(acc).forEach(n => { if (acc[n] > mv) { mv = acc[n]; melhor = n; } });
+                    return melhor;
+                };
+
+                o.fam = topo(famAcc);
+                o.filial = topo(filAcc);
+                info[k] = o;
+            });
+
+            infoEnd = info;
+        }
+
+        /* Monta cor por endereço + legenda do modo atual */
+        function recalcularModo() {
+            const cor = {};
+            const cont = {};
+            let temDado = false;
+            let grad = false;
+            let max = 0;
+            const chaves = Object.keys(infoEnd);
+
+            const marca = (k, rotulo, c) => {
+                cor[k] = c;
+                if (!cont[rotulo]) cont[rotulo] = { cor: c, n: 0 };
+                cont[rotulo].n++;
+                if (c !== COR_SEM_DADO) temDado = true;
+            };
+            const semDado = k => marca(k, 'Sem dado', COR_SEM_DADO);
+
+            if (modoCor === 'valor') {
+                grad = true;
+                chaves.forEach(k => { if (infoEnd[k].total > max) max = infoEnd[k].total; });
+                chaves.forEach(k => {
+                    const t = infoEnd[k].total;
+                    if (t > 0) { cor[k] = rampaValor(Math.log(1 + t) / Math.log(1 + max)); temDado = true; }
+                    else { cor[k] = COR_SEM_DADO; }
+                });
+            }
+            else if (modoCor === 'giro') {
+                chaves.forEach(k => {
+                    const g = infoEnd[k].giro;
+                    if (g) marca(k, g === 'SEM VENDA' ? 'Sem venda' : g.charAt(0) + g.slice(1).toLowerCase(), COR_GIRO[g]);
+                    else semDado(k);
+                });
+            }
+            else if (modoCor === 'validade') {
+                chaves.forEach(k => {
+                    const d = infoEnd[k].dias;
+                    if (d === null) { semDado(k); return; }
+                    if (d < 0) marca(k, 'Vencido', 0xe74c3c);
+                    else if (d <= 30) marca(k, 'Vence em até 30 dias', 0xff7f0e);
+                    else if (d <= 90) marca(k, 'Vence em até 90 dias', 0xf1c40f);
+                    else if (d <= 180) marca(k, 'Vence em até 180 dias', 0x9bdc5a);
+                    else marca(k, 'Mais de 180 dias', 0x2ecc71);
+                });
+            }
+            else if (modoCor === 'familia' || modoCor === 'filial') {
+                const campo = modoCor === 'familia' ? 'fam' : 'filial';
+                chaves.forEach(k => {
+                    const v = infoEnd[k][campo];
+                    if (v) marca(k, v, corPorHash(v));
+                    else semDado(k);
+                });
+            }
+            else if (modoCor === 'obsoleto') {
+                chaves.forEach(k => {
+                    const o = infoEnd[k];
+                    if (o.obsol && COR_OBSOL[o.obsol] !== undefined) marca(k, 'Parado ' + o.obsol + ' meses', COR_OBSOL[o.obsol]);
+                    else if (o.obsol) marca(k, o.obsol, corPorHash(o.obsol));
+                    else if (o.obsolVal > 0) marca(k, 'Com valor obsoleto', 0xe74c3c);
+                    else semDado(k);
+                });
+            }
+            else if (modoCor === 'diverg') {
+                chaves.forEach(k => {
+                    const d = infoEnd[k].div;
+                    if (d === 'DIVERGE') marca(k, 'Diverge', 0xe74c3c);
+                    else if (d === 'OK') marca(k, 'Confere', 0x2ecc71);
+                    else semDado(k);
+                });
+            }
+
+            let legenda = Object.keys(cont).map(r => [r, cont[r].cor, cont[r].n]);
+
+            if (modoCor === 'obsoleto') {
+                const pos = r => { const m = /^Parado (.+) meses$/.exec(r); return m ? ORDEM_OBSOL.indexOf(m[1]) : 99; };
+                legenda.sort((a, b) => pos(a[0]) - pos(b[0]));
+            }
+            else if (modoCor === 'giro') {
+                const pos = r => ORDEM_GIRO.indexOf(r.toUpperCase());
+                legenda.sort((a, b) => pos(b[0]) - pos(a[0]));
+            }
+            else if (modoCor === 'familia' || modoCor === 'filial') {
+                legenda.sort((a, b) => b[2] - a[2]);
+                if (legenda.length > 8) {
+                    const resto = legenda.slice(8).reduce((s, x) => s + x[2], 0);
+                    legenda = legenda.slice(0, 8);
+                    legenda.push(['Outras', COR_SEM_DADO, resto]);
+                }
+            }
+
+            cacheModo = { cor: cor, legenda: legenda, temDado: temDado, grad: grad, max: max };
+        }
+
+        function corDoModo(endereco) {
+            const k = extrairChaveEndereco(endereco) || normalizarNome(endereco);
+            const c = cacheModo.cor[k];
+            return c !== undefined ? c : COR_VAZIO;
+        }
+
+        function renderLegendaModo() {
+            const el = document.getElementById('legenda-modo');
+            if (!el) return;
+
+            if (modoCor === 'padrao') {
+                el.style.display = 'none';
+                return;
+            }
+
+            let h = '<h4>Colorindo por: ' + escaparHTML(MODOS[modoCor].rotulo) + '</h4>';
+
+            if (!cacheModo.temDado) {
+                h += '<div class="nota">Sem dados para este modo.<br>O Power BI ainda não está enviando este campo.</div>';
+            }
+            else {
+                if (cacheModo.grad) {
+                    h += '<div class="grad"></div><div class="it"><span>R$ 0</span><span class="n">' + escaparHTML(formatarMoeda(cacheModo.max)) + '</span></div>';
+                }
+                cacheModo.legenda.forEach(l => {
+                    h += '<div class="it"><span class="sw" style="background:' + hexCss(l[1]) + '"></span>' + escaparHTML(l[0]) + '<span class="n">' + l[2] + '</span></div>';
+                });
+            }
+
+            h += '<div class="nota">Cinza = endereço sem saldo.</div>';
+            el.innerHTML = h;
+            el.style.display = 'block';
+        }
+
+        /* Botões: marca "sem dado" e mostra selo vermelho com a quantidade de alertas */
+        function atualizarBarraModos() {
+            const tem = { valor: false, giro: false, validade: false, familia: false, filial: false, obsoleto: false, diverg: false };
+            const selo = { giro: 0, validade: 0, obsoleto: 0, diverg: 0 };
+
+            Object.keys(infoEnd).forEach(k => {
+                const o = infoEnd[k];
+                if (o.total > 0) tem.valor = true;
+                if (o.giro) { tem.giro = true; if (o.giro === 'SEM VENDA') selo.giro++; }
+                if (o.dias !== null) { tem.validade = true; if (o.dias < 0) selo.validade++; }
+                if (o.fam) tem.familia = true;
+                if (o.filial) tem.filial = true;
+                if (o.obsol || o.obsolVal > 0) { tem.obsoleto = true; if (o.obsolVal > 0) selo.obsoleto++; }
+                if (o.div) { tem.diverg = true; if (o.div === 'DIVERGE') selo.diverg++; }
+            });
+
+            document.querySelectorAll('#barra-modos .modo').forEach(b => {
+                const m = b.getAttribute('data-modo');
+                b.classList.toggle('ativo', m === modoCor);
+                b.classList.toggle('sem-dado', m !== 'padrao' && !tem[m]);
+
+                const rot = MODOS[m].rotulo.split(' ')[0];
+                const n = selo[m];
+                b.innerHTML = (m === 'diverg' ? 'Divergência' : rot) + (n > 0 ? '<span class="selo">' + n + '</span>' : '');
+            });
+        }
+
+        function atualizarModosUI() {
+            analisarEnderecos();
+            recalcularModo();
+            atualizarBarraModos();
+            renderLegendaModo();
+        }
+
+        function aplicarModo(m) {
+            if (!MODOS[m]) return;
+            modoCor = m;
+            recalcularModo();
+            atualizarBarraModos();
+            renderLegendaModo();
+            aplicarFiltrosECores();
+            salvarEstado();
+        }
+
+        document.getElementById('barra-modos').addEventListener('click', function(e) {
+            const b = e.target.closest ? e.target.closest('.modo') : null;
+            if (b) aplicarModo(b.getAttribute('data-modo'));
+        });
+
+        /* ---------- Enquadrar ---------- */
+        function posEnquadrada() {
+            /* Em telas menos largas que 16:9 afasta um pouco para o galpão caber inteiro */
+            const f = Math.max(1, Math.sqrt(1.75 / (camera.aspect || 1.75)));
+            return new THREE.Vector3(
+                centroGeral.x + tamanhoMax * 0.62 * f,
+                centroGeral.y + tamanhoMax * 0.70 * f,
+                centroGeral.z + tamanhoMax * 0.62 * f
+            );
+        }
+
+        document.getElementById('btn-enquadrar').addEventListener('click', function() {
+            if (!modeloGeral) return;
+            cinematicoAtivo = false;
+            document.getElementById('btn-cinema').classList.remove('btn-toggle-ativo');
+            controls.enabled = true;
+            tweenCamera(posEnquadrada(), centroGeral.clone(), 900);
+            setTimeout(salvarEstado, 1000);
+        });
+
+        /* ---------- Menu de opções ---------- */
+        const menuOpcoes = document.getElementById('menu-opcoes');
+        const btnOpcoes = document.getElementById('btn-opcoes');
+
+        btnOpcoes.addEventListener('click', function(e) {
+            e.stopPropagation();
+            menuOpcoes.classList.toggle('aberto');
+            btnOpcoes.classList.toggle('btn-toggle-ativo', menuOpcoes.classList.contains('aberto'));
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!menuOpcoes.classList.contains('aberto')) return;
+            if (menuOpcoes.contains(e.target) || e.target === btnOpcoes) return;
+            menuOpcoes.classList.remove('aberto');
+            btnOpcoes.classList.remove('btn-toggle-ativo');
+        });
+
+        /* ---------- HUD em 3 níveis ---------- */
+        const HUD_NIVEIS = ['completo', 'compacto', 'oculto'];
+        const HUD_ROTULO = { completo: 'HUD: Completo', compacto: 'HUD: Compacto', oculto: 'HUD: Oculto' };
+
+        function aplicarHud() {
+            const hud = document.getElementById('hud-topo');
+            hud.classList.toggle('hud-compacto', hudModo === 'compacto');
+            hud.classList.toggle('hud-oculto', hudModo === 'oculto');
+            document.getElementById('btn-hud').innerText = HUD_ROTULO[hudModo];
+        }
+
+        document.getElementById('btn-hud').addEventListener('click', function() {
+            hudModo = HUD_NIVEIS[(HUD_NIVEIS.indexOf(hudModo) + 1) % HUD_NIVEIS.length];
+            aplicarHud();
+            salvarEstado();
+        });
+
+        /* ---------- Memória (câmera, modo de cor, HUD) ----------
+           O Power BI recarrega o mapa a cada filtro; guardamos o estado na sessão. */
+        const CHAVE_ESTADO = 'l3d_estado_v1';
+
+        function lerEstado() {
+            try {
+                return JSON.parse(sessionStorage.getItem(CHAVE_ESTADO) || 'null');
+            }
+            catch (e) {
+                return null;
+            }
+        }
+
+        function salvarEstado() {
+            try {
+                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera };
+                if (lembrarCamera) {
+                    est.cam = camera.position.toArray();
+                    est.tgt = controls.target.toArray();
+                }
+                sessionStorage.setItem(CHAVE_ESTADO, JSON.stringify(est));
+            }
+            catch (e) { /* armazenamento bloqueado: segue sem memória */ }
+        }
+
+        const btnLembrar = document.getElementById('btn-lembrar');
+
+        btnLembrar.addEventListener('click', function() {
+            lembrarCamera = !lembrarCamera;
+            btnLembrar.innerText = 'Lembrar câmera: ' + (lembrarCamera ? 'Sim' : 'Não');
+            btnLembrar.classList.toggle('btn-toggle-ativo', lembrarCamera);
+            salvarEstado();
+        });
+
+        controls.addEventListener('end', salvarEstado);
+
+        (function restaurarEstadoInicial() {
+            const est = lerEstado();
+            if (est) {
+                if (MODOS[est.modo]) modoCor = est.modo;
+                if (HUD_NIVEIS.indexOf(est.hud) >= 0) hudModo = est.hud;
+                if (est.lembrar === false) lembrarCamera = false;
+            }
+            btnLembrar.innerText = 'Lembrar câmera: ' + (lembrarCamera ? 'Sim' : 'Não');
+            btnLembrar.classList.toggle('btn-toggle-ativo', lembrarCamera);
+            aplicarHud();
+            atualizarBarraModos();
+        })();
 
         /* =========================================================
            26. REDIMENSIONAMENTO
