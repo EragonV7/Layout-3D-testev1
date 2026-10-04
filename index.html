@@ -169,19 +169,29 @@
            PLACAS DE ESTRUTURA
            ========================================================= */
         .placa-corredor {
-            background: rgba(22, 40, 66, 0.92);
+            background: rgba(22, 40, 66, 0.9);
             color: #00f3ff;
-            padding: 7px 18px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 16px;
-            border: 1px solid #00f3ff;
-            pointer-events: none;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 13px;
+            border: 1px solid rgba(0,243,255,0.65);
+            pointer-events: auto;
+            cursor: pointer;
             text-align: center;
-            box-shadow: 0 0 15px rgba(0,243,255,0.4);
-            text-transform: uppercase;
-            letter-spacing: 2px;
+            box-shadow: 0 0 8px rgba(0,243,255,0.35);
+            letter-spacing: 1px;
             white-space: nowrap;
+            transition: opacity 0.2s, background 0.2s, color 0.2s, transform 0.15s;
+        }
+
+        .placa-corredor:hover { background: #00f3ff; color: #0b1626; transform: scale(1.12); }
+
+        .placa-corredor.ativa {
+            background: #ffaa00;
+            color: #0b1626;
+            border-color: #ffaa00;
+            box-shadow: 0 0 14px rgba(255,170,0,0.8);
         }
 
         /* =========================================================
@@ -266,9 +276,9 @@
             bottom: 12px !important;
             left: auto !important;
             transform: none !important;
-            width: 250px;
+            width: clamp(260px, 26vw, 390px);
             max-width: calc(100vw - 24px);
-            max-height: 58vh;
+            max-height: calc(100vh - 150px);
             z-index: 30;
             background: rgba(22, 40, 66, 0.95);
             border-radius: 8px;
@@ -308,7 +318,8 @@
 
         #painel-kpi .corpo {
             padding: 11px;
-            overflow: hidden;
+            overflow-y: auto;
+            max-height: calc(100vh - 235px);
         }
 
         #painel-kpi .linha {
@@ -330,10 +341,41 @@
         }
 
         .kpi-produtos {
-            max-height: 190px;
-            overflow-y: auto;
             margin-top: 5px;
         }
+
+        .kpi-prod-titulo {
+            font-weight: 700;
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 7px;
+            overflow-wrap: anywhere;
+            line-height: 1.25;
+        }
+
+        #painel-kpi .linha { align-items: flex-start; gap: 10px; margin-bottom: 6px; font-size: 13px; }
+        #painel-kpi .valor { overflow-wrap: anywhere; max-width: 64%; }
+        #painel-kpi .rotulo { flex-shrink: 0; }
+
+        #chip-foco {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 30;
+            display: none;
+            background: rgba(255,170,0,0.16);
+            border: 1px solid #ffaa00;
+            color: #ffaa00;
+            border-radius: 999px;
+            padding: 6px 16px;
+            font-size: 12px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+
+        /* A legenda antiga de "Estruturas" saiu: a legenda do modo de cor a substitui */
+        #legenda-estrutura { display: none !important; }
 
         .kpi-produto-item {
             border-top: 1px solid #005b7a;
@@ -714,7 +756,7 @@
         <button class="btn btn-cam" id="btn-wasd" title="Visão em 1ª pessoa (teclas W A S D)">&#9684; 1ª Pessoa</button>
         <button class="btn btn-cam" id="btn-opcoes" title="Mais opções">&#9881; Opções</button>
         <div id="menu-opcoes">
-            <button class="btn" id="btn-estrutura">Estruturas: Ocultas</button>
+            <button class="btn btn-toggle-ativo" id="btn-estrutura" title="Mostra a letra de cada estrutura (clique na letra para destacar a estrutura)">Letras: Visíveis</button>
             <button class="btn btn-cinema" id="btn-cinema">Modo Cinemático</button>
             <button class="btn" id="btn-hud" title="Alterna o painel de números do canto superior direito">HUD: Completo</button>
             <button class="btn btn-toggle-ativo" id="btn-lembrar" title="Ao filtrar no Power BI o mapa recarrega; esta opção mantém a câmera e o modo de cor">Lembrar câmera: Sim</button>
@@ -777,6 +819,7 @@
         <button class="modo" data-modo="diverg" title="Conferência entre Saldo por Endereço, Saldo Atual, Posição e Slowmove">Divergência</button>
     </div>
     <div id="legenda-modo"></div>
+    <div id="chip-foco" title="Clique para limpar"></div>
 
     <div id="tooltip"></div>
 
@@ -900,7 +943,8 @@
         let arrSelecionados = [];
         let objetosDestacados = []; // meshes atualmente com realce de filtro nativo (glow pulsante)
         let modoStatusAtivo = false;
-        let estruturasVisiveis = false;
+        let estruturasVisiveis = true;
+        let estruturaFoco = null;   /* letra clicada nas placas (destaque local, independe do Power BI) */
 
         /* Modo de cor da barra "Colorir por", HUD e memória de câmera */
         let modoCor = 'padrao';
@@ -991,7 +1035,10 @@
             const texto = normalizarNome(v);
             if (!texto) return null;
 
-            const match = texto.match(/([A-Z]\d{2}(?:-N\d{2})?)/);
+            /* A letra do endereço NÃO pode vir colada em outra letra: antes "GP41" virava "P41",
+               "BAIA01" virava "A01" e "CB01" virava "B01" (objetos da sala de endereços especiais
+               e do piso eram confundidos com prateleiras). Agora esses nomes casam pelo nome inteiro. */
+            const match = texto.match(/(?<![A-Z])([A-Z]\d{2}(?:-N\d{2})?)(?!\d)/);
             return match ? match[1] : null;
         }
 
@@ -1644,7 +1691,16 @@
            13. FILTRO / CORES DOS ENDEREÇOS
            ========================================================= */
 
+        function temFiltroAtivo() {
+            return arrSelecionados.length > 0 || !!estruturaFoco;
+        }
+
         function estaSelecionadoEndereco(endereco) {
+            if (estruturaFoco) {
+                const ch = extrairChaveEndereco(endereco) || normalizarNome(endereco);
+                if (!ch || ch.charAt(0) !== estruturaFoco) return false;
+            }
+
             if (arrSelecionados.length === 0) {
                 return true;
             }
@@ -1661,7 +1717,7 @@
         function determinarCorCaixa(child, endereco) {
             const selecionado = estaSelecionadoEndereco(endereco);
 
-            if (!selecionado && arrSelecionados.length > 0) {
+            if (!selecionado && temFiltroAtivo()) {
                 return COR_CAIXA_DESFOCADA;
             }
 
@@ -1671,7 +1727,7 @@
             }
 
             // PRIORIDADE PARA FILTROS DO BI (Supera o status)
-            if (arrSelecionados.length > 0 && selecionado) {
+            if (temFiltroAtivo() && selecionado) {
                 return COR_CAIXA_SELECIONADA;
             }
 
@@ -1733,7 +1789,7 @@
                     material.depthWrite = true;
                 });
 
-                if (!selecionado && arrSelecionados.length > 0) {
+                if (!selecionado && temFiltroAtivo()) {
                     aplicarCorNosMateriais(child, COR_CAIXA_DESFOCADA);
                     percorrerMateriais(child, material => {
                         material.transparent = true;
@@ -1742,7 +1798,7 @@
                     });
                     desligarEmissive(child);
                 }
-                else if (arrSelecionados.length > 0 && selecionado) {
+                else if (temFiltroAtivo() && selecionado) {
                     aplicarCorNosMateriais(child, cor);
                     percorrerMateriais(child, material => {
                         material.transparent = false;
@@ -1806,189 +1862,254 @@
            ========================================================= */
 
         function criarPlacasTodasEstruturas() {
-            placasGeral.forEach(placa => {
-                if (placa.parent) {
-                    placa.parent.remove(placa);
-                }
-            });
-
-            guiasEstrutura.forEach(guia => {
-                if (guia.parent) {
-                    guia.parent.remove(guia);
-                }
-            });
-
+            placasGeral.forEach(p => { if (p.parent) p.parent.remove(p); });
+            guiasEstrutura.forEach(g => { if (g.parent) g.parent.remove(g); });
             placasGeral = [];
             guiasEstrutura = [];
 
             if (!modeloGeral) return;
 
-            const letras = Array.from(obterLetrasEstruturasDoModelo()).sort();
+            /* 1) Agrupa por letra + bloco do galpão (objeto "pai" no Blender).
+                  Uma letra pode ter blocos em lugares diferentes (ex.: B no bloco
+                  do meio e no bloco curto); cada bloco ganha a sua placa. */
+            const grupos = {};
 
-            letras.forEach((letra, indice) => {
-                const pontos = [];
-                let minX = Infinity;
-                let maxX = -Infinity;
-                let minZ = Infinity;
-                let maxZ = -Infinity;
-                let maxY = -Infinity;
+            modeloGeral.traverse(child => {
+                if (!child.isMesh) return;
 
-                modeloGeral.traverse(child => {
-                    if (!child.isMesh) return;
+                const endereco = extrairChaveEndereco(child.name);
+                if (!endereco) return;
 
-                    const endereco = extrairChaveEndereco(child.name);
-                    if (!endereco) return;
+                const m = endereco.match(/^([A-Z])\d{2}/);
+                if (!m) return;
 
-                    const match = endereco.match(/^([A-Z])\d{2}/);
-                    if (!match || match[1] !== letra) return;
+                const letra = m[1];
+                const pai = (child.parent && child.parent.name) ? child.parent.name : '_';
+                const chave = letra + '|' + pai;
 
-                    const pos = new THREE.Vector3();
-                    child.getWorldPosition(pos);
-                    pontos.push(pos);
-
-                    try {
-                        const box = new THREE.Box3().setFromObject(child);
-                        minX = Math.min(minX, box.min.x);
-                        maxX = Math.max(maxX, box.max.x);
-                        minZ = Math.min(minZ, box.min.z);
-                        maxZ = Math.max(maxZ, box.max.z);
-                        maxY = Math.max(maxY, box.max.y);
-                    }
-                    catch (e) {}
+                const g = grupos[chave] || (grupos[chave] = {
+                    letra: letra, n: 0,
+                    minX: Infinity, maxX: -Infinity,
+                    minZ: Infinity, maxZ: -Infinity,
+                    maxY: -Infinity
                 });
 
-                if (pontos.length === 0) return;
+                try {
+                    const box = new THREE.Box3().setFromObject(child);
+                    g.n++;
+                    g.minX = Math.min(g.minX, box.min.x);
+                    g.maxX = Math.max(g.maxX, box.max.x);
+                    g.minZ = Math.min(g.minZ, box.min.z);
+                    g.maxZ = Math.max(g.maxZ, box.max.z);
+                    g.maxY = Math.max(g.maxY, box.max.y);
+                }
+                catch (e) {}
+            });
 
-                const centro = new THREE.Vector3();
-                pontos.forEach(p => centro.add(p));
-                centro.divideScalar(pontos.length);
+            const porLetra = {};
+            Object.keys(grupos).forEach(k => {
+                const g = grupos[k];
+                (porLetra[g.letra] = porLetra[g.letra] || []).push(g);
+            });
 
-                if (!isFinite(maxY)) maxY = centro.y;
+            /* 2) Por letra: descarta objetos soltos (poucos itens) e junta blocos colados */
+            const folga = Math.max(tamanhoMax * 0.04, 2.0);
 
-                if (!isFinite(minX) || !isFinite(maxX)) {
-                    minX = centro.x - tamanhoMax * 0.25;
-                    maxX = centro.x + tamanhoMax * 0.25;
+            Object.keys(porLetra).sort().forEach(letra => {
+                const todos = porLetra[letra];
+                const maior = Math.max.apply(null, todos.map(g => g.n));
+                let blocos = todos.filter(g => g.n >= Math.max(5, maior * 0.3));
+
+                if (blocos.length === 0) {
+                    blocos = [todos.slice().sort((a, b) => b.n - a.n)[0]];
                 }
 
-                if (!isFinite(minZ) || !isFinite(maxZ)) {
-                    minZ = centro.z;
-                    maxZ = centro.z;
+                let mudou = true;
+                while (mudou) {
+                    mudou = false;
+
+                    for (let i = 0; i < blocos.length && !mudou; i++) {
+                        for (let j = i + 1; j < blocos.length && !mudou; j++) {
+                            const a = blocos[i];
+                            const b = blocos[j];
+                            const sepX = Math.max(a.minX - b.maxX, b.minX - a.maxX);
+                            const sepZ = Math.max(a.minZ - b.maxZ, b.minZ - a.maxZ);
+
+                            if (sepX <= folga && sepZ <= folga) {
+                                a.n += b.n;
+                                a.minX = Math.min(a.minX, b.minX);
+                                a.maxX = Math.max(a.maxX, b.maxX);
+                                a.minZ = Math.min(a.minZ, b.minZ);
+                                a.maxZ = Math.max(a.maxZ, b.maxZ);
+                                a.maxY = Math.max(a.maxY, b.maxY);
+                                blocos.splice(j, 1);
+                                mudou = true;
+                            }
+                        }
+                    }
                 }
 
-                const dx = maxX - minX;
-                const dz = maxZ - minZ;
-                const corredorHorizontal = dx > dz; // true = prateleira esticada no eixo X
+                blocos.forEach(b => criarPlacaDoBloco(letra, b));
+            });
+        }
 
-                /* -------------------------------------------------
-                   DISTRIBUIÇÃO LATERAL: evita placas sobrepostas
-                   Alterna as placas em 3 grupos (esquerda / centro / direita),
-                   deslocando no eixo PERPENDICULAR ao corredor. Assim,
-                   corredores vizinhos nunca ficam com a letra empilhada
-                   uma sobre a outra, mesmo vistos de cima.
-                   ------------------------------------------------- */
-                const grupoLateral = indice % 3; // 0 = esquerda, 1 = centro, 2 = direita
-                const passoLateral = Math.max(tamanhoMax * 0.055, 1.6);
+        /* Placa na PONTA do corredor (lado de maior Z; maior X se o corredor for horizontal),
+           sempre à mesma altura relativa. Uma linha pontilhada mostra a extensão do bloco. */
+        function criarPlacaDoBloco(letra, b) {
+            const dx = b.maxX - b.minX;
+            const dz = b.maxZ - b.minZ;
+            const horizontal = dx > dz;
+            const cx = (b.minX + b.maxX) / 2;
+            const cz = (b.minZ + b.maxZ) / 2;
+            const margem = Math.max(tamanhoMax * 0.015, 0.25);
+            const yTopo = isFinite(b.maxY) ? b.maxY : 1;
+            const yLinha = yTopo + 0.45;
+            const yPlaca = Math.max(yTopo, 1.2) + Math.max(tamanhoMax * 0.025, 1.3);
 
-                let offsetLateral = 0;
-                if (grupoLateral === 0) offsetLateral = -passoLateral;
-                else if (grupoLateral === 2) offsetLateral = passoLateral;
+            let px, pz, p1, p2, pontaX, pontaZ;
 
-                const centroPlaca = centro.clone();
-                if (corredorHorizontal) {
-                    centroPlaca.z += offsetLateral;
-                } else {
-                    centroPlaca.x += offsetLateral;
+            if (horizontal) {
+                px = b.maxX + margem * 4;
+                pz = cz;
+                pontaX = b.maxX + margem;
+                pontaZ = cz;
+                p1 = new THREE.Vector3(b.minX - margem, yLinha, cz);
+                p2 = new THREE.Vector3(pontaX, yLinha, cz);
+            }
+            else {
+                px = cx;
+                pz = b.maxZ + margem * 4;
+                pontaX = cx;
+                pontaZ = b.maxZ + margem;
+                p1 = new THREE.Vector3(cx, yLinha, b.minZ - margem);
+                p2 = new THREE.Vector3(cx, yLinha, pontaZ);
+            }
+
+            const div = document.createElement('div');
+            div.className = 'placa-corredor' + (estruturaFoco === letra ? ' ativa' : '');
+            div.innerText = letra;
+            div.title = 'Estrutura ' + letra + ' — clique para destacar';
+            div.style.display = estruturasVisiveis ? 'block' : 'none';
+            div.addEventListener('click', function(e) {
+                e.stopPropagation();
+                definirFoco(letra);
+            });
+
+            const placaCSS = new THREE.CSS2DObject(div);
+            placaCSS.position.set(px, yPlaca, pz);
+            placaCSS.visible = estruturasVisiveis;
+            placaCSS.userData.elemento = div;
+            placaCSS.userData.letra = letra;
+            placaCSS.userData.tipo = 'placa';
+
+            scene.add(placaCSS);
+            placasGeral.push(placaCSS);
+
+            /* Linha pontilhada ao longo do bloco + haste curta até a placa */
+            const matPont = new THREE.LineDashedMaterial({
+                color: 0x00f3ff,
+                dashSize: Math.max(tamanhoMax * 0.025, 0.35),
+                gapSize: Math.max(tamanhoMax * 0.015, 0.2),
+                transparent: true,
+                opacity: 0.8,
+                depthTest: false
+            });
+
+            const linha = new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1, p2]), matPont);
+            linha.computeLineDistances();
+            linha.frustumCulled = false;
+            linha.visible = estruturasVisiveis;
+            linha.userData.letra = letra;
+            linha.userData.tipo = 'guia';
+            scene.add(linha);
+            guiasEstrutura.push(linha);
+
+            const haste = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(pontaX, yLinha, pontaZ),
+                    new THREE.Vector3(px, yPlaca - 0.35, pz)
+                ]),
+                new THREE.LineBasicMaterial({ color: 0x00f3ff, transparent: true, opacity: 0.55, depthTest: false })
+            );
+            haste.frustumCulled = false;
+            haste.visible = estruturasVisiveis;
+            haste.userData.letra = letra;
+            haste.userData.tipo = 'guia';
+            scene.add(haste);
+            guiasEstrutura.push(haste);
+        }
+
+        /* Destaque local de uma estrutura (clique na placa); clicar de novo limpa */
+        function definirFoco(letra) {
+            estruturaFoco = (estruturaFoco === letra) ? null : letra;
+
+            placasGeral.forEach(p => {
+                p.userData.elemento.classList.toggle('ativa', p.userData.letra === estruturaFoco);
+            });
+
+            const chip = document.getElementById('chip-foco');
+            if (estruturaFoco) {
+                chip.innerHTML = 'Estrutura <b>' + estruturaFoco + '</b> em destaque &nbsp;✕';
+                chip.style.display = 'block';
+            }
+            else {
+                chip.style.display = 'none';
+            }
+
+            aplicarFiltrosECores();
+        }
+
+        document.getElementById('chip-foco').addEventListener('click', function() {
+            if (estruturaFoco) definirFoco(estruturaFoco);
+        });
+
+        /* Evita placas amontoadas: em cada quadro escolhe, em ordem de proximidade da câmera,
+           as que cabem sem encostar nas outras; as demais ficam transparentes até dar zoom. */
+        let quadroPlacas = 0;
+
+        function organizarPlacas() {
+            if (!estruturasVisiveis || placasGeral.length === 0) return;
+            if ((quadroPlacas++ % 8) !== 0) return;
+
+            const W = window.innerWidth;
+            const H = window.innerHeight;
+            const aceitas = [];
+
+            const calc = placasGeral.map(p => {
+                const v = p.position.clone().project(camera);
+                return {
+                    p: p,
+                    sx: (v.x * 0.5 + 0.5) * W,
+                    sy: (-v.y * 0.5 + 0.5) * H,
+                    fora: v.z > 1 || v.x < -1.05 || v.x > 1.05 || v.y < -1.05 || v.y > 1.05,
+                    prioridade: p.userData.letra === estruturaFoco ? -1 : v.z
+                };
+            }).sort((a, b) => a.prioridade - b.prioridade);
+
+            /* Se uma placa encosta em outra, tenta deslocá-la na vertical (±26 px, ±52 px);
+               só some se não achar espaço (reaparece ao dar zoom). */
+            const deslocamentos = [0, -26, 26, -52, 52];
+            const livre = (sx, sy) => aceitas.every(a => Math.abs(a.sx - sx) >= 30 || Math.abs(a.sy - sy) >= 25);
+
+            calc.forEach(c => {
+                const el = c.p.userData.elemento;
+                let ok = false;
+                let desloc = 0;
+
+                if (!c.fora) {
+                    for (let i = 0; i < deslocamentos.length; i++) {
+                        if (livre(c.sx, c.sy + deslocamentos[i])) {
+                            ok = true;
+                            desloc = deslocamentos[i];
+                            break;
+                        }
+                    }
                 }
 
-                /* -------------------------------------------------
-                   PLACA: Distribuída p/ não encavalar
-                   ------------------------------------------------- */
-                const div = document.createElement('div');
-                div.className = 'placa-corredor';
-                div.innerText = letra;
-                div.style.display = estruturasVisiveis ? 'block' : 'none';
-
-                const placaCSS = new THREE.CSS2DObject(div);
-
-                // Stagger vertical (degraus) baseado na letra + grupo lateral,
-                // reforça ainda mais a separação visual entre placas vizinhas
-                const hash = letra.charCodeAt(0);
-                const staggerY = (hash % 4) * 2.5 + grupoLateral * 1.3;
-                const alturaPlaca = maxY + 4.0 + staggerY;
-
-                placaCSS.position.set(centroPlaca.x, alturaPlaca, centroPlaca.z);
-                placaCSS.visible = estruturasVisiveis; // Bloqueio nativo do ThreeJS
-
-                placaCSS.userData.elemento = div;
-                placaCSS.userData.letra = letra;
-                placaCSS.userData.tipo = 'placa';
-
-                scene.add(placaCSS);
-                placasGeral.push(placaCSS);
-
-                /* -------------------------------------------------
-                   LINHA INDICADORA: quando a placa é deslocada p/ o
-                   lado, uma linha fina liga ela até o centro real da
-                   estrutura, mantendo claro a qual corredor pertence
-                   ------------------------------------------------- */
-                if (offsetLateral !== 0) {
-                    const pIndicA = new THREE.Vector3(centro.x, maxY + 0.6, centro.z);
-                    const pIndicB = new THREE.Vector3(centroPlaca.x, alturaPlaca - 0.3, centroPlaca.z);
-
-                    const geometryIndic = new THREE.BufferGeometry().setFromPoints([pIndicA, pIndicB]);
-                    const materialIndic = new THREE.LineBasicMaterial({
-                        color: 0x00f3ff,
-                        transparent: true,
-                        opacity: 0.5,
-                        depthTest: false
-                    });
-
-                    const linhaIndic = new THREE.Line(geometryIndic, materialIndic);
-                    linhaIndic.frustumCulled = false;
-                    linhaIndic.visible = estruturasVisiveis;
-                    linhaIndic.userData.letra = letra;
-                    linhaIndic.userData.tipo = 'guia';
-
-                    scene.add(linhaIndic);
-                    guiasEstrutura.push(linhaIndic);
-                }
-
-                /* -------------------------------------------------
-                   LINHA PONTILHADA: Verifica eixo maior da prateleira
-                   ------------------------------------------------- */
-                const margem = Math.max(tamanhoMax * 0.015, 0.25);
-                const yLinha = maxY + 0.45;
-
-                let p1, p2;
-                if (corredorHorizontal) {
-                    // Prateleira esticada no eixo X (Horizontal)
-                    p1 = new THREE.Vector3(minX - margem, yLinha, centro.z);
-                    p2 = new THREE.Vector3(maxX + margem, yLinha, centro.z);
-                } else {
-                    // Prateleira esticada no eixo Z (Vertical)
-                    p1 = new THREE.Vector3(centro.x, yLinha, minZ - margem);
-                    p2 = new THREE.Vector3(centro.x, yLinha, maxZ + margem);
-                }
-
-                const geometry = new THREE.BufferGeometry().setFromPoints([p1, p2]);
-                const material = new THREE.LineDashedMaterial({
-                        color: 0x00f3ff,
-                        dashSize: Math.max(tamanhoMax * 0.025, 0.35),
-                        gapSize: Math.max(tamanhoMax * 0.015, 0.2),
-                        transparent: true,
-                        opacity: 0.85,
-                        depthTest: false
-                    });
-
-                const linha = new THREE.Line(geometry, material);
-                linha.computeLineDistances();
-                linha.frustumCulled = false;
-                linha.visible = estruturasVisiveis;
-                linha.userData.letra = letra;
-                linha.userData.tipo = 'guia';
-
-                scene.add(linha);
-                guiasEstrutura.push(linha);
+                el.style.marginTop = desloc + 'px';
+                el.style.opacity = ok ? '1' : '0';
+                el.style.pointerEvents = ok ? 'auto' : 'none';
+                if (ok) aceitas.push({ sx: c.sx, sy: c.sy + desloc });
             });
         }
 
@@ -2281,36 +2402,37 @@
             let html = '';
 
             lista.forEach((registro, index) => {
-                html +=
-                    '<div class="kpi-produto-item">';
+                const linha = (rot, val, cor) => (val === null || val === undefined || val === '' || val === 'N/A')
+                    ? ''
+                    : '<div class="linha"><span class="rotulo">' + rot + '</span><span class="valor"' +
+                      (cor ? ' style="color:' + cor + '"' : '') + '>' + escaparHTML(val) + '</span></div>';
 
-                html +=
-                    '<div class="linha">' +
-                    '<span class="rotulo">Produto</span>' +
-                    '<span class="valor">' +
-                    escaparHTML(registro.produto) +
-                    '</span></div>';
+                const un = (registro.unidadeMedida && registro.unidadeMedida !== 'N/A') ? ' ' + registro.unidadeMedida : '';
+                const temSis = registro.qtdSistema !== '' && registro.qtdSistema !== undefined && registro.qtdSistema !== null;
+                const dif = extrairNumero(registro.diferenca);
 
-                html +=
-                    '<div class="linha">' +
-                    '<span class="rotulo">Código</span>' +
-                    '<span class="valor">' +
-                    escaparHTML(registro.codigoProduto) +
-                    '</span></div>';
+                html += '<div class="kpi-produto-item">';
+                html += '<div class="kpi-prod-titulo">' + escaparHTML(registro.produto) + '</div>';
+                html += linha('Código', registro.codigoProduto);
+                html += linha('Saldo', formatarNumero(registro.estoque, 0) + un);
+                html += linha('Custo unit.', registro.custoUnitario ? formatarMoeda(registro.custoUnitario) : '');
+                html += linha('Custo total', formatarMoeda(registro.custoTotal));
+                html += linha('Família', registro.familia);
+                html += linha('Segmento', registro.segmento);
+                html += linha('Giro', registro.giro);
+                html += linha('Validade', registro.validade);
+                html += linha('Filial', registro.filial ? registro.filial + (registro.armazem ? ' / ' + registro.armazem : '') : '');
+                html += linha('Obsolescência', registro.classeObsol ? registro.classeObsol + ' meses' + (registro.valorObsoleto ? ' · ' + formatarMoeda(registro.valorObsoleto) : '') : '');
+                html += linha('Fonte', registro.fonte);
 
-                html +=
-                    '<div class="linha">' +
-                    '<span class="rotulo">Saldo Atual</span>' +
-                    '<span class="valor">' +
-                    formatarNumero(registro.estoque, 0) +
-                    '</span></div>';
+                if (temSis) {
+                    html += linha('Qtd sistema', formatarNumero(extrairNumero(registro.qtdSistema), 0));
+                    html += linha('Diferença', formatarNumero(dif, 0), dif !== 0 ? '#ff6b6b' : '#6bff9a');
+                }
 
-                html +=
-                    '<div class="linha">' +
-                    '<span class="rotulo">Custo Total</span>' +
-                    '<span class="valor">' +
-                    formatarMoeda(registro.custoTotal) +
-                    '</span></div>';
+                if (registro.diverg) {
+                    html += linha('Conferência', registro.diverg, normalizarNome(registro.diverg) === 'DIVERGE' ? '#ff6b6b' : '#6bff9a');
+                }
 
                 html += '</div>';
             });
@@ -2701,8 +2823,8 @@
 
                 e.target.innerText =
                     estruturasVisiveis
-                        ? 'Estruturas: Visíveis'
-                        : 'Estruturas: Ocultas';
+                        ? 'Letras: Visíveis'
+                        : 'Letras: Ocultas';
 
                 e.target.classList.toggle(
                     'btn-toggle-ativo',
@@ -2719,7 +2841,6 @@
                         : 'none';
 
                 if (
-                    estruturasVisiveis ||
                     modoStatusAtivo ||
                     modoWASD
                 ) {
@@ -2805,7 +2926,7 @@
                         'legenda-controles'
                     ).style.display = 'none';
 
-                    if (!modoStatusAtivo && !estruturasVisiveis) {
+                    if (!modoStatusAtivo) {
                         document.getElementById(
                             'hud-legenda'
                         ).style.display = 'none';
@@ -2891,6 +3012,7 @@
             }
 
             atualizarPulsoRealce();
+            organizarPlacas();
 
             renderer.render(scene, camera);
             labelRenderer.render(scene, camera);
@@ -2918,8 +3040,9 @@
         const PALETA_CAT = [0x4cc9f0, 0xf72585, 0x7209b7, 0x3a86ff, 0x06d6a0, 0xffd166, 0xef476f, 0x118ab2, 0x8338ec, 0xfb8500];
         const ORDEM_GIRO = ['NOVO', 'ALTO', 'MEDIO', 'BAIXO', 'SEM VENDA'];
         const COR_GIRO = { 'NOVO': 0x3498db, 'ALTO': 0x2ecc71, 'MEDIO': 0xf1c40f, 'BAIXO': 0xe67e22, 'SEM VENDA': 0xe74c3c };
-        const ORDEM_OBSOL = ['<3', '>3', '>6', '>9', '>12', '>24', '>36'];
-        const COR_OBSOL = { '<3': 0x2ecc71, '>3': 0x9bdc5a, '>6': 0xf1c40f, '>9': 0xffa500, '>12': 0xff7f0e, '>24': 0xe74c3c, '>36': 0x8e0e1d };
+        /* Faixas de meses sem movimento (o Power BI converte <3, >3, >6, >9, >12, >24, >36 nestas faixas) */
+        const ORDEM_OBSOL = ['0-3', '3-6', '6-9', '9-12', '12-24', '24-36', '36+'];
+        const COR_OBSOL = { '0-3': 0x2ecc71, '3-6': 0x9bdc5a, '6-9': 0xf1c40f, '9-12': 0xffa500, '12-24': 0xff7f0e, '24-36': 0xe74c3c, '36+': 0x8e0e1d };
 
         let cacheModo = { cor: {}, legenda: [], temDado: false, grad: false, max: 0 };
 
