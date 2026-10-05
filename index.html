@@ -699,7 +699,7 @@
             padding: 10px 14px;
             font-size: 12px;
             color: #e0f7fa;
-            width: 210px;
+            width: 262px;
             max-width: calc(50vw - 40px);
             backdrop-filter: blur(4px);
         }
@@ -716,6 +716,7 @@
         #legenda-modo .sw { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
         #legenda-modo .n { margin-left: auto; color: #80d8ff; font-variant-numeric: tabular-nums; }
         #legenda-modo .grad { height: 10px; border-radius: 5px; background: linear-gradient(90deg, #ffe9a8, #ff9f1c, #c1121f); margin: 4px 0 6px; }
+        #legenda-modo .n small { color: #9fc3d6; font-size: 10px; }
         #legenda-modo .nota { color: #9fc3d6; font-size: 11px; margin-top: 6px; line-height: 1.3; }
         #legenda-modo .resumo { margin-top: 8px; padding-top: 7px; border-top: 1px solid #005b7a; font-size: 11px; color: #cfe9f5; line-height: 1.5; }
         #legenda-modo .sobe { color: #6bff9a; }
@@ -774,6 +775,27 @@
         #hud-topo.hud-compacto .hud-box:nth-child(n+3) { display: none; }
         #hud-topo.hud-oculto { background: none; border: none; box-shadow: none; backdrop-filter: none; padding: 0; }
         #hud-topo.hud-oculto .hud-box { display: none; }
+
+        /* =========================================================
+           NITIDEZ DO TEXTO (HUD, tooltip, painéis)
+           Fundo desfocado (backdrop-filter) e brilho no texto (text-shadow) deixam a letra
+           "mole" no navegador do Power BI. Aqui ficam fundos sólidos e letras nítidas.
+           ========================================================= */
+        body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+        #hud-topo, #tooltip, #painel-kpi, #barra-modos, #barra-play, #legenda-modo,
+        #menu-opcoes, #hud-legenda, .btn-cam, .btn {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        .hud-box .valor, .tt-header, #painel-kpi .cabecalho, #legenda-modo h4 { text-shadow: none !important; }
+
+        #hud-topo { background: rgba(22, 40, 66, 0.96); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
+        #tooltip  { background: rgb(22, 40, 66); box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+        #painel-kpi { background-color: rgb(22, 40, 66); }
+        #barra-modos, #barra-play { background: rgba(22, 40, 66, 0.97); }
+        #legenda-modo { background: rgba(22, 40, 66, 0.97); }
     </style>
 
     <!-- =========================================================
@@ -2434,11 +2456,12 @@
                         alturaTooltip - 10;
                 }
 
+                /* pixel inteiro: posição fracionada deixa o texto do tooltip borrado */
                 tooltip.style.left =
-                    Math.max(10, left) + 'px';
+                    Math.round(Math.max(10, left)) + 'px';
 
                 tooltip.style.top =
-                    Math.max(10, top) + 'px';
+                    Math.round(Math.max(10, top)) + 'px';
             },
             { passive: true }
         );
@@ -3146,6 +3169,13 @@
 
         let cacheModo = { cor: {}, legenda: [], temDado: false, grad: false, max: 0 };
 
+        function moedaCurta(v) {
+            v = Number(v) || 0;
+            if (v >= 1e6) return 'R$ ' + (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi';
+            if (v >= 1e3) return 'R$ ' + Math.round(v / 1e3).toLocaleString('pt-BR') + ' mil';
+            return 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+        }
+
         function hexCss(n) {
             return '#' + n.toString(16).padStart(6, '0');
         }
@@ -3263,8 +3293,9 @@
 
             const marca = (k, rotulo, c) => {
                 cor[k] = c;
-                if (!cont[rotulo]) cont[rotulo] = { cor: c, n: 0 };
+                if (!cont[rotulo]) cont[rotulo] = { cor: c, n: 0, v: 0 };
                 cont[rotulo].n++;
+                cont[rotulo].v += (infoEnd[k] && infoEnd[k].total) || 0;
                 if (c !== COR_SEM_DADO) temDado = true;
             };
             const semDado = k => marca(k, 'Sem dado', COR_SEM_DADO);
@@ -3368,7 +3399,7 @@
                 });
             }
 
-            let legenda = Object.keys(cont).map(r => [r, cont[r].cor, cont[r].n]);
+            let legenda = Object.keys(cont).map(r => [r, cont[r].cor, cont[r].n, cont[r].v]);
 
             if (modoCor === 'obsoleto') {
                 const pos = r => { const m = /^Parado (.+) meses$/.exec(r); return m ? ORDEM_OBSOL.indexOf(m[1]) : 99; };
@@ -3385,9 +3416,11 @@
             else if (modoCor === 'familia' || modoCor === 'filial') {
                 legenda.sort((a, b) => b[2] - a[2]);
                 if (legenda.length > 8) {
-                    const resto = legenda.slice(8).reduce((s, x) => s + x[2], 0);
+                    const cauda = legenda.slice(8);
+                    const resto = cauda.reduce((s, x) => s + x[2], 0);
+                    const restoV = cauda.reduce((s, x) => s + (x[3] || 0), 0);
                     legenda = legenda.slice(0, 8);
-                    legenda.push(['Outras', COR_SEM_DADO, resto]);
+                    legenda.push(['Outras', COR_SEM_DADO, resto, restoV]);
                 }
             }
 
@@ -3421,9 +3454,12 @@
                 if (cacheModo.grad) {
                     h += '<div class="grad"></div><div class="it"><span>R$ 0</span><span class="n">' + escaparHTML(formatarMoeda(cacheModo.max)) + '</span></div>';
                 }
+                const mostraValor = modoCor !== 'variacao' && modoCor !== 'valor';
                 cacheModo.legenda.forEach(l => {
-                    h += '<div class="it"><span class="sw" style="background:' + hexCss(l[1]) + '"></span>' + escaparHTML(l[0]) + '<span class="n">' + l[2] + '</span></div>';
+                    h += '<div class="it"><span class="sw" style="background:' + hexCss(l[1]) + '"></span>' + escaparHTML(l[0]) +
+                        '<span class="n">' + l[2] + (mostraValor && l[3] > 0 ? ' <small>· ' + escaparHTML(moedaCurta(l[3])) + '</small>' : '') + '</span></div>';
                 });
+                if (mostraValor) h += '<div class="nota">números = endereços · valor em estoque</div>';
             }
 
             if (cacheModo.extra) h += cacheModo.extra;
