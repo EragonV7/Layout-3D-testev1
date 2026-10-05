@@ -358,6 +358,10 @@
         #painel-kpi .rotulo { flex-shrink: 0; }
 
         #chip-foco {
+            max-width: 38vw;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
             position: absolute;
             top: 15px;
             left: 50%;
@@ -716,6 +720,10 @@
         #legenda-modo .sw { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
         #legenda-modo .n { margin-left: auto; color: #80d8ff; font-variant-numeric: tabular-nums; }
         #legenda-modo .grad { height: 10px; border-radius: 5px; background: linear-gradient(90deg, #ffe9a8, #ff9f1c, #c1121f); margin: 4px 0 6px; }
+        #legenda-modo .it.clic { cursor: pointer; padding: 3px 5px; margin: 0 -5px 2px; border-radius: 5px; border: 1px solid transparent; }
+        #legenda-modo .it.clic:hover { background: rgba(0,243,255,0.12); border-color: #005b7a; }
+        #legenda-modo .it.sel { background: rgba(255,170,0,0.18); border-color: #ffaa00; font-weight: 700; }
+        #legenda-modo .it.apag { opacity: 0.45; }
         #legenda-modo .n small { color: #9fc3d6; font-size: 10px; }
         #legenda-modo .nota { color: #9fc3d6; font-size: 11px; margin-top: 6px; line-height: 1.3; }
         #legenda-modo .resumo { margin-top: 8px; padding-top: 7px; border-top: 1px solid #005b7a; font-size: 11px; color: #cfe9f5; line-height: 1.5; }
@@ -1077,6 +1085,7 @@
         let dataBaseSerie = '';   /* data da série que corresponde à data base (última <= data base) */
         let dataVis = '';         /* data que está sendo exibida (play) */
         let resumoVar = null;     /* total da variação (modo Variação) para o HUD */
+        let focoLegenda = new Set();   /* classes da legenda clicadas (destaque local no 3D) */
         let playTimer = null;
 
         let modeloGeral = null;
@@ -1780,8 +1789,9 @@
             let estoqueTotal = 0;
             let valorEstoqueTotal = 0;
 
+            /* Com foco na legenda, o HUD soma só os endereços em destaque */
             const enderecosNoPBI = new Set(
-                Object.keys(dadosPorEndereco)
+                Object.keys(dadosPorEndereco).filter(passaFocoLegenda)
             );
 
             enderecosNoPBI.forEach(endereco => {
@@ -1841,6 +1851,7 @@
             const endObs = new Set(), endVenc = new Set(), endDiv = new Set();
 
             Object.keys(dadosPorEndereco).forEach(k => {
+                if (!passaFocoLegenda(k)) return;
                 (dadosPorEndereco[k] || []).forEach(r => {
                     const v = Number(r.custoTotal) || 0;
                     total += v;
@@ -1970,10 +1981,20 @@
            ========================================================= */
 
         function temFiltroAtivo() {
-            return arrSelecionados.length > 0 || !!estruturaFoco;
+            return arrSelecionados.length > 0 || !!estruturaFoco || focoLegenda.size > 0;
+        }
+
+        /* Foco por clique na legenda: o endereço só passa se a classe dele está marcada */
+        function passaFocoLegenda(endereco) {
+            if (focoLegenda.size === 0) return true;
+            const k = extrairChaveEndereco(endereco) || normalizarNome(endereco);
+            const c = cacheModo.cls ? cacheModo.cls[k] : undefined;
+            return c !== undefined && focoLegenda.has(c);
         }
 
         function estaSelecionadoEndereco(endereco) {
+            if (!passaFocoLegenda(endereco)) return false;
+
             if (estruturaFoco) {
                 const ch = extrairChaveEndereco(endereco) || normalizarNome(endereco);
                 if (!ch || ch.charAt(0) !== estruturaFoco) return false;
@@ -2337,20 +2358,53 @@
                 p.userData.elemento.classList.toggle('ativa', p.userData.letra === estruturaFoco);
             });
 
+            atualizarChipFoco();
+            aplicarFiltrosECores();
+        }
+
+        /* Aviso do topo: mostra o que está em destaque (estrutura e/ou classes da legenda) */
+        function atualizarChipFoco() {
             const chip = document.getElementById('chip-foco');
-            if (estruturaFoco) {
-                chip.innerHTML = 'Estrutura <b>' + estruturaFoco + '</b> em destaque &nbsp;✕';
+            if (!chip) return;
+
+            const partes = [];
+            if (estruturaFoco) partes.push('Estrutura <b>' + escaparHTML(estruturaFoco) + '</b>');
+            if (focoLegenda.size > 0 && MODOS[modoCor]) {
+                partes.push(escaparHTML(MODOS[modoCor].rotulo) + ': <b>' + Array.from(focoLegenda).map(escaparHTML).join(', ') + '</b>');
+            }
+
+            if (partes.length > 0) {
+                chip.innerHTML = partes.join(' &nbsp;·&nbsp; ') + ' em destaque &nbsp;✕';
                 chip.style.display = 'block';
             }
             else {
                 chip.style.display = 'none';
             }
-
-            aplicarFiltrosECores();
         }
 
-        document.getElementById('chip-foco').addEventListener('click', function() {
-            if (estruturaFoco) definirFoco(estruturaFoco);
+        function limparFocos() {
+            estruturaFoco = null;
+            placasGeral.forEach(p => p.userData.elemento.classList.remove('ativa'));
+            focoLegenda.clear();
+            atualizarChipFoco();
+            renderLegendaModo();
+            aplicarFiltrosECores();
+            salvarEstado();
+        }
+
+        document.getElementById('chip-foco').addEventListener('click', limparFocos);
+
+        /* Clique numa classe da legenda: liga/desliga o destaque dela no 3D (várias classes podem ficar ligadas) */
+        document.getElementById('legenda-modo').addEventListener('click', function(e) {
+            const it = e.target.closest ? e.target.closest('.it[data-rot]') : null;
+            if (!it) return;
+            const rot = it.getAttribute('data-rot');
+            if (focoLegenda.has(rot)) focoLegenda.delete(rot);
+            else focoLegenda.add(rot);
+            atualizarChipFoco();
+            renderLegendaModo();
+            aplicarFiltrosECores();
+            salvarEstado();
         });
 
         /* Evita placas amontoadas: em cada quadro escolhe, em ordem de proximidade da câmera,
@@ -3329,6 +3383,12 @@
 
         /* Modos que funcionam em qualquer data da série (os demais precisam do detalhe da data base) */
         const MODOS_SERIE = ['valor', 'variacao'];
+        const FAIXAS_VALOR = [
+            { rot: 'Até R$ 1 mil', ate: 1e3, rep: 500 },
+            { rot: 'R$ 1 a 10 mil', ate: 1e4, rep: 5e3 },
+            { rot: 'R$ 10 a 100 mil', ate: 1e5, rep: 5e4 },
+            { rot: 'Acima de R$ 100 mil', ate: Infinity, rep: 5e5 }
+        ];
         const COR_VAR = { novo: 0x3498db, subiu: 0x2ecc71, caiu: 0xe67e22, zerou: 0xe74c3c, igual: 0x7f8c8d };
 
         const COR_VAZIO = 0x3f4a57;      /* endereço sem saldo */
@@ -3464,8 +3524,11 @@
             let max = 0;
             const chaves = Object.keys(infoEnd);
 
+            const cls = {};   /* endereço -> classe da legenda (usada pelo foco por clique na legenda) */
+
             const marca = (k, rotulo, c) => {
                 cor[k] = c;
+                cls[k] = rotulo;
                 if (!cont[rotulo]) cont[rotulo] = { cor: c, n: 0, v: 0 };
                 cont[rotulo].n++;
                 cont[rotulo].v += (infoEnd[k] && infoEnd[k].total) || 0;
@@ -3485,7 +3548,16 @@
                 ks.forEach(k => { const t = valorDe(k); if (t > max) max = t; });
                 ks.forEach(k => {
                     const t = valorDe(k);
-                    if (t > 0) { cor[k] = rampaValor(Math.log(1 + t) / Math.log(1 + max)); temDado = true; }
+                    if (t > 0) {
+                        cor[k] = rampaValor(Math.log(1 + t) / Math.log(1 + max));
+                        temDado = true;
+                        /* faixas de valor: servem para o foco por clique na legenda */
+                        const f = FAIXAS_VALOR.find(x => t < x.ate) || FAIXAS_VALOR[FAIXAS_VALOR.length - 1];
+                        cls[k] = f.rot;
+                        if (!cont[f.rot]) cont[f.rot] = { cor: rampaValor(Math.log(1 + f.rep) / Math.log(1 + Math.max(max, f.rep))), n: 0, v: 0 };
+                        cont[f.rot].n++;
+                        cont[f.rot].v += t;
+                    }
                     else { cor[k] = COR_SEM_DADO; }
                 });
             }
@@ -3594,12 +3666,25 @@
                     const cauda = legenda.slice(8);
                     const resto = cauda.reduce((s, x) => s + x[2], 0);
                     const restoV = cauda.reduce((s, x) => s + (x[3] || 0), 0);
+                    const nomesCauda = new Set(cauda.map(x => x[0]));
+                    Object.keys(cls).forEach(k => { if (nomesCauda.has(cls[k])) cls[k] = 'Outras'; });
                     legenda = legenda.slice(0, 8);
                     legenda.push(['Outras', COR_SEM_DADO, resto, restoV]);
                 }
             }
+            else if (modoCor === 'valor') {
+                const pos = r => FAIXAS_VALOR.findIndex(f => f.rot === r);
+                legenda.sort((a, b) => pos(b[0]) - pos(a[0]));
+            }
 
-            cacheModo = { cor: cor, legenda: legenda, temDado: temDado, grad: grad, max: max, extra: extra, msgVazio: msgVazio };
+            /* Foco da legenda: descarta classes que não existem mais (ex.: mudou o filtro ou a data) */
+            if (focoLegenda.size > 0 && legenda.length > 0) {
+                const existentes = new Set(legenda.map(x => x[0]));
+                Array.from(focoLegenda).forEach(r => { if (!existentes.has(r)) focoLegenda.delete(r); });
+            }
+
+            cacheModo = { cor: cor, cls: cls, legenda: legenda, temDado: temDado, grad: grad, max: max, extra: extra, msgVazio: msgVazio };
+            atualizarChipFoco();
         }
 
         function corDoModo(endereco) {
@@ -3629,12 +3714,16 @@
                 if (cacheModo.grad) {
                     h += '<div class="grad"></div><div class="it"><span>R$ 0</span><span class="n">' + escaparHTML(formatarMoeda(cacheModo.max)) + '</span></div>';
                 }
-                const mostraValor = modoCor !== 'variacao' && modoCor !== 'valor';
+                const mostraValor = modoCor !== 'variacao';
+                const temFoco = focoLegenda.size > 0;
                 cacheModo.legenda.forEach(l => {
-                    h += '<div class="it"><span class="sw" style="background:' + hexCss(l[1]) + '"></span>' + escaparHTML(l[0]) +
+                    const sel = focoLegenda.has(l[0]);
+                    h += '<div class="it clic' + (sel ? ' sel' : (temFoco ? ' apag' : '')) + '" data-rot="' + escaparHTML(l[0]) + '" title="Clique para destacar só esta classe no 3D">' +
+                        '<span class="sw" style="background:' + hexCss(l[1]) + '"></span>' + escaparHTML(l[0]) +
                         '<span class="n">' + l[2] + (mostraValor && l[3] > 0 ? ' <small>· ' + escaparHTML(moedaCurta(l[3])) + '</small>' : '') + '</span></div>';
                 });
-                if (mostraValor) h += '<div class="nota">números = endereços · valor em estoque</div>';
+                h += '<div class="nota">' + (temFoco ? 'Clique de novo na classe (ou no aviso do topo) para limpar o destaque.' : 'Clique numa classe para destacar só ela no 3D.') +
+                    (mostraValor ? '<br>números = endereços · valor em estoque' : '') + '</div>';
             }
 
             if (cacheModo.extra) h += cacheModo.extra;
@@ -3679,6 +3768,7 @@
 
         function aplicarModo(m) {
             if (!MODOS[m]) return;
+            if (m !== modoCor) focoLegenda.clear();
             modoCor = m;
             /* Os modos com detalhe (obsoleto, validade...) só existem na data base: volta para ela */
             if (MODOS_SERIE.indexOf(m) < 0 && dataVis !== dataBaseSerie) {
@@ -3783,7 +3873,7 @@
         function irParaData(dt) {
             if (serieDatas.indexOf(dt) < 0) return;
             dataVis = dt;
-            if (dt !== dataBaseSerie && MODOS_SERIE.indexOf(modoCor) < 0) modoCor = 'variacao';
+            if (dt !== dataBaseSerie && MODOS_SERIE.indexOf(modoCor) < 0) { modoCor = 'variacao'; focoLegenda.clear(); }
             recalcularModo();
             atualizarBarraModos();
             renderLegendaModo();
@@ -3799,7 +3889,7 @@
 
         function iniciarPlay() {
             if (serieDatas.length < 2) return;
-            if (modoCor !== 'valor' && modoCor !== 'variacao') modoCor = 'variacao';
+            if (modoCor !== 'valor' && modoCor !== 'variacao') { modoCor = 'variacao'; focoLegenda.clear(); }
             let i = serieDatas.indexOf(dataVis);
             if (i >= serieDatas.length - 1) { irParaData(serieDatas[0]); i = 0; }
 
@@ -3935,7 +4025,7 @@
 
         function salvarEstado() {
             try {
-                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta };
+                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, foco: Array.from(focoLegenda) };
                 if (lembrarCamera) {
                     est.cam = camera.position.toArray();
                     est.tgt = controls.target.toArray();
@@ -3973,7 +4063,10 @@
         (function restaurarEstadoInicial() {
             const est = lerEstado();
             if (est) {
-                if (MODOS[est.modo]) modoCor = est.modo;
+                if (MODOS[est.modo]) {
+                    modoCor = est.modo;
+                    if (Array.isArray(est.foco)) focoLegenda = new Set(est.foco);
+                }
                 if (HUD_NIVEIS.indexOf(est.hud) >= 0) hudModo = est.hud;
                 if (est.lembrar === false) lembrarCamera = false;
                 if (est.qual === false) { qualidadeAlta = false; aplicarQualidade(); }
