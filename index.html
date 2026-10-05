@@ -811,7 +811,8 @@
             <button class="btn btn-toggle-ativo" id="btn-estrutura" title="Mostra a letra de cada estrutura (clique na letra para destacar a estrutura)">Letras: Visíveis</button>
             <button class="btn btn-cinema" id="btn-cinema">Modo Cinemático</button>
             <button class="btn" id="btn-hud" title="Alterna o painel de números do canto superior direito">HUD: Completo</button>
-            <button class="btn btn-toggle-ativo" id="btn-lembrar" title="Ao filtrar no Power BI o mapa recarrega; esta opção mantém a câmera e o modo de cor">Lembrar câmera: Sim</button>
+            <button class="btn btn-toggle-ativo" id="btn-qualidade" title="Alta = imagem mais lisa (usa mais da placa de vídeo). Normal = mais leve em computadores fracos">Qualidade: Alta</button>
+            <button class="btn btn-toggle-ativo" id="btn-lembrar"title="Ao filtrar no Power BI o mapa recarrega; esta opção mantém a câmera e o modo de cor">Lembrar câmera: Sim</button>
         </div>
         <button class="btn btn-status" id="btn-status">Modo: Status (Desligado)</button>
     </div>
@@ -1017,6 +1018,7 @@
         let infoEnd = {};
         let hudModo = 'completo';
         let lembrarCamera = true;
+        let qualidadeAlta = true;
 
         /* Série histórica (play/variação): data -> { endereco: [qtd, valor] } */
         let serieDados = {};
@@ -1399,7 +1401,12 @@
         });
 
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        /* Qualidade "Alta" desenha em 2x e o navegador reduz: bordas lisas mesmo em tela comum (ratio 1) */
+        function ratioQualidade() {
+            const dpr = window.devicePixelRatio || 1;
+            return qualidadeAlta ? Math.min(Math.max(dpr, 2), 3) : Math.min(dpr, 2);
+        }
+        renderer.setPixelRatio(ratioQualidade());
         renderer.domElement.style.display = 'block';
         renderer.domElement.style.touchAction = 'none';
         document.getElementById('canvas-container').appendChild(renderer.domElement);
@@ -3717,7 +3724,7 @@
 
         function salvarEstado() {
             try {
-                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera };
+                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta };
                 if (lembrarCamera) {
                     est.cam = camera.position.toArray();
                     est.tgt = controls.target.toArray();
@@ -3736,6 +3743,20 @@
             salvarEstado();
         });
 
+        function aplicarQualidade() {
+            renderer.setPixelRatio(ratioQualidade());
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            const b = document.getElementById('btn-qualidade');
+            b.innerText = 'Qualidade: ' + (qualidadeAlta ? 'Alta' : 'Normal');
+            b.classList.toggle('btn-toggle-ativo', qualidadeAlta);
+        }
+
+        document.getElementById('btn-qualidade').addEventListener('click', function() {
+            qualidadeAlta = !qualidadeAlta;
+            aplicarQualidade();
+            salvarEstado();
+        });
+
         controls.addEventListener('end', salvarEstado);
 
         (function restaurarEstadoInicial() {
@@ -3744,6 +3765,7 @@
                 if (MODOS[est.modo]) modoCor = est.modo;
                 if (HUD_NIVEIS.indexOf(est.hud) >= 0) hudModo = est.hud;
                 if (est.lembrar === false) lembrarCamera = false;
+                if (est.qual === false) { qualidadeAlta = false; aplicarQualidade(); }
             }
             btnLembrar.innerText = 'Lembrar câmera: ' + (lembrarCamera ? 'Sim' : 'Não');
             btnLembrar.classList.toggle('btn-toggle-ativo', lembrarCamera);
