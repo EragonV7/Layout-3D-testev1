@@ -213,9 +213,33 @@
             border-top: 4px solid #00f3ff;
             min-width: 260px;
             max-width: 420px;
-            max-height: 70vh;
-            overflow-y: auto;
-            backdrop-filter: blur(4px);
+            overflow: hidden;   /* sem rolagem: o tooltip não recebe o mouse (rolagem deixava o texto borrado) */
+        }
+
+        /* Conferência por item (tooltip e painel do modo Divergência) */
+        .cf-sub { font-size: 11px; color: #9fc3d6; margin-bottom: 5px; line-height: 1.35; }
+        .cf-em { color: #ffd166; }
+        .cf-bloco { border: 1px solid #005b7a; border-radius: 6px; overflow: hidden; margin: 2px 0 2px; }
+        .cf-lin { display: flex; align-items: center; gap: 8px; padding: 3px 8px; font-size: 12px; border-top: 1px solid rgba(0,91,122,0.5); }
+        .cf-lin:first-child { border-top: none; }
+        .cf-rot { flex: 1; color: #cfe9f5; }
+        .cf-rot small { color: #7fa4b8; font-size: 10px; }
+        .cf-val { font-weight: 700; color: #fff; text-align: right; font-variant-numeric: tabular-nums; }
+        .cf-dif { min-width: 46px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .cf-ref { background: rgba(0,243,255,0.10); }
+        .cf-ref .cf-rot { color: #00f3ff; font-weight: 700; }
+        .cf-bom .cf-dif { color: #6bff9a; }
+        .cf-ruim { background: rgba(231,76,60,0.18); }
+        .cf-ruim .cf-val, .cf-ruim .cf-dif { color: #ff8a80; }
+        .cf-sem { font-size: 11px; color: #9fc3d6; padding: 4px 0; }
+
+        .tt-resto {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0,91,122,0.65);
+            color: #9fc3d6;
+            font-size: 12px;
+            line-height: 1.4;
         }
 
         .tt-header {
@@ -1110,6 +1134,7 @@
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         const tooltip = document.getElementById('tooltip');
+        let ultimoHtmlTT = '';
         const painelKPI = document.getElementById('painel-kpi');
 
         /* =========================================================
@@ -1375,7 +1400,17 @@
                             classeObsol: d['classe_obsoleto'] ?? '',
                             diverg: d['diverg'] ?? '',
                             qtdSistema: d['qtd_sistema'] ?? '',
-                            diferenca: d['diferenca'] ?? ''
+                            diferenca: d['diferenca'] ?? '',
+
+                            /* Conferência do item (Filial x Armazém x Produto) entre os relatórios */
+                            concEnd: d['conc_end'] ?? '',
+                            concSa: d['conc_sa'] ?? '',
+                            concPos: d['conc_pos'] ?? '',
+                            concSlow: d['conc_slow'] ?? '',
+                            dtSa: d['dt_sa'] ?? '',
+                            dtPos: d['dt_pos'] ?? '',
+                            dtSlow: d['dt_slow'] ?? '',
+                            divergEm: d['diverg_em'] ?? ''
                         };
 
                         const endKey =
@@ -2474,107 +2509,114 @@
            15. TOOLTIP MULTIPRODUTO
            ========================================================= */
 
-        function montarHTMLTooltip(endereco, registros) {
-            let html = '';
-
-            html += '<div class="tt-header">' +
-                escaparHTML(endereco) +
-                '</div>';
-
-            if (!registros || registros.length === 0) {
-                html +=
-                    '<div class="tt-line">' +
-                    '<span class="tt-label">Dados</span>' +
-                    '<span class="tt-value">Sem dados</span>' +
-                    '</div>';
-
-                return html;
+        /* Conferência de UM item: quanto cada relatório diz e qual deles não bate com o Saldo por Endereço (norte) */
+        function blocoConferencia(r) {
+            const tem = v => v !== '' && v !== undefined && v !== null;
+            if (!tem(r.concEnd)) {
+                return '<div class="cf-sem">Item fora da conferência (filial/armazém sem endereço ou item só em contagem).</div>';
             }
 
-            html +=
-                '<div class="tt-line">' +
-                '<span class="tt-label">Produtos</span>' +
-                '<span class="tt-value">' +
-                formatarNumero(registros.length, 0) +
-                '</span></div>';
+            const diverge = normalizarNome(r.diverg) === 'DIVERGE';
+            const n = extrairNumero(r.concEnd);
+            const fmt = v => formatarNumero(v, Math.abs(v % 1) > 0.0001 ? 2 : 0);
 
-            registros.forEach((registro, index) => {
-                html +=
-                    '<div class="tt-produto">';
+            const fontes = [
+                ['Saldo atual', r.concSa, r.dtSa],
+                ['Posição estoque', r.concPos, r.dtPos],
+                ['Slowmove', r.concSlow, r.dtSlow]
+            ];
 
-                html +=
-                    '<div class="tt-produto-titulo">' +
-                    escaparHTML(
-                        registro.produto ||
-                        'Produto ' + (index + 1)
-                    ) +
-                    '</div>';
+            let h = '<div class="cf-bloco">';
+            h += '<div class="cf-lin cf-ref"><span class="cf-rot">Saldo por endereço <small>(todos os endereços)</small></span><span class="cf-val">' + fmt(n) + '</span><span class="cf-dif"></span></div>';
 
-                html +=
-                    '<div class="tt-line">' +
-                    '<span class="tt-label">Código</span>' +
-                    '<span class="tt-value">' +
-                    escaparHTML(registro.codigoProduto) +
-                    '</span></div>';
+            fontes.forEach(f => {
+                /* no "Confere" o Power BI manda só o saldo por endereço: os demais são iguais a ele */
+                const valor = diverge ? (tem(f[1]) ? extrairNumero(f[1]) : null) : n;
+                const dif = (valor === null ? 0 : valor) - n;
+                const ruim = Math.abs(dif) > 0.005;
+                const dt = (diverge && f[2]) ? ' <small>(' + escaparHTML(f[2]) + ')</small>' : '';
 
-                html +=
-                    '<div class="tt-line">' +
-                    '<span class="tt-label">Unidade</span>' +
-                    '<span class="tt-value">' +
-                    escaparHTML(registro.unidadeMedida) +
-                    '</span></div>';
+                h += '<div class="cf-lin ' + (ruim ? 'cf-ruim' : 'cf-bom') + '"><span class="cf-rot">' + f[0] + dt + '</span>' +
+                    '<span class="cf-val">' + (valor === null ? 'não consta' : fmt(valor)) + '</span>' +
+                    '<span class="cf-dif">' + (ruim ? (dif > 0 ? '+' : '−') + fmt(Math.abs(dif)) : '✓') + '</span></div>';
+            });
 
-                html +=
-                    '<div class="tt-line">' +
-                    '<span class="tt-label">Saldo Atual</span>' +
-                    '<span class="tt-value">' +
-                    formatarNumero(registro.estoque, 0) +
-                    '</span></div>';
+            h += '</div>';
+            return h;
+        }
 
-                html +=
-                    '<div class="tt-line">' +
-                    '<span class="tt-label">Custo Unit.</span>' +
-                    '<span class="tt-value">' +
-                    formatarMoeda(registro.custoUnitario) +
-                    '</span></div>';
+        /* Tooltip do modo Divergência: só a conferência, por item */
+        function montarHTMLTooltipConf(endereco, registros) {
+            const ehDiv = r => normalizarNome(r.diverg) === 'DIVERGE';
+            const ordenados = registros.slice().sort((a, b) =>
+                (ehDiv(b) - ehDiv(a)) || ((Number(b.custoTotal) || 0) - (Number(a.custoTotal) || 0)));
+            const nDiv = ordenados.filter(ehDiv).length;
+            const MAX = Math.max(1, Math.min(3, Math.floor((window.innerHeight - 170) / 165)));
 
-                html +=
-                    '<div class="tt-line">' +
-                    '<span class="tt-label">Custo Total</span>' +
-                    '<span class="tt-value">' +
-                    formatarMoeda(registro.custoTotal) +
-                    '</span></div>';
+            let h = '<div class="tt-header">' + escaparHTML(endereco) + '</div>';
+            h += '<div class="tt-line"><span class="tt-label">Itens no endereço</span><span class="tt-value">' + formatarNumero(registros.length, 0) + '</span></div>';
+            h += '<div class="tt-line"><span class="tt-label">Itens que divergem</span><span class="tt-value" style="color:' + (nDiv > 0 ? '#ff6b6b' : '#6bff9a') + '">' + formatarNumero(nDiv, 0) + '</span></div>';
 
-                html +=
-                    '<div class="tt-line">' +
-                    '<span class="tt-label">Segmento</span>' +
-                    '<span class="tt-value">' +
-                    escaparHTML(registro.segmento) +
-                    '</span></div>';
+            ordenados.slice(0, MAX).forEach(r => {
+                const un = (r.unidadeMedida && r.unidadeMedida !== 'N/A') ? ' ' + r.unidadeMedida : '';
+                h += '<div class="tt-produto"><div class="tt-produto-titulo">' + escaparHTML(r.produto || 'Produto') + '</div>';
+                h += '<div class="cf-sub">' + escaparHTML(r.codigoProduto) + ' · neste endereço: ' + formatarNumero(r.estoque, 0) + un +
+                    (ehDiv(r) && r.divergEm ? ' · <b class="cf-em">diverge em: ' + escaparHTML(r.divergEm) + '</b>' : '') + '</div>';
+                h += blocoConferencia(r) + '</div>';
+            });
 
-                html +=
-                    '<div class="tt-line">' +
-                    '<span class="tt-label">Validade</span>' +
-                    '<span class="tt-value">' +
-                    escaparHTML(registro.validade) +
-                    '</span></div>';
+            if (ordenados.length > MAX) {
+                const resto = ordenados.slice(MAX);
+                h += '<div class="tt-resto">+ ' + formatarNumero(resto.length, 0) + ' item(ns), ' + resto.filter(ehDiv).length + ' divergente(s)<br>Clique no endereço para ver todos</div>';
+            }
 
-                html +=
-                    '<div class="tt-line">' +
-                    '<span class="tt-label">Família</span>' +
-                    '<span class="tt-value">' +
-                    escaparHTML(registro.familia) +
-                    '</span></div>';
+            return h;
+        }
 
-                html +=
-                    '<div class="tt-line">' +
-                    '<span class="tt-label">Giro</span>' +
-                    '<span class="tt-value">' +
-                    escaparHTML(registro.giro) +
-                    '</span></div>';
+        function montarHTMLTooltip(endereco, registros) {
+            if (modoCor === 'diverg' && registros && registros.length > 0) return montarHTMLTooltipConf(endereco, registros);
 
+            let html = '<div class="tt-header">' + escaparHTML(endereco) + '</div>';
+
+            if (!registros || registros.length === 0) {
+                return html + '<div class="tt-line"><span class="tt-label">Dados</span><span class="tt-value">Sem dados</span></div>';
+            }
+
+            const linha = (rot, val) => (val === null || val === undefined || val === '' || String(val).toUpperCase() === 'N/A')
+                ? ''
+                : '<div class="tt-line"><span class="tt-label">' + rot + '</span><span class="tt-value">' + escaparHTML(val) + '</span></div>';
+
+            /* Sem barra de rolagem: o tooltip não recebe o mouse, então só mostra os 2 primeiros produtos
+               (por valor) e resume o resto. O detalhe completo continua no painel ao clicar no endereço. */
+            const MAX_PROD = Math.max(1, Math.min(3, Math.floor((window.innerHeight - 170) / 215)));
+            const ordenados = registros.slice().sort((a, b) => (Number(b.custoTotal) || 0) - (Number(a.custoTotal) || 0));
+            const valorTotal = ordenados.reduce((s, r) => s + (Number(r.custoTotal) || 0), 0);
+
+            html += linha('Produtos', formatarNumero(registros.length, 0));
+            if (registros.length > 1) html += linha('Valor total', formatarMoeda(valorTotal));
+
+            ordenados.slice(0, MAX_PROD).forEach((registro, index) => {
+                const un = (registro.unidadeMedida && registro.unidadeMedida !== 'N/A') ? ' ' + registro.unidadeMedida : '';
+
+                html += '<div class="tt-produto"><div class="tt-produto-titulo">' + escaparHTML(registro.produto || 'Produto ' + (index + 1)) + '</div>';
+                html += linha('Código', registro.codigoProduto);
+                html += linha('Saldo', formatarNumero(registro.estoque, 0) + un);
+                html += linha('Custo unit.', registro.custoUnitario ? formatarMoeda(registro.custoUnitario) : '');
+                html += linha('Custo total', formatarMoeda(registro.custoTotal));
+                html += linha('Segmento', registro.segmento);
+                html += linha('Família', registro.familia);
+                html += linha('Giro', registro.giro);
+                html += linha('Validade', registro.validade);
+                html += linha('Obsolescência', registro.classeObsol ? registro.classeObsol + ' meses' : '');
                 html += '</div>';
             });
+
+            if (registros.length > MAX_PROD) {
+                const resto = ordenados.slice(MAX_PROD);
+                const vResto = resto.reduce((s, r) => s + (Number(r.custoTotal) || 0), 0);
+                html += '<div class="tt-resto">+ ' + formatarNumero(resto.length, 0) + ' produto(s) · ' + escaparHTML(formatarMoeda(vResto)) +
+                    '<br>Clique no endereço para ver todos</div>';
+            }
 
             return html;
         }
@@ -2649,11 +2691,12 @@
                     return;
                 }
 
-                tooltip.innerHTML =
-                    montarHTMLTooltip(
-                        hit.endereco,
-                        hit.registros
-                    );
+                /* só reescreve o conteúdo quando muda (evita repintar a cada pixel do mouse) */
+                const htmlTT = montarHTMLTooltip(hit.endereco, hit.registros);
+                if (htmlTT !== ultimoHtmlTT) {
+                    tooltip.innerHTML = htmlTT;
+                    ultimoHtmlTT = htmlTT;
+                }
 
                 tooltip.style.display = 'block';
 
@@ -2753,7 +2796,22 @@
                       (cor ? ' style="color:' + cor + '"' : '') + '>' + escaparHTML(val) + '</span></div>';
 
                 const un = (registro.unidadeMedida && registro.unidadeMedida !== 'N/A') ? ' ' + registro.unidadeMedida : '';
-                const temSis = registro.qtdSistema !== '' && registro.qtdSistema !== undefined && registro.qtdSistema !== null;
+
+                /* Modo Divergência: no painel só a conferência do item (qual relatório não bate) */
+                if (modoCor === 'diverg') {
+                    const divI = normalizarNome(registro.diverg) === 'DIVERGE';
+                    html += '<div class="kpi-produto-item">';
+                    html += '<div class="kpi-prod-titulo">' + escaparHTML(registro.produto) + '</div>';
+                    html += linha('Código', registro.codigoProduto);
+                    html += linha('Neste endereço', formatarNumero(registro.estoque, 0) + un);
+                    html += linha('Conferência', divI ? 'DIVERGE' : (registro.diverg ? 'Confere' : ''), divI ? '#ff6b6b' : '#6bff9a');
+                    if (divI) html += linha('Diverge em', registro.divergEm, '#ffd166');
+                    html += blocoConferencia(registro);
+                    html += '</div>';
+                    return;
+                }
+
+                const temSis =registro.qtdSistema !== '' && registro.qtdSistema !== undefined && registro.qtdSistema !== null;
                 const dif = extrairNumero(registro.diferenca);
 
                 html += '<div class="kpi-produto-item">';
