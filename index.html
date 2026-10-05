@@ -777,6 +777,30 @@
         #hud-topo.hud-oculto .hud-box { display: none; }
 
         /* =========================================================
+           HUD: data base, resumo do modo ativo e mini-barra por família
+           ========================================================= */
+        .hud-extra { flex-basis: 100%; display: none; color: #cfe9f5; font-size: 11px; }
+        #hud-topo.hud-compacto .hud-extra, #hud-topo.hud-oculto .hud-extra { display: none !important; }
+
+        #hud-data { text-align: center; color: #9fc3d6; border-top: 1px solid #005b7a; padding-top: 7px; }
+        #hud-data b { color: #00f3ff; font-weight: 700; }
+        #hud-data .aviso { color: #ffd166; }
+
+        #hud-resumo-modo { background: rgba(0,243,255,0.07); border: 1px solid #005b7a; border-left: 4px solid #00f3ff; border-radius: 6px; padding: 7px 10px; }
+        #hud-resumo-modo .rot { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #80d8ff; font-weight: 700; }
+        #hud-resumo-modo .val { font-size: 19px; font-weight: 700; color: #fff; margin: 1px 0; }
+        #hud-resumo-modo .sub { color: #9fc3d6; line-height: 1.35; }
+        #hud-resumo-modo .sobe { color: #6bff9a; }
+        #hud-resumo-modo .desce { color: #ff6b6b; }
+
+        #hud-familias .titulo-fam { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #80d8ff; font-weight: 700; margin-bottom: 4px; }
+        #hud-familias .barra { display: flex; height: 9px; border-radius: 5px; overflow: hidden; background: #0b1626; }
+        #hud-familias .barra span { display: block; height: 100%; }
+        #hud-familias .leg { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 5px; }
+        #hud-familias .leg span { white-space: nowrap; }
+        #hud-familias .leg i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+
+        /* =========================================================
            NITIDEZ DO TEXTO (HUD, tooltip, painéis)
            Fundo desfocado (backdrop-filter) e brilho no texto (text-shadow) deixam a letra
            "mole" no navegador do Power BI. Aqui ficam fundos sólidos e letras nítidas.
@@ -872,6 +896,10 @@
             <span class="titulo">Empilhadeira</span>
             <span class="valor" id="hud-emp" style="color: #00f3ff;">Inativa</span>
         </div>
+
+        <div class="hud-extra" id="hud-data"></div>
+        <div class="hud-extra" id="hud-resumo-modo"></div>
+        <div class="hud-extra" id="hud-familias"></div>
 
         <div id="hud-filtro-ativo">
             🔍 Filtro ativo (Power BI): <span id="hud-filtro-texto">—</span>
@@ -1048,6 +1076,7 @@
         let dataBaseBI = '';      /* data base que o Power BI informou */
         let dataBaseSerie = '';   /* data da série que corresponde à data base (última <= data base) */
         let dataVis = '';         /* data que está sendo exibida (play) */
+        let resumoVar = null;     /* total da variação (modo Variação) para o HUD */
         let playTimer = null;
 
         let modeloGeral = null;
@@ -1790,6 +1819,150 @@
             document.getElementById('hud-debug').innerText = formatarNumero(enderecosNoPBI.size, 0);
             const elItens = document.getElementById('hud-itens');
             if (elItens) elItens.innerText = formatarNumero(produtos.size, 0);
+
+            atualizarHudExtra();
+        }
+
+        /* Linhas extras do HUD: data base, resumo do modo ativo e família (usa só o que o Power BI enviou) */
+        function atualizarHudExtra() {
+            const elData = document.getElementById('hud-data');
+            const elRes = document.getElementById('hud-resumo-modo');
+            const elFam = document.getElementById('hud-familias');
+            if (!elData || !elRes || !elFam) return;
+
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+
+            let total = 0, regs = 0;
+            const fam = {};
+            const filiais = {};
+            const endTotal = {};
+            const acc = { obs: 0, venc: 0, v30: 0, semVenda: 0, baixo: 0, diverge: 0 };
+            const endObs = new Set(), endVenc = new Set(), endDiv = new Set();
+
+            Object.keys(dadosPorEndereco).forEach(k => {
+                (dadosPorEndereco[k] || []).forEach(r => {
+                    const v = Number(r.custoTotal) || 0;
+                    total += v;
+                    regs++;
+                    endTotal[k] = (endTotal[k] || 0) + v;
+
+                    const f = String(r.familia || '').trim();
+                    const fn = (!f || normalizarNome(f) === 'N/A') ? 'Sem família' : f;
+                    fam[fn] = (fam[fn] || 0) + v;
+
+                    const fl = String(r.filial || '').trim();
+                    if (fl) filiais[fl] = (filiais[fl] || 0) + v;
+
+                    const vo = Number(r.valorObsoleto) || 0;
+                    if (vo > 0) { acc.obs += vo; endObs.add(k); }
+
+                    const d = parseDataBR(r.validade);
+                    if (d) {
+                        const dias = Math.floor((d - hoje) / 86400000);
+                        if (dias < 0) { acc.venc += v; endVenc.add(k); }
+                        else if (dias <= 30) acc.v30 += v;
+                    }
+
+                    const g = classeGiro(r.giro);
+                    if (g === 'SEM VENDA') acc.semVenda += v;
+                    else if (g === 'BAIXO') acc.baixo += v;
+
+                    const dv = normalizarNome(r.diverg);
+                    if (dv === 'DIVERGE' || dv === 'DIVERGENTE') { acc.diverge++; endDiv.add(k); }
+                });
+            });
+
+            const pct = x => (total > 0 ? Math.round((x / total) * 100) : 0) + '%';
+            const nEnd = n => formatarNumero(n, 0) + (n === 1 ? ' endereço' : ' endereços');
+            const topo = obj => {
+                let n = null, mv = -1;
+                Object.keys(obj).forEach(c => { if (obj[c] > mv) { mv = obj[c]; n = c; } });
+                return n === null ? null : [n, mv];
+            };
+
+            /* --- data base --- */
+            if (dataVis) {
+                let h = '📅 Saldo por endereço de <b>' + fmtDataISO(dataVis) + '</b>';
+                if (dataBaseBI && dataBaseBI !== dataBaseSerie) {
+                    h += ' <span class="aviso">(data base ' + fmtDataISO(dataBaseBI) + ': usa o arquivo mais recente até ela)</span>';
+                }
+                if (dataVis !== dataBaseSerie) {
+                    h += '<br><span class="aviso">Play em data anterior: números do HUD são de ' + fmtDataISO(dataBaseSerie) + '</span>';
+                }
+                elData.innerHTML = h;
+                elData.style.display = 'block';
+            }
+            else {
+                elData.style.display = 'none';
+            }
+
+            /* --- resumo do modo ativo --- */
+            let res = null;
+            if (regs > 0) {
+                if (modoCor === 'obsoleto') {
+                    res = ['Valor obsoleto', moedaCurta(acc.obs), pct(acc.obs) + ' do estoque · ' + nEnd(endObs.size)];
+                }
+                else if (modoCor === 'validade') {
+                    res = ['Valor vencido', moedaCurta(acc.venc),
+                        pct(acc.venc) + ' do estoque · ' + nEnd(endVenc.size) + '<br>Vence em até 30 dias: ' + moedaCurta(acc.v30)];
+                }
+                else if (modoCor === 'giro') {
+                    res = ['Sem venda (12 meses)', moedaCurta(acc.semVenda),
+                        pct(acc.semVenda) + ' do estoque<br>Baixo giro: ' + moedaCurta(acc.baixo)];
+                }
+                else if (modoCor === 'familia') {
+                    const t = topo(fam);
+                    if (t) res = ['Maior família', escaparHTML(t[0]), pct(t[1]) + ' do estoque · ' + moedaCurta(t[1])];
+                }
+                else if (modoCor === 'filial') {
+                    const t = topo(filiais);
+                    if (t) res = ['Maior filial', escaparHTML(t[0]), pct(t[1]) + ' do estoque · ' + moedaCurta(t[1])];
+                }
+                else if (modoCor === 'diverg') {
+                    res = ['Linhas divergentes', formatarNumero(acc.diverge, 0), nEnd(endDiv.size) + ' · de ' + formatarNumero(regs, 0) + ' linhas'];
+                }
+                else if (modoCor === 'valor') {
+                    const t = topo(endTotal);
+                    const dez = Object.keys(endTotal).map(k => endTotal[k]).sort((a, b) => b - a).slice(0, 10).reduce((s, x) => s + x, 0);
+                    if (t) res = ['Maior valor num endereço', escaparHTML(t[0]) + ' · ' + moedaCurta(t[1]), '10 maiores endereços = ' + pct(dez) + ' do estoque'];
+                }
+                else if (modoCor === 'variacao' && resumoVar) {
+                    const sobe = resumoVar.dif >= 0;
+                    res = ['Variação do valor', '<span class="' + (sobe ? 'sobe' : 'desce') + '">' + (sobe ? '▲ ' : '▼ ') + moedaCurta(Math.abs(resumoVar.dif)) + '</span>',
+                        fmtDataISO(resumoVar.de) + ' → ' + fmtDataISO(resumoVar.para)];
+                }
+            }
+
+            if (res) {
+                elRes.innerHTML = '<div class="rot">' + res[0] + '</div><div class="val">' + res[1] + '</div><div class="sub">' + res[2] + '</div>';
+                elRes.style.display = 'block';
+            }
+            else {
+                elRes.style.display = 'none';
+            }
+
+            /* --- mini-barra por família (top 5 + outras) --- */
+            let lista = Object.keys(fam).map(n => [n, fam[n]]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
+            if (total > 0 && lista.length > 0) {
+                if (lista.length > 5) {
+                    const resto = lista.slice(5).reduce((s, x) => s + x[1], 0);
+                    lista = lista.slice(0, 5);
+                    lista.push(['Outras', resto]);
+                }
+                let barra = '', leg = '';
+                lista.forEach(x => {
+                    const c = x[0] === 'Outras' || x[0] === 'Sem família' ? hexCss(COR_SEM_DADO) : hexCss(corPorHash(x[0]));
+                    const p = (x[1] / total) * 100;
+                    barra += '<span style="width:' + p.toFixed(2) + '%;background:' + c + '" title="' + escaparHTML(x[0]) + ' ' + Math.round(p) + '%"></span>';
+                    leg += '<span><i style="background:' + c + '"></i>' + escaparHTML(x[0].length > 18 ? x[0].slice(0, 17) + '…' : x[0]) + ' ' + Math.round(p) + '%</span>';
+                });
+                elFam.innerHTML = '<div class="titulo-fam">Valor por família</div><div class="barra">' + barra + '</div><div class="leg">' + leg + '</div>';
+                elFam.style.display = 'block';
+            }
+            else {
+                elFam.style.display = 'none';
+            }
         }
 
         /* =========================================================
@@ -3317,6 +3490,7 @@
                 });
             }
             else if (modoCor === 'variacao') {
+                resumoVar = null;
                 const i = serieDatas.indexOf(dataVis);
                 if (serieDatas.length < 2) {
                     msgVazio = 'Variação precisa de 2 ou mais datas de Saldo por Endereço.<br>Hoje só existe 1 data.';
@@ -3350,6 +3524,7 @@
                         else marca(k, 'Diminuiu', COR_VAR.caiu);
                     });
                     const dif = somaA - somaB;
+                    resumoVar = { dif: dif, de: serieDatas[i - 1], para: dataVis };
                     extra = '<div class="resumo">' + fmtDataISO(serieDatas[i - 1]) + ' &rarr; ' + fmtDataISO(dataVis) + '<br>' +
                         'Valor: ' + escaparHTML(formatarMoeda(somaB)) + ' &rarr; ' + escaparHTML(formatarMoeda(somaA)) + '<br>' +
                         '<span class="' + (dif >= 0 ? 'sobe' : 'desce') + '">' + (dif >= 0 ? '&#9650; ' : '&#9660; ') + escaparHTML(formatarMoeda(Math.abs(dif))) + '</span></div>';
