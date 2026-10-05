@@ -217,6 +217,7 @@
         }
 
         /* Conferência por item (tooltip e painel do modo Divergência) */
+        .an-box { background: rgba(255,193,7,0.12); border-left: 3px solid #ffc107; color: #ffd166; padding: 4px 8px; margin: 3px 0 5px; font-size: 11px; line-height: 1.4; border-radius: 4px; }
         .cf-sub { font-size: 11px; color: #9fc3d6; margin-bottom: 5px; line-height: 1.35; }
         .cf-em { color: #ffd166; }
         .cf-bloco { border: 1px solid #005b7a; border-radius: 6px; overflow: hidden; margin: 2px 0 2px; }
@@ -952,6 +953,7 @@
         <button class="modo" data-modo="familia" title="Família do produto">Família</button>
         <button class="modo" data-modo="filial" title="Filial">Filial</button>
         <button class="modo" data-modo="diverg" title="Conferência entre Saldo por Endereço, Saldo Atual, Posição e Slowmove">Divergência</button>
+        <button class="modo" data-modo="anomalia" title="Dado fora do normal nos relatórios do sistema: saldo ou valor negativo, quantidade sem custo, valor sem quantidade">Anomalias</button>
         <button class="modo" data-modo="variacao" title="O que mudou em relação à data anterior (precisa de 2+ datas de Saldo por Endereço)">Variação</button>
     </div>
     <div id="barra-play">
@@ -1410,7 +1412,10 @@
                             dtSa: d['dt_sa'] ?? '',
                             dtPos: d['dt_pos'] ?? '',
                             dtSlow: d['dt_slow'] ?? '',
-                            divergEm: d['diverg_em'] ?? ''
+                            divergEm: d['diverg_em'] ?? '',
+
+                            /* Dado fora do normal nos relatórios do sistema (saldo/valor negativo, sem custo...) */
+                            anomalia: d['anomalia'] ?? ''
                         };
 
                         const endKey =
@@ -1884,6 +1889,8 @@
             const endTotal = {};
             const acc = { obs: 0, venc: 0, v30: 0, semVenda: 0, baixo: 0, diverge: 0 };
             const endObs = new Set(), endVenc = new Set(), endDiv = new Set();
+            const anItens = new Set(), anEnd = new Set();
+            let anVal = 0;
 
             Object.keys(dadosPorEndereco).forEach(k => {
                 if (!passaFocoLegenda(k)) return;
@@ -1916,6 +1923,12 @@
 
                     const dv = normalizarNome(r.diverg);
                     if (dv === 'DIVERGE' || dv === 'DIVERGENTE') { acc.diverge++; endDiv.add(k); }
+
+                    if (r.anomalia) {
+                        anItens.add(r.codigoProduto + '|' + (r.filial || '') + '|' + (r.armazem || ''));
+                        anEnd.add(k);
+                        anVal += v;
+                    }
                 });
             });
 
@@ -1966,7 +1979,12 @@
                     if (t) res = ['Maior filial', escaparHTML(t[0]), pct(t[1]) + ' do estoque · ' + moedaCurta(t[1])];
                 }
                 else if (modoCor === 'diverg') {
-                    res = ['Linhas divergentes', formatarNumero(acc.diverge, 0), nEnd(endDiv.size) + ' · de ' + formatarNumero(regs, 0) + ' linhas'];
+                    res = ['Linhas divergentes', formatarNumero(acc.diverge, 0), nEnd(endDiv.size) + ' · de ' + formatarNumero(regs, 0) + ' linhas' +
+                        (anItens.size > 0 ? '<br>Com dado suspeito: ' + formatarNumero(anItens.size, 0) + ' item(ns)' : '')];
+                }
+                else if (modoCor === 'anomalia') {
+                    res = ['Itens com anomalia', formatarNumero(anItens.size, 0),
+                        nEnd(anEnd.size) + ' · valor envolvido ' + moedaCurta(anVal) + '<br>Itens sem endereço não aparecem no mapa'];
                 }
                 else if (modoCor === 'valor') {
                     const t = topo(endTotal);
@@ -2509,6 +2527,13 @@
            15. TOOLTIP MULTIPRODUTO
            ========================================================= */
 
+        /* Aviso de dado fora do normal (saldo/valor negativo, quantidade sem custo...) */
+        function blocoAnomalia(r) {
+            if (!r || !r.anomalia) return '';
+            const linhas = String(r.anomalia).split(' | ').map(escaparHTML).join('<br>');
+            return '<div class="an-box">⚠ Dado fora do normal<br>' + linhas + '</div>';
+        }
+
         /* Conferência de UM item: quanto cada relatório diz e qual deles não bate com o Saldo por Endereço (norte) */
         function blocoConferencia(r) {
             const tem = v => v !== '' && v !== undefined && v !== null;
@@ -2562,7 +2587,7 @@
                 h += '<div class="tt-produto"><div class="tt-produto-titulo">' + escaparHTML(r.produto || 'Produto') + '</div>';
                 h += '<div class="cf-sub">' + escaparHTML(r.codigoProduto) + ' · neste endereço: ' + formatarNumero(r.estoque, 0) + un +
                     (ehDiv(r) && r.divergEm ? ' · <b class="cf-em">diverge em: ' + escaparHTML(r.divergEm) + '</b>' : '') + '</div>';
-                h += blocoConferencia(r) + '</div>';
+                h += blocoAnomalia(r) + blocoConferencia(r) + '</div>';
             });
 
             if (ordenados.length > MAX) {
@@ -2599,6 +2624,7 @@
                 const un = (registro.unidadeMedida && registro.unidadeMedida !== 'N/A') ? ' ' + registro.unidadeMedida : '';
 
                 html += '<div class="tt-produto"><div class="tt-produto-titulo">' + escaparHTML(registro.produto || 'Produto ' + (index + 1)) + '</div>';
+                html += blocoAnomalia(registro);
                 html += linha('Código', registro.codigoProduto);
                 html += linha('Saldo', formatarNumero(registro.estoque, 0) + un);
                 html += linha('Custo unit.', registro.custoUnitario ? formatarMoeda(registro.custoUnitario) : '');
@@ -2802,6 +2828,7 @@
                     const divI = normalizarNome(registro.diverg) === 'DIVERGE';
                     html += '<div class="kpi-produto-item">';
                     html += '<div class="kpi-prod-titulo">' + escaparHTML(registro.produto) + '</div>';
+                html += blocoAnomalia(registro);
                     html += linha('Código', registro.codigoProduto);
                     html += linha('Neste endereço', formatarNumero(registro.estoque, 0) + un);
                     html += linha('Conferência', divI ? 'DIVERGE' : (registro.diverg ? 'Confere' : ''), divI ? '#ff6b6b' : '#6bff9a');
@@ -2816,6 +2843,7 @@
 
                 html += '<div class="kpi-produto-item">';
                 html += '<div class="kpi-prod-titulo">' + escaparHTML(registro.produto) + '</div>';
+                html += blocoAnomalia(registro);
                 html += linha('Código', registro.codigoProduto);
                 html += linha('Saldo', formatarNumero(registro.estoque, 0) + un);
                 html += linha('Custo unit.', registro.custoUnitario ? formatarMoeda(registro.custoUnitario) : '');
@@ -2834,7 +2862,13 @@
                 }
 
                 if (registro.diverg) {
-                    html += linha('Conferência', registro.diverg, normalizarNome(registro.diverg) === 'DIVERGE' ? '#ff6b6b' : '#6bff9a');
+                    const divP = normalizarNome(registro.diverg) === 'DIVERGE';
+                    html += linha('Conferência', divP ? 'DIVERGE' : 'Confere', divP ? '#ff6b6b' : '#6bff9a');
+                    /* em qualquer modo: se o item diverge, mostra quanto cada relatório diz */
+                    if (divP) {
+                        if (registro.divergEm) html += linha('Diverge em', registro.divergEm, '#ffd166');
+                        html += blocoConferencia(registro);
+                    }
                 }
 
                 html += '</div>';
@@ -3436,8 +3470,26 @@
             familia:  { rotulo: 'Família' },
             filial:   { rotulo: 'Filial' },
             diverg:   { rotulo: 'Divergência' },
+            anomalia: { rotulo: 'Anomalias' },
             variacao: { rotulo: 'Variação' }
         };
+
+        /* Anomalias: da menos para a mais grave */
+        const ORDEM_ANOM = ['Valor sem quantidade', 'Quantidade sem custo/valor', 'Valor negativo', 'Saldo negativo'];
+        const COR_ANOM = { 'Saldo negativo': 0xe74c3c, 'Valor negativo': 0xff7f0e, 'Quantidade sem custo/valor': 0xf1c40f, 'Valor sem quantidade': 0x9b59b6 };
+        const COR_SEM_ANOM = 0x2ecc71;
+        const COR_CONFERE_SUSPEITO = 0xf1c40f;
+
+        /* Texto da anomalia -> posição na ORDEM_ANOM (a mais grave que aparecer) */
+        function rankAnomalia(txt) {
+            const t = String(txt || '').toLowerCase();
+            let rk = -1;
+            if (t.indexOf('valor sem quantidade') >= 0) rk = Math.max(rk, 0);
+            if (t.indexOf('quantidade sem') >= 0) rk = Math.max(rk, 1);
+            if (t.indexOf('valor negativo') >= 0) rk = Math.max(rk, 2);
+            if (t.indexOf('saldo negativo') >= 0) rk = Math.max(rk, 3);
+            return rk;
+        }
 
         /* Modos que funcionam em qualquer data da série (os demais precisam do detalhe da data base) */
         const MODOS_SERIE = ['valor', 'variacao'];
@@ -3518,7 +3570,8 @@
                 const o = {
                     total: 0, giro: null, rankGiro: -1, dias: null,
                     fam: null, filial: null, obsol: null, rankObs: -1,
-                    obsolVal: 0, div: null
+                    obsolVal: 0, div: null,
+                    anom: null, rankAn: -1, nAn: 0, valAn: 0
                 };
                 const famAcc = {};
                 const filAcc = {};
@@ -3556,6 +3609,13 @@
                     const dv = normalizarNome(r.diverg);
                     if (dv === 'DIVERGE' || dv === 'DIVERGENTE') o.div = 'DIVERGE';
                     else if (dv === 'OK' && o.div !== 'DIVERGE') o.div = 'OK';
+
+                    if (r.anomalia) {
+                        o.nAn++;
+                        o.valAn += v;
+                        const rk = rankAnomalia(r.anomalia);
+                        if (rk > o.rankAn) { o.rankAn = rk; o.anom = ORDEM_ANOM[rk]; }
+                    }
                 });
 
                 const topo = acc => {
@@ -3697,10 +3757,19 @@
             }
             else if (modoCor === 'diverg') {
                 chaves.forEach(k => {
-                    const d = infoEnd[k].div;
+                    const o = infoEnd[k];
+                    const d = o.div;
                     if (d === 'DIVERGE') marca(k, 'Diverge', 0xe74c3c);
+                    else if (d === 'OK' && o.nAn > 0) marca(k, 'Confere, mas dado suspeito', COR_CONFERE_SUSPEITO);
                     else if (d === 'OK') marca(k, 'Confere', 0x2ecc71);
                     else semDado(k);
+                });
+            }
+            else if (modoCor === 'anomalia') {
+                chaves.forEach(k => {
+                    const o = infoEnd[k];
+                    if (o.anom) marca(k, o.anom === 'Quantidade sem custo/valor' ? o.anom : o.anom, COR_ANOM[o.anom]);
+                    else marca(k, 'Sem anomalia', COR_SEM_ANOM);
                 });
             }
 
@@ -3716,6 +3785,14 @@
             }
             else if (modoCor === 'variacao') {
                 const ord = ['Passou a ter saldo', 'Aumentou', 'Diminuiu', 'Ficou vazio', 'Sem mudança'];
+                legenda.sort((a, b) => ord.indexOf(a[0]) - ord.indexOf(b[0]));
+            }
+            else if (modoCor === 'anomalia') {
+                const pos = r => { const i = ORDEM_ANOM.indexOf(r); return i < 0 ? -1 : i; };
+                legenda.sort((a, b) => pos(b[0]) - pos(a[0]));
+            }
+            else if (modoCor === 'diverg') {
+                const ord = ['Diverge', 'Confere, mas dado suspeito', 'Confere'];
                 legenda.sort((a, b) => ord.indexOf(a[0]) - ord.indexOf(b[0]));
             }
             else if (modoCor === 'familia' || modoCor === 'filial') {
@@ -3792,8 +3869,8 @@
 
         /* Botões: marca "sem dado" e mostra selo vermelho com a quantidade de alertas */
         function atualizarBarraModos() {
-            const tem = { valor: false, giro: false, validade: false, familia: false, filial: false, obsoleto: false, diverg: false, variacao: serieDatas.length >= 2 };
-            const selo = { giro: 0, validade: 0, obsoleto: 0, diverg: 0 };
+            const tem = { valor: false, giro: false, validade: false, familia: false, filial: false, obsoleto: false, diverg: false, anomalia: false, variacao: serieDatas.length >= 2 };
+            const selo = { giro: 0, validade: 0, obsoleto: 0, diverg: 0, anomalia: 0 };
 
             Object.keys(infoEnd).forEach(k => {
                 const o = infoEnd[k];
@@ -3804,6 +3881,8 @@
                 if (o.filial) tem.filial = true;
                 if (o.obsol || o.obsolVal > 0) { tem.obsoleto = true; if (o.obsolVal > 0) selo.obsoleto++; }
                 if (o.div) { tem.diverg = true; if (o.div === 'DIVERGE') selo.diverg++; }
+                if (o.total > 0 || o.nAn > 0) tem.anomalia = true;   /* sempre tem "dado": se não houver anomalia, o mapa fica todo verde */
+                if (o.nAn > 0) selo.anomalia++;
             });
 
             document.querySelectorAll('#barra-modos .modo').forEach(b => {
