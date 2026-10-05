@@ -572,7 +572,7 @@
             position: absolute;
             top: 15px;
             left: 15px;
-            z-index: 10;
+            z-index: 40;   /* acima da legenda (20) e das barras de baixo (25): o menu ⚙ não fica escondido */
             display: flex;
             flex-direction: column;
             gap: 6px;
@@ -1783,12 +1783,24 @@
 
             const chave = extrairChaveEndereco(endereco) || normalizarNome(endereco);
 
-            return arrSelecionados.some(sel => {
-                const s = extrairChaveEndereco(sel) || normalizarNome(sel);
-                if (!s) return false;
-                return s === chave || chave.includes(s) || s.includes(chave);
-            });
+            /* Casamento EXATO (com variação -Nxx). Antes usava "contém": o filtro "ALMO01" acendia o O01. */
+            if (setSelCache.ref !== arrSelecionados) {
+                const st = new Set();
+                arrSelecionados.forEach(sel => {
+                    const s = extrairChaveEndereco(sel) || normalizarNome(sel);
+                    if (s) st.add(s);
+                });
+                setSelCache = { ref: arrSelecionados, set: st };
+            }
+
+            const st = setSelCache.set;
+            if (st.has(chave)) return true;
+
+            const base = chave.replace(/-N\d{2}$/, '');
+            return base !== chave && st.has(base);
         }
+
+        let setSelCache = { ref: null, set: new Set() };
 
         function determinarCorCaixa(child, endereco) {
             const selecionado = estaSelecionadoEndereco(endereco);
