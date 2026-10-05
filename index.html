@@ -717,6 +717,58 @@
         #legenda-modo .n { margin-left: auto; color: #80d8ff; font-variant-numeric: tabular-nums; }
         #legenda-modo .grad { height: 10px; border-radius: 5px; background: linear-gradient(90deg, #ffe9a8, #ff9f1c, #c1121f); margin: 4px 0 6px; }
         #legenda-modo .nota { color: #9fc3d6; font-size: 11px; margin-top: 6px; line-height: 1.3; }
+        #legenda-modo .resumo { margin-top: 8px; padding-top: 7px; border-top: 1px solid #005b7a; font-size: 11px; color: #cfe9f5; line-height: 1.5; }
+        #legenda-modo .sobe { color: #6bff9a; }
+        #legenda-modo .desce { color: #ff6b6b; }
+
+        /* PLAY / LINHA DO TEMPO (aparece quando há 2+ datas de Saldo por Endereço) */
+        #barra-play {
+            position: absolute;
+            left: 50%;
+            bottom: 74px;
+            transform: translateX(-50%);
+            z-index: 25;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            max-width: calc(100vw - 24px);
+            background: rgba(22, 40, 66, 0.92);
+            border: 1px solid #005b7a;
+            border-radius: 999px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+            backdrop-filter: blur(4px);
+            color: #e0f7fa;
+            font-size: 12px;
+        }
+        #barra-play.visivel { display: flex; }
+        #barra-play button, #barra-play select {
+            border: 1px solid #005b7a;
+            background: rgba(0,243,255,0.10);
+            color: #cfe9f5;
+            border-radius: 999px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 5px 11px;
+        }
+        #barra-play button:hover { background: rgba(0,243,255,0.25); }
+        #barra-play #play-btn { min-width: 38px; background: #00f3ff; color: #0b1626; }
+        #barra-play select option { background: #162842; color: #e0f7fa; }
+        #play-range { width: 190px; accent-color: #00f3ff; cursor: pointer; }
+        #play-data { font-weight: 700; color: #00f3ff; min-width: 78px; text-align: center; font-variant-numeric: tabular-nums; }
+        #play-resumo { color: #9fc3d6; font-size: 11px; white-space: nowrap; }
+        #play-resumo .sobe { color: #6bff9a; }
+        #play-resumo .desce { color: #ff6b6b; }
+        @media (max-width: 820px) {
+            #barra-play { flex-wrap: wrap; justify-content: center; border-radius: 16px; }
+            #play-range { width: 140px; }
+        }
+
+        .kpi-evo { margin: 0 0 10px; padding: 8px 10px; background: rgba(0,243,255,0.06); border: 1px solid #005b7a; border-radius: 6px; font-size: 11px; color: #9fc3d6; }
+        .kpi-evo svg { display: block; width: 100%; height: 44px; margin: 4px 0; }
+        .kpi-evo .linha-evo { display: flex; justify-content: space-between; }
 
         /* HUD em 3 níveis (menu ⚙ > HUD) */
         #hud-topo.hud-compacto .hud-box:nth-child(n+3) { display: none; }
@@ -817,6 +869,20 @@
         <button class="modo" data-modo="familia" title="Família do produto">Família</button>
         <button class="modo" data-modo="filial" title="Filial">Filial</button>
         <button class="modo" data-modo="diverg" title="Conferência entre Saldo por Endereço, Saldo Atual, Posição e Slowmove">Divergência</button>
+        <button class="modo" data-modo="variacao" title="O que mudou em relação à data anterior (precisa de 2+ datas de Saldo por Endereço)">Variação</button>
+    </div>
+    <div id="barra-play">
+        <button id="play-ant" title="Data anterior">&#9664;</button>
+        <button id="play-btn" title="Reproduzir / pausar">&#9654;</button>
+        <button id="play-prox" title="Próxima data">&#9654;&#9654;</button>
+        <input type="range" id="play-range" min="0" max="0" value="0" step="1">
+        <span id="play-data">--</span>
+        <select id="play-vel" title="Velocidade">
+            <option value="2000">Lento</option>
+            <option value="1200" selected>Normal</option>
+            <option value="600">Rápido</option>
+        </select>
+        <span id="play-resumo"></span>
     </div>
     <div id="legenda-modo"></div>
     <div id="chip-foco" title="Clique para limpar"></div>
@@ -951,6 +1017,14 @@
         let infoEnd = {};
         let hudModo = 'completo';
         let lembrarCamera = true;
+
+        /* Série histórica (play/variação): data -> { endereco: [qtd, valor] } */
+        let serieDados = {};
+        let serieDatas = [];
+        let dataBaseBI = '';      /* data base que o Power BI informou */
+        let dataBaseSerie = '';   /* data da série que corresponde à data base (última <= data base) */
+        let dataVis = '';         /* data que está sendo exibida (play) */
+        let playTimer = null;
 
         let modeloGeral = null;
         let boxGeral = null;
@@ -1280,7 +1354,9 @@
                     arrSelecionados = [];
                 }
 
+                processarSerie(event.data.serie, event.data.dataBase);
                 atualizarModosUI();
+                atualizarPlayUI();
                 atualizarHUD(countLidos);
                 aplicarFiltrosECores();
                 atualizarVisibilidadePlacas();
@@ -2399,7 +2475,7 @@
             const produtosEl =
                 document.getElementById('kpi-produtos');
 
-            let html = '';
+            let html = htmlEvolucaoEndereco(enderecoVisual);
 
             lista.forEach((registro, index) => {
                 const linha = (rot, val, cor) => (val === null || val === undefined || val === '' || val === 'N/A')
@@ -3032,8 +3108,13 @@
             giro:     { rotulo: 'Giro' },
             familia:  { rotulo: 'Família' },
             filial:   { rotulo: 'Filial' },
-            diverg:   { rotulo: 'Divergência' }
+            diverg:   { rotulo: 'Divergência' },
+            variacao: { rotulo: 'Variação' }
         };
+
+        /* Modos que funcionam em qualquer data da série (os demais precisam do detalhe da data base) */
+        const MODOS_SERIE = ['valor', 'variacao'];
+        const COR_VAR = { novo: 0x3498db, subiu: 0x2ecc71, caiu: 0xe67e22, zerou: 0xe74c3c, igual: 0x7f8c8d };
 
         const COR_VAZIO = 0x3f4a57;      /* endereço sem saldo */
         const COR_SEM_DADO = 0x9aa5b1;   /* tem saldo, mas o campo do modo não veio */
@@ -3169,14 +3250,60 @@
             };
             const semDado = k => marca(k, 'Sem dado', COR_SEM_DADO);
 
+            let extra = '';
+            let msgVazio = '';
+
             if (modoCor === 'valor') {
                 grad = true;
-                chaves.forEach(k => { if (infoEnd[k].total > max) max = infoEnd[k].total; });
-                chaves.forEach(k => {
-                    const t = infoEnd[k].total;
+                /* Em outra data da série (play) o valor vem da série; na data base, do detalhe */
+                const serieDt = (dataVis && dataVis !== dataBaseSerie) ? serieDados[dataVis] : null;
+                const valorDe = k => serieDt ? ((serieDt[k] || [0, 0])[1]) : ((infoEnd[k] || {}).total || 0);
+                const ks = serieDt ? Array.from(new Set(chaves.concat(Object.keys(serieDt)))) : chaves;
+                ks.forEach(k => { const t = valorDe(k); if (t > max) max = t; });
+                ks.forEach(k => {
+                    const t = valorDe(k);
                     if (t > 0) { cor[k] = rampaValor(Math.log(1 + t) / Math.log(1 + max)); temDado = true; }
                     else { cor[k] = COR_SEM_DADO; }
                 });
+            }
+            else if (modoCor === 'variacao') {
+                const i = serieDatas.indexOf(dataVis);
+                if (serieDatas.length < 2) {
+                    msgVazio = 'Variação precisa de 2 ou mais datas de Saldo por Endereço.<br>Hoje só existe 1 data.';
+                }
+                else if (i <= 0) {
+                    msgVazio = 'Esta é a primeira data da série: não há data anterior para comparar.<br>Avance no play (▶).';
+                }
+                else {
+                    const atual = serieDados[dataVis] || {};
+                    const ant = serieDados[serieDatas[i - 1]] || {};
+                    const ks = Array.from(new Set(Object.keys(atual).concat(Object.keys(ant))));
+                    let somaA = 0, somaB = 0;
+                    ks.forEach(k => {
+                        const a = atual[k] || [0, 0];
+                        const b = ant[k] || [0, 0];
+                        somaA += a[1]; somaB += b[1];
+                        const dv = a[1] - b[1];
+                        const dq = a[0] - b[0];
+                        const mudouV = Math.abs(dv) >= 0.5;
+                        const mudouQ = Math.abs(dq) >= 0.005;
+                        if (!mudouV && !mudouQ) {
+                            if (a[0] > 0 || a[1] > 0) marca(k, 'Sem mudança', COR_VAR.igual);
+                            return;
+                        }
+                        const subiu = mudouV ? dv > 0 : dq > 0;
+                        const vazioAntes = b[0] <= 0 && b[1] <= 0;
+                        const vazioAgora = a[0] <= 0 && a[1] <= 0;
+                        if (vazioAntes && !vazioAgora) marca(k, 'Passou a ter saldo', COR_VAR.novo);
+                        else if (vazioAgora && !vazioAntes) marca(k, 'Ficou vazio', COR_VAR.zerou);
+                        else if (subiu) marca(k, 'Aumentou', COR_VAR.subiu);
+                        else marca(k, 'Diminuiu', COR_VAR.caiu);
+                    });
+                    const dif = somaA - somaB;
+                    extra = '<div class="resumo">' + fmtDataISO(serieDatas[i - 1]) + ' &rarr; ' + fmtDataISO(dataVis) + '<br>' +
+                        'Valor: ' + escaparHTML(formatarMoeda(somaB)) + ' &rarr; ' + escaparHTML(formatarMoeda(somaA)) + '<br>' +
+                        '<span class="' + (dif >= 0 ? 'sobe' : 'desce') + '">' + (dif >= 0 ? '&#9650; ' : '&#9660; ') + escaparHTML(formatarMoeda(Math.abs(dif))) + '</span></div>';
+                }
             }
             else if (modoCor === 'giro') {
                 chaves.forEach(k => {
@@ -3232,6 +3359,10 @@
                 const pos = r => ORDEM_GIRO.indexOf(r.toUpperCase());
                 legenda.sort((a, b) => pos(b[0]) - pos(a[0]));
             }
+            else if (modoCor === 'variacao') {
+                const ord = ['Passou a ter saldo', 'Aumentou', 'Diminuiu', 'Ficou vazio', 'Sem mudança'];
+                legenda.sort((a, b) => ord.indexOf(a[0]) - ord.indexOf(b[0]));
+            }
             else if (modoCor === 'familia' || modoCor === 'filial') {
                 legenda.sort((a, b) => b[2] - a[2]);
                 if (legenda.length > 8) {
@@ -3241,7 +3372,7 @@
                 }
             }
 
-            cacheModo = { cor: cor, legenda: legenda, temDado: temDado, grad: grad, max: max };
+            cacheModo = { cor: cor, legenda: legenda, temDado: temDado, grad: grad, max: max, extra: extra, msgVazio: msgVazio };
         }
 
         function corDoModo(endereco) {
@@ -3261,7 +3392,10 @@
 
             let h = '<h4>Colorindo por: ' + escaparHTML(MODOS[modoCor].rotulo) + '</h4>';
 
-            if (!cacheModo.temDado) {
+            if (cacheModo.msgVazio) {
+                h += '<div class="nota">' + cacheModo.msgVazio + '</div>';
+            }
+            else if (!cacheModo.temDado) {
                 h += '<div class="nota">Sem dados para este modo.<br>O Power BI ainda não está enviando este campo.</div>';
             }
             else {
@@ -3273,14 +3407,15 @@
                 });
             }
 
-            h += '<div class="nota">Cinza = endereço sem saldo.</div>';
+            if (cacheModo.extra) h += cacheModo.extra;
+            h += '<div class="nota">Cinza escuro = endereço sem saldo.</div>';
             el.innerHTML = h;
             el.style.display = 'block';
         }
 
         /* Botões: marca "sem dado" e mostra selo vermelho com a quantidade de alertas */
         function atualizarBarraModos() {
-            const tem = { valor: false, giro: false, validade: false, familia: false, filial: false, obsoleto: false, diverg: false };
+            const tem = { valor: false, giro: false, validade: false, familia: false, filial: false, obsoleto: false, diverg: false, variacao: serieDatas.length >= 2 };
             const selo = { giro: 0, validade: 0, obsoleto: 0, diverg: 0 };
 
             Object.keys(infoEnd).forEach(k => {
@@ -3315,11 +3450,185 @@
         function aplicarModo(m) {
             if (!MODOS[m]) return;
             modoCor = m;
+            /* Os modos com detalhe (obsoleto, validade...) só existem na data base: volta para ela */
+            if (MODOS_SERIE.indexOf(m) < 0 && dataVis !== dataBaseSerie) {
+                pararPlay();
+                dataVis = dataBaseSerie;
+            }
             recalcularModo();
             atualizarBarraModos();
             renderLegendaModo();
+            atualizarPlayUI();
             aplicarFiltrosECores();
             salvarEstado();
+        }
+
+        /* =========================================================
+           25.2 SÉRIE HISTÓRICA: PLAY E VARIAÇÃO ENTRE DATAS
+           ========================================================= */
+
+        function fmtDataISO(iso) {
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+            return m ? m[3] + '/' + m[2] + '/' + m[1] : (iso || '--');
+        }
+
+        /* Recebe a série do Power BI: { 'aaaa-mm-dd': { endereco: [qtd, valor] } } */
+        function processarSerie(serie, dataBase) {
+            let s = serie;
+            if (typeof s === 'string') {
+                try { s = JSON.parse(s); } catch (e) { s = null; }
+            }
+
+            const novo = {};
+            if (s && typeof s === 'object') {
+                Object.keys(s).forEach(dt => {
+                    const m = {};
+                    const o = s[dt] || {};
+                    Object.keys(o).forEach(a => {
+                        const k = extrairChaveEndereco(a) || normalizarNome(a);
+                        const q = o[a] || [0, 0];
+                        if (!m[k]) m[k] = [0, 0];
+                        m[k][0] += Number(q[0]) || 0;
+                        m[k][1] += Number(q[1]) || 0;
+                    });
+                    novo[dt] = m;
+                });
+            }
+
+            serieDados = novo;
+            serieDatas = Object.keys(novo).sort();
+
+            const db = String(dataBase || '').trim();
+            let baseSerie = serieDatas.length ? serieDatas[serieDatas.length - 1] : '';
+            if (db) {
+                const ate = serieDatas.filter(d => d <= db);
+                if (ate.length) baseSerie = ate[ate.length - 1];
+            }
+
+            /* Só volta para a data base quando o Power BI muda a data base (não interrompe o play) */
+            if (db !== dataBaseBI || baseSerie !== dataBaseSerie || serieDatas.indexOf(dataVis) < 0) {
+                dataBaseBI = db;
+                dataBaseSerie = baseSerie;
+                dataVis = baseSerie;
+            }
+        }
+
+        function resumoDaData(dt) {
+            const i = serieDatas.indexOf(dt);
+            const soma = d => { const o = serieDados[d] || {}; let t = 0; Object.keys(o).forEach(k => { t += o[k][1]; }); return t; };
+            const atual = soma(dt);
+            if (i <= 0) return formatarMoeda(atual);
+            const dif = atual - soma(serieDatas[i - 1]);
+            return formatarMoeda(atual) + ' <span class="' + (dif >= 0 ? 'sobe' : 'desce') + '">' +
+                (dif >= 0 ? '&#9650; ' : '&#9660; ') + formatarMoeda(Math.abs(dif)) + '</span>';
+        }
+
+        function atualizarPlayUI() {
+            const barra = document.getElementById('barra-play');
+            if (!barra) return;
+
+            if (serieDatas.length < 2) {
+                barra.classList.remove('visivel');
+                return;
+            }
+
+            const range = document.getElementById('play-range');
+            range.max = String(serieDatas.length - 1);
+            range.value = String(Math.max(0, serieDatas.indexOf(dataVis)));
+            document.getElementById('play-data').innerText = fmtDataISO(dataVis);
+            document.getElementById('play-resumo').innerHTML = resumoDaData(dataVis) +
+                (dataVis !== dataBaseSerie ? ' · só Valor e Variação' : '');
+            document.getElementById('play-btn').innerHTML = playTimer ? '&#10074;&#10074;' : '&#9654;';
+            barra.classList.add('visivel');
+
+            /* fica sempre acima da barra "Colorir por", mesmo quando ela quebra em 2 linhas */
+            const bm = document.getElementById('barra-modos');
+            barra.style.bottom = (bm.offsetHeight + 26) + 'px';
+
+            /* em telas estreitas a legenda sobe para não ficar embaixo da barra de play */
+            const leg = document.getElementById('legenda-modo');
+            if (leg) leg.style.bottom = (window.innerWidth < 1150 ? (bm.offsetHeight + 26 + barra.offsetHeight + 8) : 18) + 'px';
+        }
+
+        function irParaData(dt) {
+            if (serieDatas.indexOf(dt) < 0) return;
+            dataVis = dt;
+            if (dt !== dataBaseSerie && MODOS_SERIE.indexOf(modoCor) < 0) modoCor = 'variacao';
+            recalcularModo();
+            atualizarBarraModos();
+            renderLegendaModo();
+            atualizarPlayUI();
+            aplicarFiltrosECores();
+        }
+
+        function pararPlay() {
+            if (playTimer) { clearInterval(playTimer); playTimer = null; }
+            const b = document.getElementById('play-btn');
+            if (b) b.innerHTML = '&#9654;';
+        }
+
+        function iniciarPlay() {
+            if (serieDatas.length < 2) return;
+            if (modoCor !== 'valor' && modoCor !== 'variacao') modoCor = 'variacao';
+            let i = serieDatas.indexOf(dataVis);
+            if (i >= serieDatas.length - 1) { irParaData(serieDatas[0]); i = 0; }
+
+            const passo = Number(document.getElementById('play-vel').value) || 1200;
+            playTimer = setInterval(function() {
+                const j = serieDatas.indexOf(dataVis) + 1;
+                if (j >= serieDatas.length) { pararPlay(); atualizarPlayUI(); return; }
+                irParaData(serieDatas[j]);
+            }, passo);
+            atualizarPlayUI();
+            irParaData(dataVis);
+        }
+
+        function passoData(delta) {
+            pararPlay();
+            const j = serieDatas.indexOf(dataVis) + delta;
+            if (j >= 0 && j < serieDatas.length) irParaData(serieDatas[j]);
+            else atualizarPlayUI();
+        }
+
+        document.getElementById('play-btn').addEventListener('click', function() {
+            if (playTimer) { pararPlay(); atualizarPlayUI(); }
+            else iniciarPlay();
+        });
+        document.getElementById('play-ant').addEventListener('click', function() { passoData(-1); });
+        document.getElementById('play-prox').addEventListener('click', function() { passoData(1); });
+        document.getElementById('play-range').addEventListener('input', function() {
+            pararPlay();
+            const dt = serieDatas[Number(this.value)];
+            if (dt) irParaData(dt);
+        });
+        document.getElementById('play-vel').addEventListener('change', function() {
+            if (playTimer) { pararPlay(); iniciarPlay(); }
+        });
+        window.addEventListener('resize', atualizarPlayUI);
+
+        /* Mini-gráfico do endereço clicado: valor em cada data da série */
+        function htmlEvolucaoEndereco(enderecoVisual) {
+            if (serieDatas.length < 2) return '';
+            const k = extrairChaveEndereco(enderecoVisual) || normalizarNome(enderecoVisual);
+            const vals = serieDatas.map(d => ((serieDados[d] || {})[k] || [0, 0])[1]);
+            if (!vals.some(v => v > 0)) return '';
+
+            const W = 240, H = 44, P = 3;
+            const mx = Math.max.apply(null, vals) || 1;
+            const x = i => P + (W - 2 * P) * (vals.length === 1 ? 0 : i / (vals.length - 1));
+            const y = v => H - P - (H - 2 * P) * (v / mx);
+            const pts = vals.map((v, i) => x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ');
+            const marca = serieDatas.indexOf(dataVis);
+            const dif = vals[vals.length - 1] - vals[0];
+
+            return '<div class="kpi-evo"><div class="linha-evo"><span>Evolução do valor</span><span>' +
+                escaparHTML(formatarMoeda(vals[vals.length - 1])) + '</span></div>' +
+                '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+                '<polyline points="' + pts + '" fill="none" stroke="#00f3ff" stroke-width="1.6"/>' +
+                (marca >= 0 ? '<circle cx="' + x(marca).toFixed(1) + '" cy="' + y(vals[marca]).toFixed(1) + '" r="3" fill="#ffd166"/>' : '') +
+                '</svg><div class="linha-evo"><span>' + fmtDataISO(serieDatas[0]) + '</span><span>' + fmtDataISO(serieDatas[serieDatas.length - 1]) +
+                '</span></div><div class="linha-evo"><span>No período</span><span style="color:' + (dif >= 0 ? '#6bff9a' : '#ff6b6b') + '">' +
+                (dif >= 0 ? '+' : '-') + escaparHTML(formatarMoeda(Math.abs(dif))) + '</span></div></div>';
         }
 
         document.getElementById('barra-modos').addEventListener('click', function(e) {
