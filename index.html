@@ -279,6 +279,9 @@
         #inv-ranking .rc.tot { border-top: 1px solid #005b7a; margin-top: 3px; background: rgba(0,243,255,0.07); }
         #inv-ranking .rc .l1 { display: flex; align-items: baseline; gap: 8px; }
         #inv-ranking .rc .l1 b { color: #cfe9f5; min-width: 58px; }
+        #inv-ranking .rc.tot .l1 b { min-width: 0; margin-right: 4px; font-size: 11px; letter-spacing: 0.5px; color: #00f3ff; }
+        #inv-ranking .rc.tot .liq { font-size: 15px; }
+        #inv-ranking .rc.tot .pc { font-size: 14px; }
         #inv-ranking .rc.sel .l1 b { color: #ffd166; }
         #inv-ranking .rc .liq { flex: 1; font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
         #inv-ranking .rc .pc { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 60px; text-align: right; }
@@ -289,10 +292,9 @@
         body.sem-paineis #hud-topo, body.sem-paineis #inv-ranking, body.sem-paineis #legenda-modo { display: none !important; }
         #btn-paineis.btn-toggle-ativo { background: #00f3ff !important; color: #0b1626 !important; border-color: #00f3ff !important; }
         #legenda-modo h4, #inv-ranking .rk-tit { cursor: pointer; user-select: none; }
-        #legenda-modo.recolhida > *:not(h4), #inv-ranking.recolhido > *:not(.rk-tit) { display: none !important; }
+        #legenda-modo.recolhida .rol-in > *:not(h4), #inv-ranking.recolhido .rol-in > *:not(.rk-tit) { display: none !important; }
         #legenda-modo.recolhida h4 { margin-bottom: 0; }
         #inv-ranking .rk-tit { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #00f3ff; font-weight: 700; margin-bottom: 4px; }
-        #legenda-modo { overflow-y: auto; }
 
         /* INVENTÁRIO: barra de ciclo/abas e ranking */
         #barra-inv {
@@ -984,6 +986,17 @@
            "mole" no navegador do Power BI. Aqui ficam fundos sólidos e letras nítidas.
            ========================================================= */
         body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+        /* ROLAGEM NÍTIDA: a barra de rolagem do navegador cria uma camada própria e o texto fica embaçado.
+           Aqui o conteúdo desliza em pixels inteiros dentro de um painel sem rolagem nativa. */
+        #legenda-modo, #inv-ranking { padding: 0 !important; overflow: hidden !important; }
+        #legenda-modo .rol-in { padding: 10px 14px; }
+        #inv-ranking .rol-in { padding: 8px 10px; }
+        #painel-kpi .corpo { padding: 0 !important; overflow: hidden !important; position: relative; }
+        #painel-kpi .corpo .rol-in { padding: 11px; }
+        .rol-barra { position: absolute; right: 2px; top: 4px; bottom: 4px; width: 6px; display: none; z-index: 3; }
+        .rol-thumb { position: absolute; left: 0; right: 0; background: rgba(0,243,255,0.55); border-radius: 3px; cursor: pointer; }
+        .rol-thumb:hover { background: rgba(0,243,255,0.85); }
 
         #hud-topo, #tooltip, #painel-kpi, #barra-modos, #barra-play, #legenda-modo,
         #menu-opcoes, #hud-legenda, .btn-cam, .btn {
@@ -3083,7 +3096,7 @@
                 html ||
                 '<div class="kpi-produto-item">Sem produtos neste endereço.</div>';
 
-            painelKPI.style.display = 'block';
+            mostrarPainelKPI();
         }
 
         renderer.domElement.addEventListener(
@@ -4092,8 +4105,9 @@
 
             if (cacheModo.extra) h += cacheModo.extra;
             h += '<div class="nota">' + (modoCor === 'inventario' ? 'Cinza escuro = endereço fora deste ciclo.' : 'Cinza escuro = endereço sem saldo.') + '</div>';
-            el.innerHTML = h;
+            escreverRolagem(el, h);
             el.style.display = 'block';
+            atualizarRolagem(el);
         }
 
         /* Botões: marca "sem dado" e mostra selo vermelho com a quantidade de alertas */
@@ -4757,7 +4771,7 @@
         }
 
         function restaurarRotulosKPI() {
-            const r = document.querySelectorAll('#painel-kpi .corpo > .linha .rotulo');
+            const r = document.querySelectorAll('#painel-kpi .corpo .linha .rotulo');
             const padrao = ['Produtos', 'Estoque', 'Valor Estoque', 'Endereço'];
             for (let i = 0; i < 4 && i < r.length; i++) r[i].innerText = padrao[i];
         }
@@ -4767,7 +4781,7 @@
             const c = invCache || calcularInventario();
             const a = c && c.addrs ? c.addrs[k] : null;
 
-            const rot = document.querySelectorAll('#painel-kpi .corpo > .linha .rotulo');
+            const rot = document.querySelectorAll('#painel-kpi .corpo .linha .rotulo');
             ['Itens', 'Contado', 'Valor contado', 'Situação'].forEach((t, i) => { if (rot[i]) rot[i].innerText = t; });
 
             document.getElementById('kpi-endereco').innerText = enderecoVisual;
@@ -4779,7 +4793,7 @@
                 document.getElementById('kpi-valor-estoque').innerText = formatarMoeda(0);
                 document.getElementById('kpi-status').innerText = 'Fora do ciclo';
                 prod.innerHTML = '<div class="kpi-produto-item">Este endereço não aparece no ' + escaparHTML(invCiclo) + '.</div>';
-                painelKPI.style.display = 'block';
+                mostrarPainelKPI();
                 return;
             }
 
@@ -4794,7 +4808,7 @@
 
             const ord = a.itens.slice().sort((x, y) => (x.r.prod < y.r.prod ? -1 : 1));
             prod.innerHTML = ord.map(htmlInvItem).join('') || '<div class="kpi-produto-item">Sem itens.</div>';
-            painelKPI.style.display = 'block';
+            mostrarPainelKPI();
         }
 
         /* Barra de ciclo/abas + ranking */
@@ -4839,17 +4853,18 @@
                 ? '<div class="vazio">nenhum</div>'
                 : arr.map(x => '<div class="rk" data-k="' + escaparHTML(x.k) + '"><b>' + escaparHTML(x.end) + '</b><span class="nm" title="' + escaparHTML(x.desc || x.prod) + '">' + escaparHTML(x.desc || x.prod) + '</span><span class="v ' + classe + '">' + escaparHTML(fmtSinalMoeda(x.v)) + '</span></div>').join('');
 
-            el.innerHTML = '<div class="rk-tit" title="Clique para recolher/abrir (arraste para mover)">' + (rankingRecolhido ? '▸' : '▾') + ' Resumo e ranking do inventário</div>' +
+            escreverRolagem(el, '<div class="rk-tit" title="Clique para recolher/abrir (arraste para mover)">' + (rankingRecolhido ? '▸' : '▾') + ' Resumo e ranking do inventário</div>' +
                 htmlResumoCiclos() +
                 htmlEnderecosAjuste('neg') +
                 htmlEnderecosAjuste('pos') +
                 secaoRanking('pos', 'Maiores acréscimos (itens) · ' + tit, linhas(R.pos, 'sobe')) +
                 secaoRanking('neg', 'Maiores reduções (itens) · ' + tit, linhas(R.neg, 'desce')) +
-                htmlAcuracidade();
+                htmlAcuracidade());
             el.classList.toggle('recolhido', rankingRecolhido);
 
             /* fica logo abaixo do HUD de cima (a menos que você tenha arrastado) */
             posicionarPainelLateral(el);
+            atualizarRolagem(el);
         }
 
         /* Leva a câmera até o endereço (clique no ranking) */
@@ -4975,6 +4990,7 @@
                 const cam = document.getElementById('ui-camera');
                 const camBase = cam ? cam.getBoundingClientRect().bottom : 340;
                 leg.style.maxHeight = Math.max(110, window.innerHeight - b - camBase - 12) + 'px';
+                atualizarRolagem(leg);
             }
         }
 
@@ -5433,8 +5449,8 @@
             const L = linhasResumoCiclos();
             if (L.length === 0) return '';
             const cls = v => (v >= 0 ? 'sobe' : 'desce');
-            const linha = (r, total) => {
-                const nome = total ? 'Marcados' : r.c;
+            const linha = (r, total, rotuloTotal) => {
+                const nome = total ? (rotuloTotal || 'Total') : r.c;
                 if (r.sem) {
                     return '<div class="rc' + (r.sel ? ' sel' : '') + '"><div class="l1"><b>' + escaparHTML(nome) + '</b><span class="pc">sem arquivo pós</span></div></div>';
                 }
@@ -5448,14 +5464,27 @@
                     '<div class="l2">' + (r.comp ? escaparHTML(l2) : l2) + '</div></div>';
             };
             let h = L.map(r => linha(r, false)).join('');
-            const marc = L.filter(r => r.sel && !r.sem);
-            if (marc.length > 1) {
+
+            const soma = lista => {
                 const t = { liq: 0, pos: 0, neg: 0, base: 0, nota: L[0].nota, comp: L[0].comp };
-                marc.forEach(r => { t.liq += r.liq; t.pos += r.pos; t.neg += r.neg; t.base += r.base; });
-                h += linha(t, true);
+                lista.forEach(r => { t.liq += r.liq; t.pos += r.pos; t.neg += r.neg; t.base += r.base; });
+                return t;
+            };
+            const validos = L.filter(r => !r.sem);
+            const marc = validos.filter(r => r.sel);
+
+            /* só os ciclos marcados (quando são vários e não todos) */
+            if (marc.length > 1 && marc.length < validos.length) {
+                h += linha(Object.assign(soma(marc), { sel: true }), true, 'Marcados (' + marc.length + ')');
             }
-            const tit = invAba === 'pre' ? 'Ajuste previsto por ciclo · % sobre o contado'
-                : (invAba === 'pos' ? 'Impacto real por ciclo · % sobre o processado' : 'Real − previsto por ciclo');
+            /* total do inventário: todos os ciclos somados */
+            const tot = soma(validos);
+            if (validos.length > 0) h += linha(tot, true, 'TOTAL INVENTÁRIO');
+
+            const base = invAba === 'pre' ? 'do contado' : (invAba === 'pos' ? 'do processado' : 'do contado');
+            const resumoTot = validos.length ? ' · Total ' + fmtSinalMoeda(tot.liq) + (tot.base > 0 ? ' (' + fmtPct((tot.liq / tot.base) * 100) + ' ' + base + ')' : '') : '';
+            const tit = (invAba === 'pre' ? 'Ajuste previsto por ciclo · % sobre o contado'
+                : (invAba === 'pos' ? 'Impacto real por ciclo · % sobre o processado' : 'Real − previsto por ciclo')) + resumoTot;
             return secaoRanking('res', tit, h);
         }
 
@@ -5491,9 +5520,10 @@
             h += anomFora.it.slice(0, 12).map(x =>
                 '<div class="rk"><b>' + escaparHTML(x.f + '/' + x.a) + '</b><span class="nm" title="' + escaparHTML(x.p + ' · ' + x.d + ' — ' + x.t) + '">' + escaparHTML(x.d || x.p) + '</span><span class="v desce">' + escaparHTML(moedaCurta(x.v)) + '</span></div>' +
                 '<div class="rk-det">' + escaparHTML(x.t) + '</div>').join('');
-            el.innerHTML = h;
+            escreverRolagem(el, h);
             el.classList.toggle('recolhido', rankingRecolhido);
             posicionarPainelLateral(el);
+            atualizarRolagem(el);
         }
 
         /* ---------- Pendências/alertas nas placas das estruturas (letras) ---------- */
@@ -5526,6 +5556,104 @@
         }
 
         /* =========================================================
+           25.4b ROLAGEM NÍTIDA (sem a barra de rolagem nativa, que embaça o texto)
+           O painel tem overflow escondido; o conteúdo (.rol-in) sobe/desce com margem em pixel inteiro.
+           ========================================================= */
+
+        function garantirRolagem(host) {
+            let cont = null;
+            for (const f of host.children) { if (f.classList && f.classList.contains('rol-in')) { cont = f; break; } }
+            if (cont) return cont;
+
+            const filhos = Array.from(host.childNodes);
+            cont = document.createElement('div');
+            cont.className = 'rol-in';
+            filhos.forEach(n => cont.appendChild(n));
+            host.appendChild(cont);
+
+            const bar = document.createElement('div');
+            bar.className = 'rol-barra';
+            bar.innerHTML = '<div class="rol-thumb"></div>';
+            host.appendChild(bar);
+
+            host.addEventListener('wheel', function(e) {
+                const c = host.querySelector(':scope > .rol-in');
+                if (!c) return;
+                const vis = host.clientHeight, tot = c.offsetHeight;
+                if (tot <= vis + 1) return;
+                let dy = e.deltaY;
+                if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= vis;
+                host._y = (host._y || 0) + dy;
+                atualizarRolagem(host);
+                e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
+
+            const thumb = bar.firstChild;
+            thumb.addEventListener('pointerdown', function(e) {
+                const c = host.querySelector(':scope > .rol-in');
+                if (!c) return;
+                host._arr = { y0: e.clientY, s0: host._y || 0, tot: c.offsetHeight, vis: host.clientHeight, th: thumb.offsetHeight };
+                try { thumb.setPointerCapture(e.pointerId); } catch (er) { /* ok */ }
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            thumb.addEventListener('pointermove', function(e) {
+                const a = host._arr;
+                if (!a) return;
+                const livre = Math.max(1, a.vis - a.th);
+                host._y = a.s0 + (e.clientY - a.y0) * ((a.tot - a.vis) / livre);
+                atualizarRolagem(host);
+            });
+            const solta = function() { host._arr = null; };
+            thumb.addEventListener('pointerup', solta);
+            thumb.addEventListener('pointercancel', solta);
+            return cont;
+        }
+
+        /* escreve o HTML dentro do painel mantendo a barra e a posição da rolagem */
+        function escreverRolagem(host, html) {
+            const cont = garantirRolagem(host);
+            cont.innerHTML = html;
+            atualizarRolagem(host);
+        }
+
+        function atualizarRolagem(host) {
+            if (!host) return;
+            let cont = null, bar = null;
+            for (const f of host.children) {
+                if (f.classList.contains('rol-in')) cont = f;
+                else if (f.classList.contains('rol-barra')) bar = f;
+            }
+            if (!cont || !bar) return;
+
+            const vis = host.clientHeight;
+            const tot = cont.offsetHeight;
+            if (!vis || tot <= vis + 1) {
+                host._y = 0;
+                cont.style.marginTop = '0px';
+                bar.style.display = 'none';
+                return;
+            }
+
+            const max = tot - vis;
+            host._y = Math.max(0, Math.min(max, host._y || 0));
+            cont.style.marginTop = (-Math.round(host._y)) + 'px';
+
+            const thumb = bar.firstChild;
+            const th = Math.max(24, Math.round(vis * vis / tot));
+            bar.style.display = 'block';
+            thumb.style.height = th + 'px';
+            thumb.style.top = Math.round((host._y / max) * (vis - th)) + 'px';
+        }
+
+        function mostrarPainelKPI() {
+            const corpo = document.querySelector('#painel-kpi .corpo');
+            painelKPI.style.display = 'block';
+            if (corpo) { garantirRolagem(corpo); corpo._y = 0; atualizarRolagem(corpo); }
+        }
+
+        /* =========================================================
            25.5 PAINÉIS ARRASTÁVEIS E MENUS RECOLHÍVEIS
            ========================================================= */
 
@@ -5555,6 +5683,7 @@
             /* legenda e ranking rolam por dentro; a altura máxima passa a contar a partir da nova posição */
             if (el.id === 'legenda-modo' || el.id === 'inv-ranking') {
                 el.style.setProperty('max-height', Math.max(120, window.innerHeight - Math.round(t) - 12) + 'px', 'important');
+                atualizarRolagem(el);
             }
         }
 
@@ -5587,7 +5716,7 @@
 
         /* Arrastar: segurar o botão do mouse numa parte "vazia" do painel (fora de botões e itens clicáveis) */
         (function ativarArrastePaineis() {
-            const INTERATIVO = 'button, select, input, textarea, a, .it, .rk, .sec, .inv-chip, .inv-aba, .modo, .placa-corredor';
+            const INTERATIVO = 'button, select, input, textarea, a, .it, .rk, .sec, .inv-chip, .inv-aba, .modo, .placa-corredor, .rol-barra';
             let arr = null;
 
             document.addEventListener('pointerdown', function(e) {
@@ -5638,6 +5767,8 @@
         })();
 
         window.addEventListener('resize', function() {
+            ['legenda-modo', 'inv-ranking'].forEach(id => atualizarRolagem(document.getElementById(id)));
+            atualizarRolagem(document.querySelector('#painel-kpi .corpo'));
             IDS_MOVEIS.forEach(id => {
                 const el = document.getElementById(id);
                 if (!el || !el.classList.contains('movido') || !el.offsetWidth) return;
