@@ -217,6 +217,66 @@
         }
 
         /* Conferência por item (tooltip e painel do modo Divergência) */
+        /* INVENTÁRIO: barra de ciclo/abas e ranking */
+        #barra-inv {
+            position: absolute;
+            left: 50%;
+            bottom: 74px;
+            transform: translateX(-50%);
+            z-index: 25;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            max-width: calc(100vw - 24px);
+            flex-wrap: wrap;
+            justify-content: center;
+            background: rgba(22, 40, 66, 0.97);
+            border: 1px solid #005b7a;
+            border-radius: 999px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+            color: #e0f7fa;
+            font-size: 12px;
+        }
+        #barra-inv.visivel { display: flex; }
+        #barra-inv .inv-rot { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #80d8ff; font-weight: 700; }
+        #barra-inv select, #barra-inv .inv-aba {
+            border: 1px solid #005b7a; background: rgba(0,243,255,0.10); color: #cfe9f5; border-radius: 999px;
+            cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; padding: 5px 12px;
+        }
+        #barra-inv select option { background: #162842; color: #e0f7fa; }
+        #barra-inv .inv-aba:hover { background: rgba(0,243,255,0.25); }
+        #barra-inv .inv-aba.ativo { background: #00f3ff; color: #0b1626; border-color: #00f3ff; }
+
+        #inv-ranking {
+            position: absolute;
+            right: 15px;
+            top: 250px;
+            width: min(400px, calc(100vw - 30px));
+            max-height: 240px;
+            overflow-y: auto;
+            z-index: 21;
+            display: none;
+            background: rgb(22, 40, 66);
+            border: 1px solid #005b7a;
+            border-top: 4px solid #00f3ff;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 11px;
+            color: #cfe9f5;
+        }
+        #inv-ranking.visivel { display: block; }
+        #inv-ranking h5 { margin: 6px 0 4px; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #80d8ff; }
+        #inv-ranking h5:first-child { margin-top: 0; }
+        #inv-ranking .rk { display: flex; gap: 8px; align-items: baseline; padding: 3px 5px; border-radius: 4px; cursor: pointer; }
+        #inv-ranking .rk:hover { background: rgba(0,243,255,0.15); }
+        #inv-ranking .rk b { color: #00f3ff; min-width: 38px; }
+        #inv-ranking .rk .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #inv-ranking .rk .v { font-weight: 700; font-variant-numeric: tabular-nums; }
+        #inv-ranking .sobe { color: #6bff9a; }
+        #inv-ranking .desce { color: #ff8a80; }
+        #inv-ranking .vazio { color: #7fa4b8; padding: 3px 5px; }
+
         .an-box { background: rgba(255,193,7,0.12); border-left: 3px solid #ffc107; color: #ffd166; padding: 4px 8px; margin: 3px 0 5px; font-size: 11px; line-height: 1.4; border-radius: 4px; }
         .cf-sub { font-size: 11px; color: #9fc3d6; margin-bottom: 5px; line-height: 1.35; }
         .cf-em { color: #ffd166; }
@@ -953,9 +1013,18 @@
         <button class="modo" data-modo="familia" title="Família do produto">Família</button>
         <button class="modo" data-modo="filial" title="Filial">Filial</button>
         <button class="modo" data-modo="diverg" title="Conferência entre Saldo por Endereço, Saldo Atual, Posição e Slowmove">Divergência</button>
+        <button class="modo" data-modo="inventario" title="Inventário por ciclo: pré-processamento (zerou e contou?), pós-processamento (impacto real) e comparação">Inventário</button>
         <button class="modo" data-modo="anomalia" title="Dado fora do normal nos relatórios do sistema: saldo ou valor negativo, quantidade sem custo, valor sem quantidade">Anomalias</button>
         <button class="modo" data-modo="variacao" title="O que mudou em relação à data anterior (precisa de 2+ datas de Saldo por Endereço)">Variação</button>
     </div>
+    <div id="barra-inv">
+        <span class="inv-rot">Ciclo</span>
+        <select id="inv-ciclo" title="Ciclo de inventário (vem do Mapa de ciclos)"></select>
+        <button class="inv-aba ativo" data-aba="pre" title="Antes de processar no sistema: todo endereço zerado foi contado? quanto vai ajustar?">Pré-processamento</button>
+        <button class="inv-aba" data-aba="pos" title="Depois de processar: o que realmente subiu ou desceu no sistema">Pós-processamento</button>
+        <button class="inv-aba" data-aba="comp" title="Compara o ajuste previsto (pré) com o processado (pós)">Comparar</button>
+    </div>
+    <div id="inv-ranking"></div>
     <div id="barra-play">
         <button id="play-ant" title="Data anterior">&#9664;</button>
         <button id="play-btn" title="Reproduzir / pausar">&#9654;</button>
@@ -1457,6 +1526,7 @@
                 }
 
                 processarSerie(event.data.serie, event.data.dataBase);
+                processarInventario(event.data.inventario);
                 atualizarModosUI();
                 atualizarPlayUI();
                 atualizarHUD(countLidos);
@@ -1996,6 +2066,11 @@
                     res = ['Variação do valor', '<span class="' + (sobe ? 'sobe' : 'desce') + '">' + (sobe ? '▲ ' : '▼ ') + moedaCurta(Math.abs(resumoVar.dif)) + '</span>',
                         fmtDataISO(resumoVar.de) + ' → ' + fmtDataISO(resumoVar.para)];
                 }
+            }
+
+            if (modoCor === 'inventario' && invCache && invCache.n > 0) {
+                const ri = invCache.resumo[invAba];
+                if (ri) res = [ri.rot, ri.val, ri.sub];
             }
 
             if (res) {
@@ -2599,6 +2674,7 @@
         }
 
         function montarHTMLTooltip(endereco, registros) {
+            if (modoCor === 'inventario') return montarHTMLTooltipInv(endereco);
             if (modoCor === 'diverg' && registros && registros.length > 0) return montarHTMLTooltipConf(endereco, registros);
 
             let html = '<div class="tt-header">' + escaparHTML(endereco) + '</div>';
@@ -2774,6 +2850,12 @@
            ========================================================= */
 
         function exibirKPI(enderecoVisual, registros) {
+            if (modoCor === 'inventario') {
+                exibirKPIInv(enderecoVisual);
+                return;
+            }
+            restaurarRotulosKPI();
+
             const lista =
                 Array.isArray(registros)
                     ? registros
@@ -3471,6 +3553,7 @@
             filial:   { rotulo: 'Filial' },
             diverg:   { rotulo: 'Divergência' },
             anomalia: { rotulo: 'Anomalias' },
+            inventario: { rotulo: 'Inventário' },
             variacao: { rotulo: 'Variação' }
         };
 
@@ -3644,12 +3727,12 @@
 
             const cls = {};   /* endereço -> classe da legenda (usada pelo foco por clique na legenda) */
 
-            const marca = (k, rotulo, c) => {
+            const marca = (k, rotulo, c, valorExtra) => {
                 cor[k] = c;
                 cls[k] = rotulo;
                 if (!cont[rotulo]) cont[rotulo] = { cor: c, n: 0, v: 0 };
                 cont[rotulo].n++;
-                cont[rotulo].v += (infoEnd[k] && infoEnd[k].total) || 0;
+                cont[rotulo].v += (valorExtra !== undefined) ? valorExtra : ((infoEnd[k] && infoEnd[k].total) || 0);
                 if (c !== COR_SEM_DADO) temDado = true;
             };
             const semDado = k => marca(k, 'Sem dado', COR_SEM_DADO);
@@ -3772,6 +3855,24 @@
                     else marca(k, 'Sem anomalia', COR_SEM_ANOM);
                 });
             }
+            else if (modoCor === 'inventario') {
+                const c = calcularInventario();
+                if (!c || c.n === 0) {
+                    msgVazio = 'Sem dados de inventário.<br>Coloque os arquivos em DADOS\\08 - Inventario e atualize o BI.';
+                }
+                else if (invAba !== 'pre' && !c.temPos) {
+                    msgVazio = invCiclo + ' ainda não tem arquivo de pós-processamento.<br>Coloque-o em 02 - Pos processamento.';
+                }
+                else {
+                    Object.keys(c.addrs).forEach(k => {
+                        const a = c.addrs[k];
+                        const rot = clsInvDoEndereco(a);
+                        const v = invAba === 'pre' ? a.vClsPre : (invAba === 'pos' ? a.vClsPos : a.vClsComp);
+                        if (rot) marca(k, rot, COR_INV[rot], v);
+                    });
+                    extra = '<div class="resumo">' + invCiclo + ' · ' + ROTULO_ABA[invAba] + '<br>' + formatarNumero(Object.keys(c.addrs).length, 0) + ' endereços no ciclo</div>';
+                }
+            }
 
             let legenda = Object.keys(cont).map(r => [r, cont[r].cor, cont[r].n, cont[r].v]);
 
@@ -3790,6 +3891,10 @@
             else if (modoCor === 'anomalia') {
                 const pos = r => { const i = ORDEM_ANOM.indexOf(r); return i < 0 ? -1 : i; };
                 legenda.sort((a, b) => pos(b[0]) - pos(a[0]));
+            }
+            else if (modoCor === 'inventario') {
+                const ord = ORDEM_INV[invAba] || [];
+                legenda.sort((a, b) => ord.indexOf(a[0]) - ord.indexOf(b[0]));
             }
             else if (modoCor === 'diverg') {
                 const ord = ['Diverge', 'Confere, mas dado suspeito', 'Confere'];
@@ -3862,15 +3967,15 @@
             }
 
             if (cacheModo.extra) h += cacheModo.extra;
-            h += '<div class="nota">Cinza escuro = endereço sem saldo.</div>';
+            h += '<div class="nota">' + (modoCor === 'inventario' ? 'Cinza escuro = endereço fora deste ciclo.' : 'Cinza escuro = endereço sem saldo.') + '</div>';
             el.innerHTML = h;
             el.style.display = 'block';
         }
 
         /* Botões: marca "sem dado" e mostra selo vermelho com a quantidade de alertas */
         function atualizarBarraModos() {
-            const tem = { valor: false, giro: false, validade: false, familia: false, filial: false, obsoleto: false, diverg: false, anomalia: false, variacao: serieDatas.length >= 2 };
-            const selo = { giro: 0, validade: 0, obsoleto: 0, diverg: 0, anomalia: 0 };
+            const tem = { valor: false, giro: false, validade: false, familia: false, filial: false, obsoleto: false, diverg: false, anomalia: false, inventario: invDados.length > 0, variacao: serieDatas.length >= 2 };
+            const selo = { giro: 0, validade: 0, obsoleto: 0, diverg: 0, anomalia: 0, inventario: (invCache && invCache.pendencias) || 0 };
 
             Object.keys(infoEnd).forEach(k => {
                 const o = infoEnd[k];
@@ -3898,9 +4003,11 @@
 
         function atualizarModosUI() {
             analisarEnderecos();
+            calcularInventario();
             recalcularModo();
             atualizarBarraModos();
             renderLegendaModo();
+            atualizarInvUI();
         }
 
         function aplicarModo(m) {
@@ -3916,6 +4023,7 @@
             atualizarBarraModos();
             renderLegendaModo();
             atualizarPlayUI();
+            atualizarInvUI();
             aplicarFiltrosECores();
             salvarEstado();
         }
@@ -3984,8 +4092,9 @@
             const barra = document.getElementById('barra-play');
             if (!barra) return;
 
-            if (serieDatas.length < 2) {
+            if (serieDatas.length < 2 || modoCor === 'inventario') {
                 barra.classList.remove('visivel');
+                reposicionarBarras();
                 return;
             }
 
@@ -3998,13 +4107,8 @@
             document.getElementById('play-btn').innerHTML = playTimer ? '&#10074;&#10074;' : '&#9654;';
             barra.classList.add('visivel');
 
-            /* fica sempre acima da barra "Colorir por", mesmo quando ela quebra em 2 linhas */
-            const bm = document.getElementById('barra-modos');
-            barra.style.bottom = (bm.offsetHeight + 26) + 'px';
-
-            /* em telas estreitas a legenda sobe para não ficar embaixo da barra de play */
-            const leg = document.getElementById('legenda-modo');
-            if (leg) leg.style.bottom = (window.innerWidth < 1150 ? (bm.offsetHeight + 26 + barra.offsetHeight + 8) : 18) + 'px';
+            /* fica sempre acima da barra "Colorir por" (e da barra de inventário, se houver) */
+            reposicionarBarras();
         }
 
         function irParaData(dt) {
@@ -4093,6 +4197,515 @@
             if (b) aplicarModo(b.getAttribute('data-modo'));
         });
 
+        /* =========================================================
+           25.3 INVENTÁRIO: PRÉ-PROCESSAMENTO, PÓS-PROCESSAMENTO E COMPARAÇÃO
+           Fluxo: zeramento (documento Z) -> contagem -> processamento no sistema.
+           Pré  = arquivos tirados ANTES de processar (o sistema ainda tem o saldo).
+           Pós  = arquivos tirados DEPOIS (o sistema já está zerado: a contagem entra inteira).
+           ========================================================= */
+
+        let invDados = [];
+        let invCiclos = [];
+        let invCiclo = '';
+        let invAba = 'pre';
+        let invCache = null;
+
+        const EPS_INV = 0.005;
+        const COR_INV = {
+            'Aguardando contagem': 0xffb703,
+            'Contagem sem zeramento': 0x9b59b6,
+            'Faltou contar item': 0xfb8500,
+            'Contado OK': 0x2ecc71,
+            'Ajuste positivo': 0x3498db,
+            'Ajuste negativo': 0xe74c3c,
+            'Sem contagem pós': 0xffb703,
+            'Acréscimo de estoque': 0x3498db,
+            'Redução de estoque': 0xe74c3c,
+            'Sem impacto': 0x2ecc71,
+            'Pré = Pós': 0x2ecc71,
+            'Pré ≠ Pós': 0xe74c3c,
+            'Pós pendente': 0xffb703,
+            'Só no pós': 0x9b59b6
+        };
+        const ORDEM_INV = {
+            pre: ['Aguardando contagem', 'Contagem sem zeramento', 'Faltou contar item', 'Ajuste negativo', 'Ajuste positivo', 'Contado OK'],
+            pos: ['Sem contagem pós', 'Redução de estoque', 'Acréscimo de estoque', 'Sem impacto'],
+            comp: ['Pré ≠ Pós', 'Pós pendente', 'Só no pós', 'Pré = Pós']
+        };
+        const ROTULO_ABA = { pre: 'Pré-processamento', pos: 'Pós-processamento', comp: 'Pré × Pós' };
+
+        function processarInventario(inv) {
+            let a = inv;
+            if (typeof a === 'string') {
+                try { a = JSON.parse(a); } catch (e) { a = []; }
+            }
+            if (!Array.isArray(a)) a = [];
+
+            invDados = a.map(r => ({
+                ciclo: String(r.c || ''), filial: String(r.f || ''), armazem: String(r.a || ''), end: String(r.e || ''),
+                k: extrairChaveEndereco(r.e) || normalizarNome(r.e),
+                prod: String(r.p || ''), desc: String(r.d || ''), lote: String(r.l || ''), un: String(r.u || ''),
+                zp: Number(r.zp) || 0, zs: Number(r.zs) || 0, sp: Number(r.sp) || 0, cp: Number(r.cp) || 0,
+                ss: Number(r.ss) || 0, cs: Number(r.cs) || 0,
+                lzp: Number(r.lzp) || 0, lzs: Number(r.lzs) || 0, lcp: Number(r.lcp) || 0, lcs: Number(r.lcs) || 0,
+                custo: Number(r.k) || 0, orig: String(r.ko || ''), dz: String(r.dz || ''), dc: String(r.dc || '')
+            }));
+
+            invCiclos = Array.from(new Set(invDados.map(r => r.ciclo))).sort();
+            if (invCiclos.indexOf(invCiclo) < 0) {
+                const reais = invCiclos.filter(c => c !== 'SEM CICLO');
+                invCiclo = reais.length ? reais[reais.length - 1] : (invCiclos.length ? invCiclos[invCiclos.length - 1] : '');
+            }
+        }
+
+        function fmtQtdInv(v) {
+            return formatarNumero(v, Math.abs(v % 1) > 0.0001 ? 2 : 0);
+        }
+
+        function fmtSinalQtd(v) {
+            return (v > 0 ? '+' : (v < 0 ? '−' : '')) + fmtQtdInv(Math.abs(v));
+        }
+
+        function fmtSinalMoeda(v) {
+            return (v > 0 ? '+' : (v < 0 ? '−' : '')) + formatarMoeda(Math.abs(v));
+        }
+
+        /* Calcula, para o ciclo escolhido, a situação de cada endereço nas 3 abas, o resumo e o ranking */
+        function calcularInventario() {
+            const linhasLote = invDados.filter(r => r.ciclo === invCiclo);
+            const temPos = linhasLote.some(r => r.lzs > 0 || r.lcs > 0);
+            const temZ = linhasLote.some(r => (r.lzp + r.lzs) > 0);
+
+            /* Junta os lotes: a conferência é por Produto x Endereço. Quem zera e quem conta nem sempre usa o mesmo
+               lote (ex.: zerou o lote NF3230 e contou sem lote); separado, isso virava "faltou contar" + "item novo". */
+            const mapa = {};
+            linhasLote.forEach(r => {
+                const ch = r.k + '|' + r.filial + '|' + r.armazem + '|' + r.prod;
+                let g = mapa[ch];
+                if (!g) {
+                    g = mapa[ch] = Object.assign({}, r, { zp: 0, zs: 0, sp: 0, cp: 0, ss: 0, cs: 0, lzp: 0, lzs: 0, lcp: 0, lcs: 0, dz: '', dc: '', lotesZ: [], lotesC: [], loteTxt: [] });
+                }
+                g.zp += r.zp; g.zs += r.zs; g.sp += r.sp; g.cp += r.cp; g.ss += r.ss; g.cs += r.cs;
+                g.lzp += r.lzp; g.lzs += r.lzs; g.lcp += r.lcp; g.lcs += r.lcs;
+                if (r.dz && g.dz.indexOf(r.dz) < 0) g.dz = g.dz ? g.dz + ',' + r.dz : r.dz;
+                if (r.dc && g.dc.indexOf(r.dc) < 0) g.dc = g.dc ? g.dc + ',' + r.dc : r.dc;
+                if ((r.lzp + r.lzs) > 0) g.lotesZ.push(r.lote);
+                if ((r.lcp + r.lcs) > 0) g.lotesC.push(r.lote);
+                if (r.lote && g.loteTxt.indexOf(r.lote) < 0) g.loteTxt.push(r.lote);
+                if (r.custo > 0 && !(g.custo > 0)) { g.custo = r.custo; g.orig = r.orig; }
+            });
+            const linhas = Object.keys(mapa).map(ch => {
+                const g = mapa[ch];
+                const z = Array.from(new Set(g.lotesZ)).sort().join('|');
+                const c = Array.from(new Set(g.lotesC)).sort().join('|');
+                g.loteDif = g.lotesZ.length > 0 && g.lotesC.length > 0 && z !== c;
+                g.lote = g.loteTxt.join(', ');
+                g.loteZ = z; g.loteC = c;
+                return g;
+            });
+            const addrs = {};
+            const itens = [];
+
+            linhas.forEach(r => {
+                const zerado = (r.lzp + r.lzs) > 0;
+                const zq = r.lzp > 0 ? r.zp : r.zs;
+                const contPre = r.lcp > 0;
+                const contPos = r.lcs > 0;
+                const k = r.custo;
+
+                const difPre = contPre ? r.cp - (zerado ? zq : r.sp) : (zerado ? -zq : 0);
+                const difPos = (temPos && (contPos || zerado)) ? ((contPos ? r.cs : 0) - (zerado ? zq : r.ss)) : null;
+
+                const it = {
+                    r: r, zerado: zerado, zq: zq, contPre: contPre, contPos: contPos, custo: k,
+                    difPre: difPre, difPos: difPos,
+                    vDifPre: difPre * k, vDifPos: difPos === null ? null : difPos * k,
+                    vZer: zerado ? zq * k : 0, vCntPre: r.cp * k, vCntPos: r.cs * k,
+                    semCusto: k <= 0
+                };
+
+                if (zerado && !contPre) it.stPre = 'Aguardando contagem';
+                else if (contPre) it.stPre = Math.abs(difPre) < EPS_INV ? 'OK' : (difPre > 0 ? 'Acréscimo' : 'Redução');
+                else it.stPre = '';
+
+                if (difPos === null) it.stPos = '';
+                else if (zerado && !contPos) it.stPos = 'Sem contagem pós';
+                else it.stPos = Math.abs(difPos) < EPS_INV ? 'Sem impacto' : (difPos > 0 ? 'Acréscimo' : 'Redução');
+
+                if (contPre && contPos) it.stComp = Math.abs(r.cp - r.cs) < EPS_INV ? 'Pré = Pós' : 'Pré ≠ Pós';
+                else if (temPos && (contPre || zerado) && !contPos) it.stComp = 'Pós pendente';
+                else if (!contPre && contPos) it.stComp = 'Só no pós';
+                else it.stComp = '';
+
+                itens.push(it);
+
+                let a = addrs[r.k];
+                if (!a) {
+                    a = addrs[r.k] = { k: r.k, end: r.end, filial: r.filial, armazem: r.armazem, itens: [], zerado: false, contado: false, contadoPos: false };
+                }
+                a.itens.push(it);
+                if (zerado) a.zerado = true;
+                if (contPre) a.contado = true;
+                if (contPos) a.contadoPos = true;
+            });
+
+            const sinal = (v, q) => (Math.abs(v) >= EPS_INV ? v : q);
+
+            Object.keys(addrs).forEach(key => {
+                const a = addrs[key];
+                const lista = a.itens;
+                a.vPre = lista.reduce((s, i) => s + i.vDifPre, 0);
+                a.qPre = lista.reduce((s, i) => s + i.difPre, 0);
+                a.vZer = lista.reduce((s, i) => s + i.vZer, 0);
+                a.vPos = lista.reduce((s, i) => s + (i.vDifPos === null ? 0 : i.vDifPos), 0);
+                a.qPos = lista.reduce((s, i) => s + (i.difPos === null ? 0 : i.difPos), 0);
+
+                /* PRÉ */
+                if (temZ && a.zerado && !a.contado) { a.clsPre = 'Aguardando contagem'; a.vClsPre = a.vZer; }
+                else if (temZ && !a.zerado && a.contado) { a.clsPre = 'Contagem sem zeramento'; a.vClsPre = lista.reduce((s, i) => s + i.vCntPre, 0); }
+                else if (lista.some(i => i.stPre === 'Aguardando contagem')) { a.clsPre = 'Faltou contar item'; a.vClsPre = lista.filter(i => i.stPre === 'Aguardando contagem').reduce((s, i) => s + i.vZer, 0); }
+                else if (lista.some(i => i.stPre === 'Acréscimo' || i.stPre === 'Redução')) {
+                    const pos = lista.reduce((s, i) => s + Math.max(i.vDifPre, 0), 0);
+                    const neg = lista.reduce((s, i) => s + Math.min(i.vDifPre, 0), 0);
+                    const net = sinal(pos + neg, lista.reduce((s, i) => s + i.difPre, 0));
+                    a.clsPre = (net > 0 || (net === 0 && pos >= -neg)) ? 'Ajuste positivo' : 'Ajuste negativo';
+                    a.vClsPre = Math.abs(pos) + Math.abs(neg);
+                }
+                else { a.clsPre = 'Contado OK'; a.vClsPre = lista.reduce((s, i) => s + i.vCntPre, 0); }
+
+                /* PÓS */
+                if (!temPos) { a.clsPos = ''; a.vClsPos = 0; }
+                else if (a.zerado && !a.contadoPos) { a.clsPos = 'Sem contagem pós'; a.vClsPos = a.vZer; }
+                else if (lista.every(i => i.difPos === null)) { a.clsPos = ''; a.vClsPos = 0; }   /* sem nada no pós para este endereço */
+                else {
+                    const net = sinal(a.vPos, a.qPos);
+                    a.clsPos = Math.abs(net) < EPS_INV ? 'Sem impacto' : (net > 0 ? 'Acréscimo de estoque' : 'Redução de estoque');
+                    a.vClsPos = Math.abs(a.vPos);
+                }
+
+                /* COMPARAR */
+                if (!temPos) { a.clsComp = ''; a.vClsComp = 0; }
+                else if (lista.some(i => i.stComp === 'Pré ≠ Pós')) { a.clsComp = 'Pré ≠ Pós'; a.vClsComp = lista.filter(i => i.stComp === 'Pré ≠ Pós').reduce((s, i) => s + Math.abs((i.vCntPos - i.vCntPre)), 0); }
+                else if (lista.some(i => i.stComp === 'Pós pendente')) { a.clsComp = 'Pós pendente'; a.vClsComp = lista.filter(i => i.stComp === 'Pós pendente').reduce((s, i) => s + Math.abs(i.vDifPre), 0); }
+                else if (lista.every(i => i.stComp === 'Só no pós')) { a.clsComp = 'Só no pós'; a.vClsComp = lista.reduce((s, i) => s + i.vCntPos, 0); }
+                else { a.clsComp = 'Pré = Pós'; a.vClsComp = lista.reduce((s, i) => s + i.vCntPre, 0); }
+            });
+
+            const lst = Object.keys(addrs).map(k => addrs[k]);
+            const contItens = itens.filter(i => i.contPre);
+            const n = itens.length;
+
+            /* Resumo PRÉ */
+            const endZer = lst.filter(a => a.zerado).length;
+            const endCont = lst.filter(a => a.contado).length;
+            const endZerCont = lst.filter(a => a.zerado && a.contado).length;
+            const cAg = lst.filter(a => a.clsPre === 'Aguardando contagem').length;
+            const cSemZ = lst.filter(a => a.clsPre === 'Contagem sem zeramento').length;
+            const cFaltou = lst.filter(a => a.clsPre === 'Faltou contar item').length;
+            const itOK = contItens.filter(i => i.stPre === 'OK').length;
+            const ajPos = contItens.reduce((s, i) => s + Math.max(i.vDifPre, 0), 0);
+            const ajNeg = contItens.reduce((s, i) => s + Math.min(i.vDifPre, 0), 0);
+            const vContado = contItens.reduce((s, i) => s + i.vCntPre, 0);
+            const semCustoN = itens.filter(i => i.semCusto && (i.contPre || i.zerado)).length;
+            const pctConc = endZer > 0 ? Math.round((endZerCont / endZer) * 100) : null;
+
+            const resPre = {
+                rot: 'Inventário · ' + invCiclo + ' · Pré',
+                val: temZ ? (formatarNumero(endZerCont, 0) + '/' + formatarNumero(endZer, 0) + ' zerados contados' + (pctConc !== null ? ' (' + pctConc + '%)' : '')) : (formatarNumero(endCont, 0) + ' endereços contados'),
+                sub: (temZ ? 'Aguardando contagem: <b>' + cAg + '</b> · Contagem sem zeramento: <b>' + cSemZ + '</b> · Faltou item: <b>' + cFaltou + '</b><br>' : 'Ciclo sem zeramento (contagem direta)<br>') +
+                    'Itens contados: ' + formatarNumero(contItens.length, 0) + ' · OK: ' + itOK + ' · divergentes: ' + (contItens.length - itOK) + '<br>' +
+                    'Ajuste: <span class="sobe">' + escaparHTML(fmtSinalMoeda(ajPos)) + '</span> · <span class="desce">' + escaparHTML(fmtSinalMoeda(ajNeg)) + '</span> · líquido ' + escaparHTML(fmtSinalMoeda(ajPos + ajNeg)) +
+                    '<br>Valor contado: ' + escaparHTML(moedaCurta(vContado)) + (vContado > 0 ? ' (impacto líquido = ' + (Math.round(((ajPos + ajNeg) / vContado) * 1000) / 10).toLocaleString('pt-BR') + '%)' : '') +
+                    (semCustoN > 0 ? '<br>⚠ ' + semCustoN + ' item(ns) sem custo localizado' : '')
+            };
+
+            /* Resumo PÓS */
+            let resPos;
+            if (!temPos) {
+                resPos = { rot: 'Inventário · ' + invCiclo + ' · Pós', val: 'Sem arquivo pós', sub: 'Coloque o arquivo tirado depois de processar em DADOS\\08 - Inventario\\02 - Pos processamento.' };
+            }
+            else {
+                const comPos = itens.filter(i => i.difPos !== null);
+                const vZerTot = itens.reduce((s, i) => s + i.vZer, 0);
+                const vCntPosTot = itens.reduce((s, i) => s + (i.contPos ? i.vCntPos : 0), 0);
+                const impacto = comPos.reduce((s, i) => s + i.vDifPos, 0);
+                const eAcr = lst.filter(a => a.clsPos === 'Acréscimo de estoque').length;
+                const eRed = lst.filter(a => a.clsPos === 'Redução de estoque').length;
+                const eSem = lst.filter(a => a.clsPos === 'Sem contagem pós').length;
+                resPos = {
+                    rot: 'Inventário · ' + invCiclo + ' · Pós',
+                    val: fmtSinalMoeda(impacto) + ' <small style="font-size:11px;color:#9fc3d6">impacto real no sistema</small>',
+                    sub: 'Valor zerado: ' + escaparHTML(moedaCurta(vZerTot)) + ' · contagem processada: ' + escaparHTML(moedaCurta(vCntPosTot)) + '<br>' +
+                        'Endereços: <span class="sobe">' + eAcr + ' acréscimo</span> · <span class="desce">' + eRed + ' redução</span> · sem contagem pós: <b>' + eSem + '</b>' +
+                        (semCustoN > 0 ? '<br>⚠ ' + semCustoN + ' item(ns) sem custo localizado' : '')
+                };
+            }
+
+            /* Resumo COMPARAR */
+            let resComp;
+            if (!temPos) {
+                resComp = { rot: 'Inventário · ' + invCiclo + ' · Pré × Pós', val: 'Sem arquivo pós', sub: 'Sem o pós-processamento não há o que comparar.' };
+            }
+            else {
+                const eq = itens.filter(i => i.stComp === 'Pré = Pós').length;
+                const df = itens.filter(i => i.stComp === 'Pré ≠ Pós').length;
+                const pend = itens.filter(i => i.stComp === 'Pós pendente').length;
+                const prev = itens.filter(i => i.contPre).reduce((s, i) => s + i.vDifPre, 0);
+                const real = itens.filter(i => i.difPos !== null).reduce((s, i) => s + i.vDifPos, 0);
+                resComp = {
+                    rot: 'Inventário · ' + invCiclo + ' · Pré × Pós',
+                    val: df + ' item(ns) com pré ≠ pós',
+                    sub: 'Iguais: ' + eq + ' · diferentes: <b>' + df + '</b> · pós pendente: ' + pend + '<br>' +
+                        'Previsto (pré): ' + escaparHTML(fmtSinalMoeda(prev)) + ' · real (pós): ' + escaparHTML(fmtSinalMoeda(real)) + '<br>Diferença: ' + escaparHTML(fmtSinalMoeda(real - prev))
+                };
+            }
+
+            /* Ranking por valor */
+            const mkRank = (lista, campo) => lista
+                .filter(i => i[campo] !== null && Math.abs(i[campo]) >= EPS_INV)
+                .map(i => ({ k: i.r.k, end: i.r.end, prod: i.r.prod, desc: i.r.desc, v: i[campo], q: campo === 'vDifPre' ? i.difPre : i.difPos }));
+            const compItens = itens.filter(i => i.contPre && i.contPos).map(i => ({ r: i.r, vDif: i.vDifPos - i.vDifPre, difQ: i.difPos - i.difPre }));
+            const rkPre = mkRank(contItens.concat(itens.filter(i => !i.contPre && i.zerado)), 'vDifPre');
+            const rkPos = mkRank(itens, 'vDifPos');
+            const rkComp = compItens.filter(c => Math.abs(c.vDif) >= EPS_INV).map(c => ({ k: c.r.k, end: c.r.end, prod: c.r.prod, desc: c.r.desc, v: c.vDif, q: c.difQ }));
+            const top = (arr, pos) => arr.filter(x => pos ? x.v > 0 : x.v < 0).sort((a, b) => pos ? b.v - a.v : a.v - b.v).slice(0, 5);
+
+            invCache = {
+                n: n, temPos: temPos, temZ: temZ, addrs: addrs, itens: itens,
+                resumo: { pre: resPre, pos: resPos, comp: resComp },
+                ranking: {
+                    pre: { pos: top(rkPre, true), neg: top(rkPre, false) },
+                    pos: { pos: top(rkPos, true), neg: top(rkPos, false) },
+                    comp: { pos: top(rkComp, true), neg: top(rkComp, false) }
+                },
+                pendencias: cAg + cSemZ + cFaltou
+            };
+            return invCache;
+        }
+
+        function clsInvDoEndereco(a) {
+            return invAba === 'pre' ? a.clsPre : (invAba === 'pos' ? a.clsPos : a.clsComp);
+        }
+
+        /* Um item do inventário no tooltip/painel */
+        function htmlInvItem(it) {
+            const r = it.r;
+            const st = invAba === 'pre' ? it.stPre : (invAba === 'pos' ? it.stPos : it.stComp);
+            const cor = st === 'OK' || st === 'Sem impacto' || st === 'Pré = Pós' ? '#6bff9a' : (st === 'Acréscimo' ? '#6cb8ff' : (st === 'Redução' || st === 'Pré ≠ Pós' ? '#ff8a80' : '#ffd166'));
+            const lin = (rot, val, ruim) => '<div class="cf-lin ' + (ruim ? 'cf-ruim' : 'cf-bom') + '"><span class="cf-rot">' + rot + '</span><span class="cf-val">' + val + '</span></div>';
+            const un = r.un ? ' ' + escaparHTML(r.un) : '';
+
+            let h = '<div class="tt-produto"><div class="tt-produto-titulo">' + escaparHTML(r.desc || r.prod) + '</div>';
+            h += '<div class="cf-sub">' + escaparHTML(r.prod) + (r.lote ? ' · lote ' + escaparHTML(r.lote) : '') +
+                (st ? ' · <b style="color:' + cor + '">' + escaparHTML(st) + '</b>' : '') + '</div>';
+            h += '<div class="cf-bloco">';
+
+            if (invAba === 'pre') {
+                if (it.zerado) h += lin('Zerado (saldo no sistema)', fmtQtdInv(it.zq) + un, false);
+                h += lin('Contado', it.contPre ? fmtQtdInv(r.cp) + un : 'não contado', !it.contPre);
+                if (it.contPre || it.zerado) h += lin('Diferença', fmtSinalQtd(it.difPre) + un + ' (' + escaparHTML(fmtSinalMoeda(it.vDifPre)) + ')', Math.abs(it.difPre) >= EPS_INV);
+                if (it.contPre && !it.zerado && invCache && invCache.temZ) h += lin('Zeramento', 'item não estava no zeramento', true);
+            }
+            else if (invAba === 'pos') {
+                if (it.zerado) h += lin('Zerado (saldo antes)', fmtQtdInv(it.zq) + un, false);
+                h += lin('Contagem processada', it.contPos ? fmtQtdInv(r.cs) + un : 'sem contagem pós', !it.contPos);
+                if (it.difPos !== null) h += lin('Impacto real', fmtSinalQtd(it.difPos) + un + ' (' + escaparHTML(fmtSinalMoeda(it.vDifPos)) + ')', Math.abs(it.difPos) >= EPS_INV);
+            }
+            else {
+                h += lin('Pré (previsto)', it.contPre ? fmtSinalQtd(it.difPre) + un + ' (' + escaparHTML(fmtSinalMoeda(it.vDifPre)) + ')' : 'não contado', false);
+                h += lin('Pós (real)', it.difPos !== null ? fmtSinalQtd(it.difPos) + un + ' (' + escaparHTML(fmtSinalMoeda(it.vDifPos)) + ')' : 'pendente', it.difPos === null);
+                if (it.contPre && it.contPos) h += lin('Contado pré × pós', fmtQtdInv(r.cp) + ' × ' + fmtQtdInv(r.cs), Math.abs(r.cp - r.cs) >= EPS_INV);
+            }
+
+            if (r.loteDif) h += lin('Lote', 'zerado: ' + escaparHTML(r.loteZ.split('|').map(x => x || 'sem lote').join(', ')) + ' · contado: ' + escaparHTML(r.loteC.split('|').map(x => x || 'sem lote').join(', ')), true);
+            h += lin('Custo unitário', it.custo > 0 ? escaparHTML(formatarMoeda(it.custo)) + ' <small>(' + escaparHTML(r.orig) + ')</small>' : '<b>não localizado</b>', it.custo <= 0);
+            h += '</div>';
+            const docs = [r.dz ? 'Z: ' + r.dz : '', r.dc ? 'Cont.: ' + r.dc : ''].filter(Boolean).join(' · ');
+            if (docs) h += '<div class="cf-sub">' + escaparHTML(docs) + '</div>';
+            return h + '</div>';
+        }
+
+        function montarHTMLTooltipInv(endereco) {
+            const k = extrairChaveEndereco(endereco) || normalizarNome(endereco);
+            const c = invCache || calcularInventario();
+            const a = c && c.addrs ? c.addrs[k] : null;
+
+            let h = '<div class="tt-header">' + escaparHTML(endereco) + '</div>';
+            if (!a) {
+                return h + '<div class="tt-line"><span class="tt-label">Inventário ' + escaparHTML(invCiclo) + '</span><span class="tt-value">endereço fora do ciclo</span></div>';
+            }
+
+            const cls = clsInvDoEndereco(a);
+            const cor = cls ? hexCss(COR_INV[cls] || COR_SEM_DADO) : '#9aa5b1';
+            h += '<div class="tt-line"><span class="tt-label">' + escaparHTML(invCiclo) + ' · ' + ROTULO_ABA[invAba] + '</span><span class="tt-value" style="color:' + cor + '">' + escaparHTML(cls || 'sem arquivo pós') + '</span></div>';
+            h += '<div class="tt-line"><span class="tt-label">Itens no endereço</span><span class="tt-value">' + formatarNumero(a.itens.length, 0) + '</span></div>';
+
+            const valorDe = i => Math.abs(invAba === 'pre' ? (i.contPre ? i.vDifPre : i.vZer) : (invAba === 'pos' ? (i.vDifPos || 0) : (i.vDifPos === null ? 0 : (i.vDifPos - i.vDifPre))));
+            const ord = a.itens.slice().sort((x, y) => valorDe(y) - valorDe(x));
+            const MAX = Math.max(1, Math.min(3, Math.floor((window.innerHeight - 190) / 170)));
+            ord.slice(0, MAX).forEach(i => { h += htmlInvItem(i); });
+            if (ord.length > MAX) h += '<div class="tt-resto">+ ' + formatarNumero(ord.length - MAX, 0) + ' item(ns)<br>Clique no endereço para ver todos</div>';
+            return h;
+        }
+
+        function restaurarRotulosKPI() {
+            const r = document.querySelectorAll('#painel-kpi .corpo > .linha .rotulo');
+            const padrao = ['Produtos', 'Estoque', 'Valor Estoque', 'Endereço'];
+            for (let i = 0; i < 4 && i < r.length; i++) r[i].innerText = padrao[i];
+        }
+
+        function exibirKPIInv(enderecoVisual) {
+            const k = extrairChaveEndereco(enderecoVisual) || normalizarNome(enderecoVisual);
+            const c = invCache || calcularInventario();
+            const a = c && c.addrs ? c.addrs[k] : null;
+
+            const rot = document.querySelectorAll('#painel-kpi .corpo > .linha .rotulo');
+            ['Itens', 'Contado', 'Valor contado', 'Situação'].forEach((t, i) => { if (rot[i]) rot[i].innerText = t; });
+
+            document.getElementById('kpi-endereco').innerText = enderecoVisual;
+            const prod = document.getElementById('kpi-produtos');
+
+            if (!a) {
+                document.getElementById('kpi-qtd-produtos').innerText = '0';
+                document.getElementById('kpi-estoque').innerText = '0';
+                document.getElementById('kpi-valor-estoque').innerText = formatarMoeda(0);
+                document.getElementById('kpi-status').innerText = 'Fora do ciclo';
+                prod.innerHTML = '<div class="kpi-produto-item">Este endereço não aparece no ' + escaparHTML(invCiclo) + '.</div>';
+                painelKPI.style.display = 'block';
+                return;
+            }
+
+            const qCont = a.itens.reduce((s, i) => s + (invAba === 'pos' ? (i.contPos ? i.r.cs : 0) : (i.contPre ? i.r.cp : 0)), 0);
+            const vCont = a.itens.reduce((s, i) => s + (invAba === 'pos' ? i.vCntPos : i.vCntPre), 0);
+            const cls = clsInvDoEndereco(a);
+
+            document.getElementById('kpi-qtd-produtos').innerText = a.itens.length;
+            document.getElementById('kpi-estoque').innerText = formatarNumero(qCont, 0);
+            document.getElementById('kpi-valor-estoque').innerText = formatarMoeda(vCont);
+            document.getElementById('kpi-status').innerText = cls || 'sem arquivo pós';
+
+            const ord = a.itens.slice().sort((x, y) => (x.r.prod < y.r.prod ? -1 : 1));
+            prod.innerHTML = ord.map(htmlInvItem).join('') || '<div class="kpi-produto-item">Sem itens.</div>';
+            painelKPI.style.display = 'block';
+        }
+
+        /* Barra de ciclo/abas + ranking */
+        function atualizarInvUI() {
+            const barra = document.getElementById('barra-inv');
+            const rk = document.getElementById('inv-ranking');
+            if (!barra || !rk) return;
+
+            const ativo = modoCor === 'inventario';
+            barra.classList.toggle('visivel', ativo);
+            rk.classList.toggle('visivel', ativo && !!invCache && invCache.n > 0);
+
+            if (ativo) {
+                const sel = document.getElementById('inv-ciclo');
+                const lista = invCiclos.length ? invCiclos : ['—'];
+                if (sel.options.length !== lista.length || Array.from(sel.options).some((o, i) => o.value !== lista[i])) {
+                    sel.innerHTML = lista.map(c => '<option value="' + escaparHTML(c) + '">' + escaparHTML(c) + '</option>').join('');
+                }
+                sel.value = invCiclo;
+                document.querySelectorAll('#barra-inv .inv-aba').forEach(b => b.classList.toggle('ativo', b.getAttribute('data-aba') === invAba));
+                renderInvRanking();
+            }
+            reposicionarBarras();
+        }
+
+        function renderInvRanking() {
+            const el = document.getElementById('inv-ranking');
+            if (!el || !invCache || invCache.n === 0) return;
+
+            const R = invCache.ranking[invAba];
+            const tit = invAba === 'pre' ? 'Ajuste previsto' : (invAba === 'pos' ? 'Impacto real' : 'Diferença pós − pré');
+            const linhas = (arr, classe) => arr.length === 0
+                ? '<div class="vazio">nenhum</div>'
+                : arr.map(x => '<div class="rk" data-k="' + escaparHTML(x.k) + '"><b>' + escaparHTML(x.end) + '</b><span class="nm" title="' + escaparHTML(x.desc || x.prod) + '">' + escaparHTML(x.desc || x.prod) + '</span><span class="v ' + classe + '">' + escaparHTML(fmtSinalMoeda(x.v)) + '</span></div>').join('');
+
+            el.innerHTML = '<h5>▲ Maiores acréscimos · ' + tit + '</h5>' + linhas(R.pos, 'sobe') +
+                '<h5>▼ Maiores reduções · ' + tit + '</h5>' + linhas(R.neg, 'desce');
+
+            /* fica logo abaixo do HUD de cima */
+            const hud = document.getElementById('hud-topo');
+            const hr = hud ? hud.getBoundingClientRect() : null;
+            const topo = (hr && hr.height > 0 && getComputedStyle(hud).display !== 'none') ? Math.round(hr.bottom + 8) : 15;
+            el.style.top = topo + 'px';
+            el.style.maxHeight = Math.max(120, window.innerHeight - topo - 200) + 'px';
+        }
+
+        /* Leva a câmera até o endereço (clique no ranking) */
+        function focarEnderecoNoMapa(k) {
+            if (!modeloGeral) return;
+            const box = new THREE.Box3();
+            let achou = false;
+            modeloGeral.traverse(child => {
+                if (!child.isMesh || ehEstrutura(child)) return;
+                const e = getEnderecoDaHierarquia(child);
+                if (e && (extrairChaveEndereco(e) || normalizarNome(e)) === k) {
+                    box.expandByObject(child);
+                    achou = true;
+                }
+            });
+            if (!achou) return;
+
+            const centro = box.getCenter(new THREE.Vector3());
+            const dist = Math.max(18, tamanhoMax * 0.12);
+            cinematicoAtivo = false;
+            controls.enabled = true;
+            tweenCamera(new THREE.Vector3(centro.x + dist, centro.y + dist * 0.8, centro.z + dist), centro, 900);
+            exibirKPI(k, obterRegistrosDoEndereco(k));
+        }
+
+        document.getElementById('inv-ranking').addEventListener('click', function(e) {
+            const it = e.target.closest ? e.target.closest('.rk[data-k]') : null;
+            if (it) focarEnderecoNoMapa(it.getAttribute('data-k'));
+        });
+
+        function mudarInvBase() {
+            calcularInventario();
+            recalcularModo();
+            atualizarBarraModos();
+            renderLegendaModo();
+            atualizarInvUI();
+            aplicarFiltrosECores();
+            salvarEstado();
+        }
+
+        document.getElementById('inv-ciclo').addEventListener('change', function() {
+            invCiclo = this.value;
+            focoLegenda.clear();
+            mudarInvBase();
+        });
+
+        document.getElementById('barra-inv').addEventListener('click', function(e) {
+            const b = e.target.closest ? e.target.closest('.inv-aba') : null;
+            if (!b) return;
+            invAba = b.getAttribute('data-aba');
+            focoLegenda.clear();
+            mudarInvBase();
+        });
+
+        /* Empilha as barras de baixo (modos, inventário, play) e ajusta a legenda */
+        function reposicionarBarras() {
+            const bm = document.getElementById('barra-modos');
+            let base = bm.offsetHeight + 26;
+            let ultimaAltura = 0;
+
+            ['barra-inv', 'barra-play'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.classList.contains('visivel')) {
+                    el.style.bottom = base + 'px';
+                    ultimaAltura = el.offsetHeight;
+                    base += el.offsetHeight + 8;
+                }
+            });
+
+            const leg = document.getElementById('legenda-modo');
+            if (leg) leg.style.bottom = (window.innerWidth < 1150 && ultimaAltura > 0 ? base : 18) + 'px';
+        }
+
+        window.addEventListener('resize', function() { reposicionarBarras(); if (modoCor === 'inventario') renderInvRanking(); });
+
         /* ---------- Enquadrar ---------- */
         function posEnquadrada() {
             /* Em telas menos largas que 16:9 afasta um pouco para o galpão caber inteiro */
@@ -4162,7 +4775,7 @@
 
         function salvarEstado() {
             try {
-                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, foco: Array.from(focoLegenda) };
+                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, foco: Array.from(focoLegenda), invCiclo: invCiclo, invAba: invAba };
                 if (lembrarCamera) {
                     est.cam = camera.position.toArray();
                     est.tgt = controls.target.toArray();
@@ -4206,6 +4819,8 @@
                 }
                 if (HUD_NIVEIS.indexOf(est.hud) >= 0) hudModo = est.hud;
                 if (est.lembrar === false) lembrarCamera = false;
+                if (est.invAba === 'pre' || est.invAba === 'pos' || est.invAba === 'comp') invAba = est.invAba;
+                if (typeof est.invCiclo === 'string' && est.invCiclo) invCiclo = est.invCiclo;
                 if (est.qual === false) { qualidadeAlta = false; aplicarQualidade(); }
             }
             btnLembrar.innerText = 'Lembrar câmera: ' + (lembrarCamera ? 'Sim' : 'Não');
