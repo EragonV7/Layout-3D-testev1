@@ -217,6 +217,54 @@
         }
 
         /* Conferência por item (tooltip e painel do modo Divergência) */
+        /* Compartilhar: menu, aviso e janela */
+        #menu-compartilhar { display: none; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid #005b7a; border-radius: 6px; background: rgb(22,40,66); box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
+        #menu-compartilhar.aberto { display: flex; }
+        #menu-compartilhar .btn { font-size: 12px; text-align: left; padding: 7px 10px; white-space: nowrap; }
+        #barra-inv .inv-acao {
+            border: 1px solid #ffaa00; background: rgba(255,170,0,0.12); color: #ffd166; border-radius: 999px;
+            cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; padding: 5px 11px;
+        }
+        #barra-inv .inv-acao:hover { background: rgba(255,170,0,0.30); }
+        #toast-share {
+            position: fixed; left: 50%; top: 56px; transform: translateX(-50%); z-index: 100001; display: none;
+            background: #0b1626; color: #e0f7fa; border: 1px solid #00f3ff; border-radius: 999px;
+            padding: 8px 18px; font-size: 12px; font-weight: 600; box-shadow: 0 6px 24px rgba(0,0,0,0.5); max-width: 90vw;
+        }
+        #toast-share.visivel { display: block; }
+        #modal-share { position: fixed; inset: 0; z-index: 100002; display: none; background: rgba(5,12,24,0.78); align-items: center; justify-content: center; padding: 16px; }
+        #modal-share.visivel { display: flex; }
+        #modal-share .ms-card { background: rgb(22,40,66); border: 1px solid #005b7a; border-top: 4px solid #00f3ff; border-radius: 8px; padding: 14px; max-width: min(900px, 94vw); max-height: 90vh; display: flex; flex-direction: column; gap: 10px; color: #e0f7fa; }
+        #modal-share .ms-tit { font-weight: 700; color: #00f3ff; font-size: 15px; }
+        #modal-share .ms-corpo { overflow: auto; min-height: 0; }
+        #modal-share .ms-corpo img { max-width: 100%; height: auto; display: block; border-radius: 4px; }
+        #modal-share textarea { width: min(820px, 86vw); height: 50vh; background: #0b1626; color: #e0f7fa; border: 1px solid #005b7a; border-radius: 6px; padding: 8px; font-family: Consolas, monospace; font-size: 12px; resize: none; }
+        #modal-share .ms-dica { color: #9fc3d6; font-size: 11px; margin-top: 6px; }
+        #modal-share .ms-acoes { display: flex; gap: 8px; justify-content: flex-end; }
+        #modal-share .ms-acoes button, #modal-share .ms-acoes a { border: 1px solid #005b7a; background: rgba(0,243,255,0.12); color: #cfe9f5; border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; font-family: inherit; }
+        #modal-share .ms-acoes button:hover, #modal-share .ms-acoes a:hover { background: #00f3ff; color: #0b1626; }
+
+        /* selo de alerta nas letras das estruturas */
+        .placa-badge { display: inline-block; margin-left: 6px; min-width: 15px; padding: 0 5px; border-radius: 9px; background: #e74c3c; color: #fff; font-size: 10px; line-height: 16px; text-align: center; }
+
+        /* acuracidade por ciclo e detalhes no painel lateral */
+        #inv-ranking .ac { display: flex; align-items: center; gap: 8px; padding: 2px 5px; }
+        #inv-ranking .ac.sel b { color: #ffd166; }
+        #inv-ranking .ac b { color: #cfe9f5; min-width: 52px; }
+        #inv-ranking .ac .bar { flex: 1; height: 7px; background: #0b1626; border-radius: 4px; overflow: hidden; }
+        #inv-ranking .ac .bar i { display: block; height: 100%; }
+        #inv-ranking .ac .v { min-width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
+        #inv-ranking .rk-det { color: #8fb0c2; font-size: 10px; padding: 0 5px 3px 51px; line-height: 1.3; }
+
+        /* Campo de visão: esconder painéis (botão "Painéis" ou tecla H) e recolher legenda/ranking */
+        body.sem-paineis #hud-topo, body.sem-paineis #inv-ranking, body.sem-paineis #legenda-modo { display: none !important; }
+        #btn-paineis.btn-toggle-ativo { background: #00f3ff !important; color: #0b1626 !important; border-color: #00f3ff !important; }
+        #legenda-modo h4, #inv-ranking .rk-tit { cursor: pointer; user-select: none; }
+        #legenda-modo.recolhida > *:not(h4), #inv-ranking.recolhido > *:not(.rk-tit) { display: none !important; }
+        #legenda-modo.recolhida h4 { margin-bottom: 0; }
+        #inv-ranking .rk-tit { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #00f3ff; font-weight: 700; margin-bottom: 4px; }
+        #legenda-modo { overflow-y: auto; }
+
         /* INVENTÁRIO: barra de ciclo/abas e ranking */
         #barra-inv {
             position: absolute;
@@ -246,6 +294,14 @@
         }
         #barra-inv select option { background: #162842; color: #e0f7fa; }
         #barra-inv .inv-aba:hover { background: rgba(0,243,255,0.25); }
+        #inv-ciclos { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+        #barra-inv .inv-chip {
+            border: 1px solid #005b7a; background: transparent; color: #9fc3d6; border-radius: 999px;
+            cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 700; padding: 4px 9px;
+        }
+        #barra-inv .inv-chip:hover { background: rgba(0,243,255,0.15); }
+        #barra-inv .inv-chip.ativo { background: rgba(255,170,0,0.20); border-color: #ffaa00; color: #ffd166; }
+        #barra-inv .inv-chip.todos.ativo { background: #ffaa00; color: #0b1626; }
         #barra-inv .inv-aba.ativo { background: #00f3ff; color: #0b1626; border-color: #00f3ff; }
 
         #inv-ranking {
@@ -945,6 +1001,13 @@
         <button class="btn btn-cam" id="btn-enquadrar" title="Enquadrar o galpão inteiro">&#10530; Enquadrar</button>
         <button class="btn btn-cam" id="btn-pan" title="Arrastar para mover o mapa">&#9995; Mover</button>
         <button class="btn btn-cam" id="btn-wasd" title="Visão em 1ª pessoa (teclas W A S D)">&#9684; 1ª Pessoa</button>
+        <button class="btn btn-cam" id="btn-compartilhar" title="Copiar resumo/pendências ou gerar imagem do mapa para colar no Teams ou e-mail">&#128228; Compartilhar</button>
+        <div id="menu-compartilhar">
+            <button class="btn" data-acao="resumo" title="Texto com o resumo do que está na tela">📋 Copiar resumo</button>
+            <button class="btn" data-acao="pendencias" id="item-share-pend" title="Lista de endereços/itens para contar, recontar ou conferir">📋 Copiar pendências</button>
+            <button class="btn" data-acao="imagem" title="Imagem do mapa com título, legenda e resumo">🖼 Imagem do mapa</button>
+        </div>
+        <button class="btn btn-cam" id="btn-paineis" title="Esconde o HUD, o ranking e a legenda para liberar a visão do mapa (tecla H)">&#128065; Painéis</button>
         <button class="btn btn-cam" id="btn-opcoes" title="Mais opções">&#9881; Opções</button>
         <div id="menu-opcoes">
             <button class="btn btn-toggle-ativo" id="btn-estrutura" title="Mostra a letra de cada estrutura (clique na letra para destacar a estrutura)">Letras: Visíveis</button>
@@ -1018,11 +1081,25 @@
         <button class="modo" data-modo="variacao" title="O que mudou em relação à data anterior (precisa de 2+ datas de Saldo por Endereço)">Variação</button>
     </div>
     <div id="barra-inv">
-        <span class="inv-rot">Ciclo</span>
-        <select id="inv-ciclo" title="Ciclo de inventário (vem do Mapa de ciclos)"></select>
+        <span class="inv-rot" title="Clique para marcar um ou vários ciclos (ou Todos). Os números somam os ciclos marcados.">Ciclos</span>
+        <span id="inv-ciclos"></span>
         <button class="inv-aba ativo" data-aba="pre" title="Antes de processar no sistema: todo endereço zerado foi contado? quanto vai ajustar?">Pré-processamento</button>
         <button class="inv-aba" data-aba="pos" title="Depois de processar: o que realmente subiu ou desceu no sistema">Pós-processamento</button>
         <button class="inv-aba" data-aba="comp" title="Compara o ajuste previsto (pré) com o processado (pós)">Comparar</button>
+        <button class="inv-acao" data-acao="pendencias" title="Copia a lista do que falta contar/recontar para colar no Teams ou e-mail">📋 Pendências</button>
+        <button class="inv-acao" data-acao="imagem" title="Gera a imagem do mapa com legenda e resumo">🖼 Imagem</button>
+    </div>
+    <div id="toast-share"></div>
+    <div id="modal-share">
+        <div class="ms-card">
+            <div class="ms-tit" id="ms-tit"></div>
+            <div class="ms-corpo" id="ms-corpo"></div>
+            <div class="ms-acoes">
+                <button id="ms-copiar">Copiar</button>
+                <a id="ms-baixar" download="layout3d.png">Baixar</a>
+                <button id="ms-fechar">Fechar</button>
+            </div>
+        </div>
     </div>
     <div id="inv-ranking"></div>
     <div id="barra-play">
@@ -1181,6 +1258,9 @@
         let dataVis = '';         /* data que está sendo exibida (play) */
         let resumoVar = null;     /* total da variação (modo Variação) para o HUD */
         let focoLegenda = new Set();   /* classes da legenda clicadas (destaque local no 3D) */
+        let semPaineis = false;        /* esconde HUD, ranking e legenda (campo de visão livre) */
+        let legendaRecolhida = false;
+        let rankingRecolhido = false;
         let playTimer = null;
 
         let modeloGeral = null;
@@ -1527,6 +1607,7 @@
 
                 processarSerie(event.data.serie, event.data.dataBase);
                 processarInventario(event.data.inventario);
+                processarAnomFora(event.data.anomForaMapa);
                 atualizarModosUI();
                 atualizarPlayUI();
                 atualizarHUD(countLidos);
@@ -2073,6 +2154,8 @@
                 if (ri) res = [ri.rot, ri.val, ri.sub];
             }
 
+            ultimoResumoHud = res || null;
+
             if (res) {
                 elRes.innerHTML = '<div class="rot">' + res[0] + '</div><div class="val">' + res[1] + '</div><div class="sub">' + res[2] + '</div>';
                 elRes.style.display = 'block';
@@ -2256,6 +2339,7 @@
 
             atualizarHUD();
             atualizarBannerFiltroAtivo();
+            atualizarBadgesPlacas();
         }
 
         /* =========================================================
@@ -2524,6 +2608,11 @@
 
         /* Clique numa classe da legenda: liga/desliga o destaque dela no 3D (várias classes podem ficar ligadas) */
         document.getElementById('legenda-modo').addEventListener('click', function(e) {
+            if (e.target.closest && e.target.closest('h4')) {
+                legendaRecolhida = !legendaRecolhida;
+                renderLegendaModo();
+                return;
+            }
             const it = e.target.closest ? e.target.closest('.it[data-rot]') : null;
             if (!it) return;
             const rot = it.getAttribute('data-rot');
@@ -3942,7 +4031,8 @@
                 return;
             }
 
-            let h = '<h4>Colorindo por: ' + escaparHTML(MODOS[modoCor].rotulo) + '</h4>';
+            el.classList.toggle('recolhida', legendaRecolhida);
+            let h = '<h4 title="Clique para recolher/abrir">' + (legendaRecolhida ? '▸' : '▾') + ' Colorindo por: ' + escaparHTML(MODOS[modoCor].rotulo) + '</h4>';
 
             if (cacheModo.msgVazio) {
                 h += '<div class="nota">' + cacheModo.msgVazio + '</div>';
@@ -4206,7 +4296,8 @@
 
         let invDados = [];
         let invCiclos = [];
-        let invCiclo = '';
+        let invCiclo = '';          /* texto dos ciclos marcados (para títulos) */
+        let invSel = new Set();     /* ciclos marcados: um, vários ou todos */
         let invAba = 'pre';
         let invCache = null;
 
@@ -4252,9 +4343,11 @@
             }));
 
             invCiclos = Array.from(new Set(invDados.map(r => r.ciclo))).sort();
-            if (invCiclos.indexOf(invCiclo) < 0) {
+            /* mantém só os ciclos marcados que ainda existem; sem nenhum, marca o mais recente */
+            invSel = new Set(Array.from(invSel).filter(c => invCiclos.indexOf(c) >= 0));
+            if (invSel.size === 0 && invCiclos.length > 0) {
                 const reais = invCiclos.filter(c => c !== 'SEM CICLO');
-                invCiclo = reais.length ? reais[reais.length - 1] : (invCiclos.length ? invCiclos[invCiclos.length - 1] : '');
+                invSel.add(reais.length ? reais[reais.length - 1] : invCiclos[invCiclos.length - 1]);
             }
         }
 
@@ -4271,8 +4364,8 @@
         }
 
         /* Calcula, para o ciclo escolhido, a situação de cada endereço nas 3 abas, o resumo e o ranking */
-        function calcularInventario() {
-            const linhasLote = invDados.filter(r => r.ciclo === invCiclo);
+        function calcularCiclo(ciclo) {
+            const linhasLote = invDados.filter(r => r.ciclo === ciclo);
             const temPos = linhasLote.some(r => r.lzs > 0 || r.lcs > 0);
             const temZ = linhasLote.some(r => (r.lzp + r.lzs) > 0);
 
@@ -4391,6 +4484,50 @@
                 else { a.clsComp = 'Pré = Pós'; a.vClsComp = lista.reduce((s, i) => s + i.vCntPre, 0); }
             });
 
+            return { addrs: addrs, itens: itens, temPos: temPos, temZ: temZ };
+        }
+
+        /* Junta os ciclos marcados (um ou vários) e monta situação por endereço, resumo e ranking */
+        function calcularInventario() {
+            const sels = invCiclos.filter(c => invSel.has(c));
+            invCiclo = sels.length === 0 ? '' : (sels.length === invCiclos.length && sels.length > 1 ? 'Todos (' + sels.length + ' ciclos)' : sels.join(' + '));
+
+            const addrs = {};
+            const itens = [];
+            const semPos = [];
+            let temPos = false;
+            let temZ = false;
+            const pior = (aba, x, y) => {
+                if (!x) return y;
+                if (!y) return x;
+                const ord = ORDEM_INV[aba];
+                return ord.indexOf(x) <= ord.indexOf(y) ? x : y;
+            };
+
+            sels.forEach(c => {
+                const p = calcularCiclo(c);
+                p.itens.forEach(i => itens.push(i));
+                if (p.temPos) temPos = true; else semPos.push(c);
+                if (p.temZ) temZ = true;
+
+                Object.keys(p.addrs).forEach(k => {
+                    const a = p.addrs[k];
+                    const m = addrs[k];
+                    if (!m) {
+                        addrs[k] = Object.assign({}, a, { itens: a.itens.slice() });
+                        return;
+                    }
+                    m.itens = m.itens.concat(a.itens);
+                    m.zerado = m.zerado || a.zerado;
+                    m.contado = m.contado || a.contado;
+                    m.contadoPos = m.contadoPos || a.contadoPos;
+                    ['vPre', 'qPre', 'vZer', 'vPos', 'qPos', 'vClsPre', 'vClsPos', 'vClsComp'].forEach(f => { m[f] += a[f]; });
+                    m.clsPre = pior('pre', m.clsPre, a.clsPre);
+                    m.clsPos = pior('pos', m.clsPos, a.clsPos);
+                    m.clsComp = pior('comp', m.clsComp, a.clsComp);
+                });
+            });
+
             const lst = Object.keys(addrs).map(k => addrs[k]);
             const contItens = itens.filter(i => i.contPre);
             const n = itens.length;
@@ -4437,6 +4574,7 @@
                     val: fmtSinalMoeda(impacto) + ' <small style="font-size:11px;color:#9fc3d6">impacto real no sistema</small>',
                     sub: 'Valor zerado: ' + escaparHTML(moedaCurta(vZerTot)) + ' · contagem processada: ' + escaparHTML(moedaCurta(vCntPosTot)) + '<br>' +
                         'Endereços: <span class="sobe">' + eAcr + ' acréscimo</span> · <span class="desce">' + eRed + ' redução</span> · sem contagem pós: <b>' + eSem + '</b>' +
+                        (semPos.length > 0 ? '<br>Sem arquivo pós: ' + escaparHTML(semPos.join(', ')) : '') +
                         (semCustoN > 0 ? '<br>⚠ ' + semCustoN + ' item(ns) sem custo localizado' : '')
                 };
             }
@@ -4596,16 +4734,16 @@
             if (!barra || !rk) return;
 
             const ativo = modoCor === 'inventario';
+            const mostraAnom = modoCor === 'anomalia' && !!anomFora && anomFora.n > 0;
             barra.classList.toggle('visivel', ativo);
-            rk.classList.toggle('visivel', ativo && !!invCache && invCache.n > 0);
+            rk.classList.toggle('visivel', (ativo && !!invCache && invCache.n > 0) || mostraAnom);
+            if (mostraAnom) renderAnomFora();
 
             if (ativo) {
-                const sel = document.getElementById('inv-ciclo');
-                const lista = invCiclos.length ? invCiclos : ['—'];
-                if (sel.options.length !== lista.length || Array.from(sel.options).some((o, i) => o.value !== lista[i])) {
-                    sel.innerHTML = lista.map(c => '<option value="' + escaparHTML(c) + '">' + escaparHTML(c) + '</option>').join('');
-                }
-                sel.value = invCiclo;
+                const box = document.getElementById('inv-ciclos');
+                const todos = invCiclos.length > 1 && invCiclos.every(c => invSel.has(c));
+                box.innerHTML = invCiclos.map(c => '<button class="inv-chip' + (invSel.has(c) ? ' ativo' : '') + '" data-c="' + escaparHTML(c) + '">' + escaparHTML(c) + '</button>').join('') +
+                    (invCiclos.length > 1 ? '<button class="inv-chip todos' + (todos ? ' ativo' : '') + '" data-c="__todos__" title="Somar todos os ciclos">Todos</button>' : '');
                 document.querySelectorAll('#barra-inv .inv-aba').forEach(b => b.classList.toggle('ativo', b.getAttribute('data-aba') === invAba));
                 renderInvRanking();
             }
@@ -4622,15 +4760,14 @@
                 ? '<div class="vazio">nenhum</div>'
                 : arr.map(x => '<div class="rk" data-k="' + escaparHTML(x.k) + '"><b>' + escaparHTML(x.end) + '</b><span class="nm" title="' + escaparHTML(x.desc || x.prod) + '">' + escaparHTML(x.desc || x.prod) + '</span><span class="v ' + classe + '">' + escaparHTML(fmtSinalMoeda(x.v)) + '</span></div>').join('');
 
-            el.innerHTML = '<h5>▲ Maiores acréscimos · ' + tit + '</h5>' + linhas(R.pos, 'sobe') +
-                '<h5>▼ Maiores reduções · ' + tit + '</h5>' + linhas(R.neg, 'desce');
+            el.innerHTML = '<div class="rk-tit" title="Clique para recolher/abrir">' + (rankingRecolhido ? '▸' : '▾') + ' Ranking por valor</div>' +
+                '<h5>▲ Maiores acréscimos · ' + tit + '</h5>' + linhas(R.pos, 'sobe') +
+                '<h5>▼ Maiores reduções · ' + tit + '</h5>' + linhas(R.neg, 'desce') +
+                htmlAcuracidade();
+            el.classList.toggle('recolhido', rankingRecolhido);
 
             /* fica logo abaixo do HUD de cima */
-            const hud = document.getElementById('hud-topo');
-            const hr = hud ? hud.getBoundingClientRect() : null;
-            const topo = (hr && hr.height > 0 && getComputedStyle(hud).display !== 'none') ? Math.round(hr.bottom + 8) : 15;
-            el.style.top = topo + 'px';
-            el.style.maxHeight = Math.max(120, window.innerHeight - topo - 200) + 'px';
+            posicionarPainelLateral(el);
         }
 
         /* Leva a câmera até o endereço (clique no ranking) */
@@ -4671,18 +4808,61 @@
             salvarEstado();
         }
 
-        document.getElementById('inv-ciclo').addEventListener('change', function() {
-            invCiclo = this.value;
-            focoLegenda.clear();
-            mudarInvBase();
-        });
-
         document.getElementById('barra-inv').addEventListener('click', function(e) {
+            const chip = e.target.closest ? e.target.closest('.inv-chip') : null;
+            if (chip) {
+                const c = chip.getAttribute('data-c');
+                if (c === '__todos__') {
+                    invSel = new Set(invCiclos);
+                }
+                else if (invSel.has(c)) {
+                    if (invSel.size > 1) invSel.delete(c);      /* sempre fica pelo menos um */
+                }
+                else {
+                    invSel.add(c);
+                }
+                focoLegenda.clear();
+                mudarInvBase();
+                return;
+            }
+
             const b = e.target.closest ? e.target.closest('.inv-aba') : null;
             if (!b) return;
             invAba = b.getAttribute('data-aba');
             focoLegenda.clear();
             mudarInvBase();
+        });
+
+        /* Esconde/mostra HUD, ranking e legenda de uma vez (botão "Painéis" ou tecla H) */
+        function aplicarPaineis() {
+            document.body.classList.toggle('sem-paineis', semPaineis);
+            const b = document.getElementById('btn-paineis');
+            if (b) b.classList.toggle('btn-toggle-ativo', semPaineis);
+        }
+
+        document.getElementById('btn-paineis').addEventListener('click', function() {
+            semPaineis = !semPaineis;
+            aplicarPaineis();
+            salvarEstado();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'h' && e.key !== 'H') return;
+            if (e.ctrlKey || e.altKey || e.metaKey) return;
+            const alvo = e.target && e.target.tagName;
+            if (alvo === 'INPUT' || alvo === 'TEXTAREA' || alvo === 'SELECT') return;
+            semPaineis = !semPaineis;
+            aplicarPaineis();
+            salvarEstado();
+        });
+
+        document.getElementById('inv-ranking').addEventListener('click', function(e) {
+            if (e.target.closest && e.target.closest('.rk-tit')) {
+                rankingRecolhido = !rankingRecolhido;
+                this.classList.toggle('recolhido', rankingRecolhido);
+                const tit = this.querySelector('.rk-tit');
+                tit.innerHTML = (rankingRecolhido ? '▸' : '▾') + tit.innerHTML.slice(1);
+            }
         });
 
         /* Empilha as barras de baixo (modos, inventário, play) e ajusta a legenda */
@@ -4701,10 +4881,431 @@
             });
 
             const leg = document.getElementById('legenda-modo');
-            if (leg) leg.style.bottom = (window.innerWidth < 1150 && ultimaAltura > 0 ? base : 18) + 'px';
+            if (leg) {
+                const b = (window.innerWidth < 1150 && ultimaAltura > 0 ? base : 18);
+                leg.style.bottom = b + 'px';
+                /* a legenda não passa por cima dos botões de câmera: rola por dentro quando for alta */
+                const cam = document.getElementById('ui-camera');
+                const camBase = cam ? cam.getBoundingClientRect().bottom : 340;
+                leg.style.maxHeight = Math.max(110, window.innerHeight - b - camBase - 12) + 'px';
+            }
         }
 
         window.addEventListener('resize', function() { reposicionarBarras(); if (modoCor === 'inventario') renderInvRanking(); });
+
+        /* =========================================================
+           25.4 COMPARTILHAR (texto e imagem), ACURACIDADE, PENDÊNCIAS NAS PLACAS E
+           ANOMALIAS SEM ENDEREÇO
+           ========================================================= */
+
+        let anomFora = null;          /* itens com anomalia que não têm endereço (fora do mapa) */
+        let ultimoResumoHud = null;   /* [titulo, valor, detalhe] mostrado no HUD */
+
+        function processarAnomFora(a) {
+            let o = a;
+            if (typeof o === 'string') {
+                try { o = JSON.parse(o); } catch (e) { o = null; }
+            }
+            anomFora = (o && typeof o === 'object' && Array.isArray(o.it)) ? o : null;
+        }
+
+        function htmlParaTexto(h) {
+            const d = document.createElement('div');
+            d.innerHTML = String(h || '').replace(/<br\s*\/?>/gi, '\n');
+            return d.textContent.replace(/\n{3,}/g, '\n\n').trim();
+        }
+
+        /* Resumo mostrado no HUD; no inventário vem direto do cálculo (não depende de o HUD ter sido redesenhado) */
+        function resumoParaCompartilhar() {
+            if (modoCor === 'inventario' && invCache && invCache.n > 0) {
+                const r = invCache.resumo[invAba];
+                return [r.rot, r.val, r.sub];
+            }
+            return ultimoResumoHud;
+        }
+
+        function dataHoraBR() {
+            return new Date().toLocaleString('pt-BR');
+        }
+
+        function tituloCompartilhar() {
+            if (modoCor === 'inventario') return 'Inventário · ' + invCiclo + ' · ' + ROTULO_ABA[invAba];
+            return 'Layout 3D · ' + (MODOS[modoCor] ? MODOS[modoCor].rotulo : 'Padrão');
+        }
+
+        function linhasLegendaTexto() {
+            if (modoCor === 'padrao' || !cacheModo.legenda) return [];
+            return cacheModo.legenda.map(l => '• ' + l[0] + ': ' + formatarNumero(l[2], 0) + (l[2] === 1 ? ' endereço' : ' endereços') +
+                (modoCor !== 'variacao' && l[3] > 0 ? ' · ' + formatarMoeda(l[3]) : ''));
+        }
+
+        /* Resumo do que está na tela, para colar no Teams/e-mail */
+        function textoResumo() {
+            const L = [];
+            L.push('*' + tituloCompartilhar().toUpperCase() + '*  (' + dataHoraBR() + ')');
+            L.push('');
+
+            const resHud = resumoParaCompartilhar();
+            if (resHud) {
+                L.push(htmlParaTexto(resHud[0]));
+                L.push(htmlParaTexto(resHud[1]));
+                L.push(htmlParaTexto(resHud[2]));
+                L.push('');
+            }
+            else {
+                L.push('Valor em estoque: ' + document.getElementById('hud-valor-estoque').innerText +
+                    ' · Estoque: ' + document.getElementById('hud-est').innerText +
+                    ' · Endereços com saldo: ' + document.getElementById('hud-debug').innerText +
+                    ' · Produtos: ' + document.getElementById('hud-itens').innerText);
+                L.push('');
+            }
+
+            const leg = linhasLegendaTexto();
+            if (leg.length) { L.push('Situação dos endereços:'); leg.forEach(x => L.push(x)); L.push(''); }
+
+            if (focoLegenda.size > 0) L.push('Em destaque: ' + Array.from(focoLegenda).join(', '));
+            if (estruturaFoco) L.push('Estrutura em destaque: ' + estruturaFoco);
+            if (arrSelecionados.length > 0) L.push('Filtro do Power BI ativo (' + arrSelecionados.length + ' endereços)');
+
+            if (modoCor === 'inventario' && invCache && invCache.n > 0) {
+                const R = invCache.ranking[invAba];
+                const rk = (arr) => arr.map(x => '   - ' + x.end + ' · ' + (x.desc || x.prod) + ': ' + fmtSinalMoeda(x.v));
+                if (R.pos.length) { L.push(''); L.push('Maiores acréscimos:'); rk(R.pos).forEach(x => L.push(x)); }
+                if (R.neg.length) { L.push(''); L.push('Maiores reduções:'); rk(R.neg).forEach(x => L.push(x)); }
+            }
+
+            if (modoCor === 'anomalia' && anomFora && anomFora.n > 0) {
+                L.push('');
+                L.push('Itens com anomalia SEM endereço (fora do mapa): ' + formatarNumero(anomFora.n, 0) + ' · maiores:');
+                anomFora.it.slice(0, 15).forEach(x => L.push('   - ' + x.f + '/' + x.a + ' · ' + x.p + ' · ' + x.d + ' — ' + x.t));
+            }
+
+            const foco = listaEnderecosEmFoco();
+            if (foco.length > 0) {
+                L.push('');
+                L.push('Endereços em destaque (' + foco.length + '): ' + foco.slice(0, 80).join(', ') + (foco.length > 80 ? ' …' : ''));
+            }
+
+            return L.join('\n');
+        }
+
+        function listaEnderecosEmFoco() {
+            if (focoLegenda.size === 0 || !cacheModo.cls) return [];
+            return Object.keys(cacheModo.cls).filter(k => focoLegenda.has(cacheModo.cls[k])).sort();
+        }
+
+        /* Lista de pendências do inventário: o que contar, recontar ou conferir */
+        function textoPendencias() {
+            if (modoCor !== 'inventario' || !invCache || invCache.n === 0) return '';
+            const c = invCache;
+            const addrs = Object.keys(c.addrs).map(k => c.addrs[k]).sort((a, b) => (a.end < b.end ? -1 : 1));
+            const L = [];
+            const item = (i, extra) => '     - ' + (i.r.desc || i.r.prod) + ' (' + i.r.prod + ')' + (i.r.lote ? ' lote ' + i.r.lote : '') + ': ' + extra;
+            const un = i => (i.r.un ? ' ' + i.r.un : '');
+
+            L.push('*PENDÊNCIAS DE INVENTÁRIO · ' + invCiclo + ' · ' + ROTULO_ABA[invAba] + '*  (' + dataHoraBR() + ')');
+            L.push('');
+            L.push(htmlParaTexto(c.resumo[invAba].val));
+            L.push(htmlParaTexto(c.resumo[invAba].sub));
+
+            const secao = (titulo, lista, linhaFn) => {
+                if (lista.length === 0) return;
+                L.push('');
+                L.push(titulo + ' (' + lista.length + '):');
+                lista.forEach(a => linhaFn(a));
+            };
+
+            if (invAba === 'pre') {
+                secao('CONTAR (zerado e ainda sem contagem)', addrs.filter(a => a.clsPre === 'Aguardando contagem'), a => {
+                    L.push('   • ' + a.end + ' (' + a.filial + '/' + a.armazem + ') — ' + formatarMoeda(a.vZer) + ' zerado');
+                    a.itens.filter(i => i.stPre === 'Aguardando contagem').forEach(i => L.push(item(i, fmtQtdInv(i.zq) + un(i) + ' zerado, falta contar')));
+                });
+                secao('CONTAR ITEM QUE FALTOU (endereço contado, mas item zerado ficou sem contagem)', addrs.filter(a => a.clsPre === 'Faltou contar item'), a => {
+                    L.push('   • ' + a.end + ' (' + a.filial + '/' + a.armazem + ')');
+                    a.itens.filter(i => i.stPre === 'Aguardando contagem').forEach(i => L.push(item(i, fmtQtdInv(i.zq) + un(i) + ' zerado, não contado (' + formatarMoeda(i.vZer) + ')')));
+                });
+                secao('CONTAGEM SEM ZERAMENTO (contou, mas o endereço não foi zerado)', addrs.filter(a => a.clsPre === 'Contagem sem zeramento'), a => {
+                    L.push('   • ' + a.end + ' (' + a.filial + '/' + a.armazem + ') — ' + a.itens.filter(i => i.contPre).length + ' item(ns) contado(s)');
+                });
+                const div = c.itens.filter(i => i.contPre && (i.stPre === 'Acréscimo' || i.stPre === 'Redução')).sort((a, b) => Math.abs(b.vDifPre) - Math.abs(a.vDifPre)).slice(0, 20);
+                if (div.length) {
+                    L.push('');
+                    L.push('DIVERGÊNCIAS PARA CONFERIR/RECONTAR (20 maiores em R$):');
+                    div.forEach(i => L.push('   • ' + i.r.end + ' — ' + (i.r.desc || i.r.prod) + ' (' + i.r.prod + '): sistema ' + fmtQtdInv(i.contPre ? (i.zerado ? i.zq : i.r.sp) : 0) + ', contado ' + fmtQtdInv(i.r.cp) + ', diferença ' + fmtSinalQtd(i.difPre) + un(i) + ' (' + fmtSinalMoeda(i.vDifPre) + ')'));
+                }
+            }
+            else {
+                secao('SEM CONTAGEM PÓS-PROCESSAMENTO', addrs.filter(a => a.clsPos === 'Sem contagem pós'), a => {
+                    L.push('   • ' + a.end + ' (' + a.filial + '/' + a.armazem + ') — ' + formatarMoeda(a.vZer) + ' zerado');
+                });
+                const dif = c.itens.filter(i => i.stComp === 'Pré ≠ Pós');
+                if (dif.length) {
+                    L.push('');
+                    L.push('PRÉ ≠ PÓS (' + dif.length + '):');
+                    dif.forEach(i => L.push('   • ' + i.r.end + ' — ' + (i.r.desc || i.r.prod) + ' (' + i.r.prod + '): contado pré ' + fmtQtdInv(i.r.cp) + ' × pós ' + fmtQtdInv(i.r.cs)));
+                }
+                const pend = c.itens.filter(i => i.stComp === 'Pós pendente');
+                if (pend.length) {
+                    L.push('');
+                    L.push('PÓS PENDENTE (' + pend.length + ' item(ns) ainda sem contagem processada).');
+                }
+            }
+
+            const semCusto = c.itens.filter(i => i.semCusto && (i.contPre || i.zerado));
+            if (semCusto.length) {
+                L.push('');
+                L.push('SEM CUSTO LOCALIZADO (' + semCusto.length + '): ' + semCusto.slice(0, 15).map(i => i.r.end + ' ' + i.r.prod).join(', ') + (semCusto.length > 15 ? ' …' : ''));
+            }
+
+            return L.join('\n');
+        }
+
+        /* ---------- Avisos, cópia e janela de compartilhamento ---------- */
+        function avisar(msg) {
+            const t = document.getElementById('toast-share');
+            if (!t) return;
+            t.innerText = msg;
+            t.classList.add('visivel');
+            clearTimeout(avisar._t);
+            avisar._t = setTimeout(() => t.classList.remove('visivel'), 3200);
+        }
+
+        function copiarFallback(txt) {
+            const ta = document.createElement('textarea');
+            ta.value = txt;
+            ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            document.body.removeChild(ta);
+            return ok;
+        }
+
+        function abrirModal(titulo, corpoHtml, opcoes) {
+            const m = document.getElementById('modal-share');
+            document.getElementById('ms-tit').innerText = titulo;
+            document.getElementById('ms-corpo').innerHTML = corpoHtml;
+            const bc = document.getElementById('ms-copiar');
+            const bb = document.getElementById('ms-baixar');
+            bc.style.display = (opcoes && opcoes.copiar) ? 'inline-block' : 'none';
+            bb.style.display = (opcoes && opcoes.baixar) ? 'inline-block' : 'none';
+            if (opcoes && opcoes.baixar) { bb.href = opcoes.baixar; bb.download = opcoes.nomeArquivo || 'layout3d.png'; }
+            m.classList.add('visivel');
+            m.dataset.texto = (opcoes && opcoes.texto) || '';
+            const ta = document.getElementById('ms-texto');
+            if (ta) { ta.focus(); ta.select(); }
+        }
+
+        function copiarTextoCompartilhar(txt, rotulo) {
+            if (!txt) { avisar('Nada para copiar neste modo.'); return; }
+            const n = txt.split('\n').length;
+            const depois = ok => {
+                if (ok) avisar(rotulo + ' copiado (' + n + ' linhas). Cole no Teams ou no e-mail (Ctrl+V).');
+                else abrirModal(rotulo, '<textarea id="ms-texto" readonly>' + escaparHTML(txt) + '</textarea><div class="ms-dica">O navegador bloqueou a cópia automática: o texto está selecionado, use Ctrl+C.</div>', { copiar: true, texto: txt });
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(txt).then(() => depois(true), () => depois(copiarFallback(txt)));
+            }
+            else {
+                depois(copiarFallback(txt));
+            }
+        }
+
+        function gerarImagemMapa() {
+            try {
+                if (!renderer.domElement.width || !renderer.domElement.height) {
+                    renderer.setSize(window.innerWidth || 1200, window.innerHeight || 700);
+                }
+                renderer.render(scene, camera);
+                const src = renderer.domElement;
+                const W = src.width, H = src.height;
+                const f = Math.max(1, W / 1400);
+
+                const resHud = resumoParaCompartilhar();
+                const linhasRes = resHud
+                    ? [htmlParaTexto(resHud[0]), htmlParaTexto(resHud[1])].concat(htmlParaTexto(resHud[2]).split('\n')).filter(Boolean).slice(0, 8)
+                    : [];
+                const leg = (modoCor !== 'padrao' && cacheModo.legenda) ? cacheModo.legenda : [];
+                const linhaH = 24 * f;
+                const headerH = 64 * f;
+                const footerH = (leg.length || linhasRes.length) ? (Math.max(leg.length, linhasRes.length) * linhaH + 36 * f) : 0;
+
+                const c = document.createElement('canvas');
+                c.width = W;
+                c.height = Math.round(headerH + H + footerH);
+                const g = c.getContext('2d');
+
+                g.fillStyle = '#162842';
+                g.fillRect(0, 0, c.width, c.height);
+
+                g.fillStyle = '#00f3ff';
+                g.font = 'bold ' + (24 * f) + 'px "Segoe UI", Arial, sans-serif';
+                g.textBaseline = 'middle';
+                g.fillText(tituloCompartilhar(), 24 * f, headerH * 0.42);
+                g.fillStyle = '#9fc3d6';
+                g.font = (14 * f) + 'px "Segoe UI", Arial, sans-serif';
+                g.fillText(dataHoraBR(), 24 * f, headerH * 0.80);
+
+                g.drawImage(src, 0, headerH, W, H);
+
+                if (footerH > 0) {
+                    const y0 = headerH + H + 22 * f;
+                    g.font = (15 * f) + 'px "Segoe UI", Arial, sans-serif';
+                    leg.forEach((l, i) => {
+                        const y = y0 + i * linhaH;
+                        g.fillStyle = hexCss(l[1]);
+                        g.fillRect(24 * f, y - 8 * f, 14 * f, 14 * f);
+                        g.fillStyle = '#e0f7fa';
+                        g.fillText(l[0] + ' · ' + formatarNumero(l[2], 0) + (modoCor !== 'variacao' && l[3] > 0 ? ' · ' + moedaCurta(l[3]) : ''), 46 * f, y);
+                    });
+                    g.fillStyle = '#e0f7fa';
+                    linhasRes.forEach((t, i) => {
+                        g.font = (i === 1 ? 'bold ' : '') + (15 * f) + 'px "Segoe UI", Arial, sans-serif';
+                        g.fillStyle = i === 0 ? '#80d8ff' : '#e0f7fa';
+                        g.fillText(t, W * 0.52, y0 + i * linhaH);
+                    });
+                }
+
+                c.toBlob(function(blob) {
+                    const url = c.toDataURL('image/png');
+                    const mostrar = (aviso) => abrirModal('Imagem do mapa', '<img src="' + url + '" alt="Mapa 3D"><div class="ms-dica">' + aviso + '</div>', { baixar: url, nomeArquivo: 'layout3d-' + modoCor + '.png' });
+                    if (blob && navigator.clipboard && window.ClipboardItem) {
+                        navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(
+                            () => avisar('Imagem copiada. Cole no Teams ou no e-mail (Ctrl+V).'),
+                            () => mostrar('Clique com o botão direito na imagem e escolha "Copiar imagem" (ou "Baixar").')
+                        );
+                    }
+                    else {
+                        mostrar('Clique com o botão direito na imagem e escolha "Copiar imagem" (ou "Baixar").');
+                    }
+                }, 'image/png');
+            }
+            catch (e) {
+                console.error('[VISUAL] Erro ao gerar a imagem:', e);
+                avisar('Não consegui gerar a imagem neste navegador.');
+            }
+        }
+
+        /* menu "Compartilhar" e botões rápidos da barra de inventário */
+        function acaoCompartilhar(acao) {
+            if (acao === 'resumo') copiarTextoCompartilhar(textoResumo(), 'Resumo');
+            else if (acao === 'pendencias') copiarTextoCompartilhar(textoPendencias(), 'Pendências');
+            else if (acao === 'imagem') gerarImagemMapa();
+        }
+
+        const menuShare = document.getElementById('menu-compartilhar');
+        const btnShare = document.getElementById('btn-compartilhar');
+
+        btnShare.addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.getElementById('item-share-pend').style.display = (modoCor === 'inventario' && invCache && invCache.n > 0) ? 'block' : 'none';
+            menuShare.classList.toggle('aberto');
+            btnShare.classList.toggle('btn-toggle-ativo', menuShare.classList.contains('aberto'));
+        });
+
+        menuShare.addEventListener('click', function(e) {
+            const b = e.target.closest ? e.target.closest('[data-acao]') : null;
+            if (!b) return;
+            menuShare.classList.remove('aberto');
+            btnShare.classList.remove('btn-toggle-ativo');
+            acaoCompartilhar(b.getAttribute('data-acao'));
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!menuShare.classList.contains('aberto')) return;
+            if (menuShare.contains(e.target) || e.target === btnShare) return;
+            menuShare.classList.remove('aberto');
+            btnShare.classList.remove('btn-toggle-ativo');
+        });
+
+        document.getElementById('barra-inv').addEventListener('click', function(e) {
+            const b = e.target.closest ? e.target.closest('[data-acao]') : null;
+            if (b) acaoCompartilhar(b.getAttribute('data-acao'));
+        });
+
+        document.getElementById('ms-fechar').addEventListener('click', function() {
+            document.getElementById('modal-share').classList.remove('visivel');
+        });
+        document.getElementById('modal-share').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('visivel');
+        });
+        document.getElementById('ms-copiar').addEventListener('click', function() {
+            const m = document.getElementById('modal-share');
+            const ta = document.getElementById('ms-texto');
+            const txt = m.dataset.texto || (ta ? ta.value : '');
+            if (ta) { ta.focus(); ta.select(); }
+            const ok = copiarFallback(txt);
+            avisar(ok ? 'Copiado! Cole no Teams ou no e-mail (Ctrl+V).' : 'Use Ctrl+C com o texto selecionado.');
+        });
+
+        /* ---------- Acuracidade por ciclo (parte do painel lateral do inventário) ---------- */
+        function htmlAcuracidade() {
+            if (invCiclos.length < 2) return '';
+            let h = '<h5>Acuracidade por ciclo · itens contados OK</h5>';
+            invCiclos.forEach(c => {
+                const p = calcularCiclo(c);
+                const cont = p.itens.filter(i => i.contPre);
+                if (cont.length === 0) return;
+                const ok = cont.filter(i => i.stPre === 'OK').length;
+                const pct = Math.round((ok / cont.length) * 100);
+                const cor = pct >= 90 ? '#2ecc71' : (pct >= 70 ? '#f1c40f' : '#e74c3c');
+                h += '<div class="ac' + (invSel.has(c) ? ' sel' : '') + '"><b>' + escaparHTML(c) + '</b><span class="bar"><i style="width:' + pct + '%;background:' + cor + '"></i></span><span class="v">' + pct + '% · ' + ok + '/' + cont.length + '</span></div>';
+            });
+            return h;
+        }
+
+        /* ---------- Painel lateral: anomalias sem endereço ---------- */
+        function posicionarPainelLateral(el) {
+            const hud = document.getElementById('hud-topo');
+            const hr = hud ? hud.getBoundingClientRect() : null;
+            const topo = (hr && hr.height > 0 && getComputedStyle(hud).display !== 'none') ? Math.round(hr.bottom + 8) : 15;
+            el.style.top = topo + 'px';
+            el.style.maxHeight = Math.max(120, window.innerHeight - topo - 200) + 'px';
+        }
+
+        function renderAnomFora() {
+            const el = document.getElementById('inv-ranking');
+            if (!el || !anomFora) return;
+            let h = '<div class="rk-tit" title="Clique para recolher/abrir">' + (rankingRecolhido ? '▸' : '▾') + ' Anomalias sem endereço</div>';
+            h += '<h5>' + formatarNumero(anomFora.n, 0) + ' itens fora do mapa · valor ' + escaparHTML(moedaCurta(anomFora.v)) + ' (maiores)</h5>';
+            h += anomFora.it.slice(0, 12).map(x =>
+                '<div class="rk"><b>' + escaparHTML(x.f + '/' + x.a) + '</b><span class="nm" title="' + escaparHTML(x.p + ' · ' + x.d + ' — ' + x.t) + '">' + escaparHTML(x.d || x.p) + '</span><span class="v desce">' + escaparHTML(moedaCurta(x.v)) + '</span></div>' +
+                '<div class="rk-det">' + escaparHTML(x.t) + '</div>').join('');
+            el.innerHTML = h;
+            el.classList.toggle('recolhido', rankingRecolhido);
+            posicionarPainelLateral(el);
+        }
+
+        /* ---------- Pendências/alertas nas placas das estruturas (letras) ---------- */
+        function atualizarBadgesPlacas() {
+            if (!placasGeral || placasGeral.length === 0) return;
+            const cont = {};
+            const soma = k => { const l = String(k).charAt(0); cont[l] = (cont[l] || 0) + 1; };
+
+            if (focoLegenda.size > 0 && cacheModo.cls) {
+                Object.keys(cacheModo.cls).forEach(k => { if (focoLegenda.has(cacheModo.cls[k])) soma(k); });
+            }
+            else if (modoCor === 'inventario' && invCache && invCache.n > 0) {
+                const pend = invAba === 'pre' ? ['Aguardando contagem', 'Contagem sem zeramento', 'Faltou contar item']
+                    : (invAba === 'pos' ? ['Sem contagem pós'] : ['Pré ≠ Pós', 'Pós pendente']);
+                Object.keys(invCache.addrs).forEach(k => { if (pend.indexOf(clsInvDoEndereco(invCache.addrs[k])) >= 0) soma(k); });
+            }
+            else if (modoCor === 'diverg') {
+                Object.keys(infoEnd).forEach(k => { if (infoEnd[k].div === 'DIVERGE') soma(k); });
+            }
+            else if (modoCor === 'anomalia') {
+                Object.keys(infoEnd).forEach(k => { if (infoEnd[k].nAn > 0) soma(k); });
+            }
+
+            placasGeral.forEach(p => {
+                const el = p.userData && p.userData.elemento;
+                if (!el) return;
+                const n = cont[p.userData.letra] || 0;
+                el.innerHTML = escaparHTML(p.userData.letra) + (n > 0 ? '<span class="placa-badge" title="' + n + ' em alerta nesta estrutura">' + n + '</span>' : '');
+            });
+        }
 
         /* ---------- Enquadrar ---------- */
         function posEnquadrada() {
@@ -4775,7 +5376,7 @@
 
         function salvarEstado() {
             try {
-                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, foco: Array.from(focoLegenda), invCiclo: invCiclo, invAba: invAba };
+                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, foco: Array.from(focoLegenda), invSel: Array.from(invSel), invAba: invAba, semPaineis: semPaineis };
                 if (lembrarCamera) {
                     est.cam = camera.position.toArray();
                     est.tgt = controls.target.toArray();
@@ -4820,7 +5421,8 @@
                 if (HUD_NIVEIS.indexOf(est.hud) >= 0) hudModo = est.hud;
                 if (est.lembrar === false) lembrarCamera = false;
                 if (est.invAba === 'pre' || est.invAba === 'pos' || est.invAba === 'comp') invAba = est.invAba;
-                if (typeof est.invCiclo === 'string' && est.invCiclo) invCiclo = est.invCiclo;
+                if (Array.isArray(est.invSel)) invSel = new Set(est.invSel);
+                if (est.semPaineis === true) { semPaineis = true; aplicarPaineis(); }
                 if (est.qual === false) { qualidadeAlta = false; aplicarQualidade(); }
             }
             btnLembrar.innerText = 'Lembrar câmera: ' + (lembrarCamera ? 'Sim' : 'Não');
