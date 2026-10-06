@@ -217,6 +217,26 @@
         }
 
         /* Conferência por item (tooltip e painel do modo Divergência) */
+        /* Painéis arrastáveis, minimizar menus */
+        .movel { cursor: grab; }
+        .movel.arrastando { cursor: grabbing; user-select: none; opacity: 0.94; }
+        .movel button, .movel select, .movel .it, .movel .rk, .movel a { cursor: pointer; }
+        #hud-topo.movel::after, #legenda-modo.movel::after, #inv-ranking.movel::after {
+            content: '\2807'; position: absolute; top: 2px; right: 5px; color: rgba(0,243,255,0.45); font-size: 13px; line-height: 1; pointer-events: none;
+        }
+        #hud-topo.movel::after { top: 3px; }
+        .min-btn {
+            border: 1px solid #005b7a; background: rgba(0,243,255,0.10); color: #00f3ff; border-radius: 999px;
+            cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; padding: 4px 9px; margin-right: 2px;
+        }
+        .min-btn:hover { background: rgba(0,243,255,0.30); }
+        #barra-modos.recolhida .modo:not(.ativo) { display: none; }
+        #barra-modos.recolhida { padding: 5px 10px; }
+        #ui-camera.recolhido > *:not(#btn-min-cam) { display: none !important; }
+        #btn-min-cam { min-width: 0; }
+        #inv-ranking .sec { cursor: pointer; user-select: none; }
+        #inv-ranking .sec.sec-recolhida + .sec-lista { display: none; }
+
         /* Compartilhar: menu, aviso e janela */
         #menu-compartilhar { display: none; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid #005b7a; border-radius: 6px; background: rgb(22,40,66); box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
         #menu-compartilhar.aberto { display: flex; }
@@ -995,6 +1015,7 @@
          CONTROLES
          ========================================================= -->
     <div id="ui-camera">
+        <button class="btn btn-cam" id="btn-min-cam" title="Recolher/abrir os botões de câmera e opções">&#9662; Menu</button>
         <button class="btn btn-cam" id="btn-frente" title="Vista frontal">&#9645; Frente</button>
         <button class="btn btn-cam" id="btn-topo" title="Vista de cima">&#11026; Topo</button>
         <button class="btn btn-cam" id="btn-lado" title="Vista lateral">&#9680; Lado</button>
@@ -1014,6 +1035,7 @@
             <button class="btn btn-cinema" id="btn-cinema">Modo Cinemático</button>
             <button class="btn" id="btn-hud" title="Alterna o painel de números do canto superior direito">HUD: Completo</button>
             <button class="btn btn-toggle-ativo" id="btn-qualidade" title="Alta = imagem mais lisa (usa mais da placa de vídeo). Normal = mais leve em computadores fracos">Qualidade: Alta</button>
+            <button class="btn" id="btn-restaurar-paineis" title="Volta HUD, legenda, ranking e barras para a posição original">Restaurar painéis</button>
             <button class="btn btn-toggle-ativo" id="btn-lembrar"title="Ao filtrar no Power BI o mapa recarrega; esta opção mantém a câmera e o modo de cor">Lembrar câmera: Sim</button>
         </div>
         <button class="btn btn-status" id="btn-status">Modo: Status (Desligado)</button>
@@ -1067,6 +1089,7 @@
          ========================================================= -->
     <!-- BARRA "COLORIR POR" -->
     <div id="barra-modos">
+        <button id="btn-min-modos" class="min-btn" title="Minimizar/abrir os botões de modo">&#9662;</button>
         <span class="rotulo-barra">Colorir por</span>
         <button class="modo ativo" data-modo="padrao" title="Cores padrão: caixa marrom, filtro em laranja">Padrão</button>
         <button class="modo" data-modo="valor" title="Mapa de calor do valor em estoque">Valor</button>
@@ -4750,6 +4773,14 @@
             reposicionarBarras();
         }
 
+        /* Cada bloco do ranking recolhe ao clicar no título (▾/▸) */
+        let secRecolhida = { pos: false, neg: false, acc: false };
+
+        function secaoRanking(id, titulo, conteudo) {
+            return '<h5 class="sec' + (secRecolhida[id] ? ' sec-recolhida' : '') + '" data-sec="' + id + '" title="Clique para recolher/abrir">' +
+                (secRecolhida[id] ? '▸' : '▾') + ' ' + titulo + '</h5><div class="sec-lista">' + conteudo + '</div>';
+        }
+
         function renderInvRanking() {
             const el = document.getElementById('inv-ranking');
             if (!el || !invCache || invCache.n === 0) return;
@@ -4760,13 +4791,13 @@
                 ? '<div class="vazio">nenhum</div>'
                 : arr.map(x => '<div class="rk" data-k="' + escaparHTML(x.k) + '"><b>' + escaparHTML(x.end) + '</b><span class="nm" title="' + escaparHTML(x.desc || x.prod) + '">' + escaparHTML(x.desc || x.prod) + '</span><span class="v ' + classe + '">' + escaparHTML(fmtSinalMoeda(x.v)) + '</span></div>').join('');
 
-            el.innerHTML = '<div class="rk-tit" title="Clique para recolher/abrir">' + (rankingRecolhido ? '▸' : '▾') + ' Ranking por valor</div>' +
-                '<h5>▲ Maiores acréscimos · ' + tit + '</h5>' + linhas(R.pos, 'sobe') +
-                '<h5>▼ Maiores reduções · ' + tit + '</h5>' + linhas(R.neg, 'desce') +
+            el.innerHTML = '<div class="rk-tit" title="Clique para recolher/abrir (arraste para mover)">' + (rankingRecolhido ? '▸' : '▾') + ' Ranking por valor</div>' +
+                secaoRanking('pos', 'Maiores acréscimos · ' + tit, linhas(R.pos, 'sobe')) +
+                secaoRanking('neg', 'Maiores reduções · ' + tit, linhas(R.neg, 'desce')) +
                 htmlAcuracidade();
             el.classList.toggle('recolhido', rankingRecolhido);
 
-            /* fica logo abaixo do HUD de cima */
+            /* fica logo abaixo do HUD de cima (a menos que você tenha arrastado) */
             posicionarPainelLateral(el);
         }
 
@@ -4868,21 +4899,26 @@
         /* Empilha as barras de baixo (modos, inventário, play) e ajusta a legenda */
         function reposicionarBarras() {
             const bm = document.getElementById('barra-modos');
-            let base = bm.offsetHeight + 26;
-            let ultimaAltura = 0;
+            const livre = el => el.classList.contains('movido');   /* painel que o usuário arrastou: não mexe */
+            let base = livre(bm) ? 18 : bm.offsetHeight + 26;
+            const larguras = livre(bm) ? [] : [bm.offsetWidth];
 
             ['barra-inv', 'barra-play'].forEach(id => {
                 const el = document.getElementById(id);
-                if (el && el.classList.contains('visivel')) {
+                if (el && el.classList.contains('visivel') && !livre(el)) {
                     el.style.bottom = base + 'px';
-                    ultimaAltura = el.offsetHeight;
+                    larguras.push(el.offsetWidth);
                     base += el.offsetHeight + 8;
                 }
             });
 
             const leg = document.getElementById('legenda-modo');
-            if (leg) {
-                const b = (window.innerWidth < 1150 && ultimaAltura > 0 ? base : 18);
+            if (leg && !livre(leg)) {
+                /* se a legenda encostaria nas barras de baixo (largura), ela sobe para cima delas */
+                const maxW = larguras.length ? Math.max.apply(null, larguras) : 0;
+                const barraEsq = (window.innerWidth - maxW) / 2;
+                const choca = maxW > 0 && (15 + leg.offsetWidth + 14) > barraEsq;
+                const b = choca ? base : 18;
                 leg.style.bottom = b + 'px';
                 /* a legenda não passa por cima dos botões de câmera: rola por dentro quando for alta */
                 const cam = document.getElementById('ui-camera');
@@ -5243,7 +5279,7 @@
         /* ---------- Acuracidade por ciclo (parte do painel lateral do inventário) ---------- */
         function htmlAcuracidade() {
             if (invCiclos.length < 2) return '';
-            let h = '<h5>Acuracidade por ciclo · itens contados OK</h5>';
+            let h = '';
             invCiclos.forEach(c => {
                 const p = calcularCiclo(c);
                 const cont = p.itens.filter(i => i.contPre);
@@ -5253,11 +5289,12 @@
                 const cor = pct >= 90 ? '#2ecc71' : (pct >= 70 ? '#f1c40f' : '#e74c3c');
                 h += '<div class="ac' + (invSel.has(c) ? ' sel' : '') + '"><b>' + escaparHTML(c) + '</b><span class="bar"><i style="width:' + pct + '%;background:' + cor + '"></i></span><span class="v">' + pct + '% · ' + ok + '/' + cont.length + '</span></div>';
             });
-            return h;
+            return h ? secaoRanking('acc', 'Acuracidade por ciclo · itens contados OK', h) : '';
         }
 
         /* ---------- Painel lateral: anomalias sem endereço ---------- */
         function posicionarPainelLateral(el) {
+            if (el.classList.contains('movido')) return;
             const hud = document.getElementById('hud-topo');
             const hr = hud ? hud.getBoundingClientRect() : null;
             const topo = (hr && hr.height > 0 && getComputedStyle(hud).display !== 'none') ? Math.round(hr.bottom + 8) : 15;
@@ -5306,6 +5343,165 @@
                 el.innerHTML = escaparHTML(p.userData.letra) + (n > 0 ? '<span class="placa-badge" title="' + n + ' em alerta nesta estrutura">' + n + '</span>' : '');
             });
         }
+
+        /* =========================================================
+           25.5 PAINÉIS ARRASTÁVEIS E MENUS RECOLHÍVEIS
+           ========================================================= */
+
+        const IDS_MOVEIS = ['hud-topo', 'legenda-modo', 'inv-ranking', 'barra-inv', 'barra-play', 'barra-modos'];
+        let posPaineis = {};
+        let modosRecolhidos = false;
+        let menuCamRecolhido = false;
+
+        try { posPaineis = JSON.parse(sessionStorage.getItem('l3d_pos_v1') || '{}') || {}; } catch (e) { posPaineis = {}; }
+
+        function salvarPosPaineis() {
+            try { sessionStorage.setItem('l3d_pos_v1', JSON.stringify(posPaineis)); } catch (e) { /* sem memória */ }
+        }
+
+        function limitar(v, mn, mx) {
+            return Math.max(mn, Math.min(mx, v));
+        }
+
+        /* Posição livre (px). Usa "important" porque alguns painéis têm posição fixa no CSS. */
+        function posicionarLivre(el, l, t) {
+            el.classList.add('movido');
+            el.style.setProperty('left', Math.round(l) + 'px', 'important');
+            el.style.setProperty('top', Math.round(t) + 'px', 'important');
+            el.style.setProperty('right', 'auto', 'important');
+            el.style.setProperty('bottom', 'auto', 'important');
+            el.style.setProperty('transform', 'none', 'important');
+            /* legenda e ranking rolam por dentro; a altura máxima passa a contar a partir da nova posição */
+            if (el.id === 'legenda-modo' || el.id === 'inv-ranking') {
+                el.style.setProperty('max-height', Math.max(120, window.innerHeight - Math.round(t) - 12) + 'px', 'important');
+            }
+        }
+
+        function soltarPosicao(el) {
+            el.classList.remove('movido');
+            ['left', 'top', 'right', 'bottom', 'transform', 'max-height'].forEach(p => el.style.removeProperty(p));
+        }
+
+        function aplicarPosicoesSalvas() {
+            IDS_MOVEIS.forEach(id => {
+                const el = document.getElementById(id);
+                const p = posPaineis[id];
+                if (!el) return;
+                el.classList.add('movel');
+                if (!p) return;
+                const w = el.offsetWidth || 200, h = el.offsetHeight || 60;
+                posicionarLivre(el, limitar(p.l, 0, Math.max(0, window.innerWidth - w)), limitar(p.t, 0, Math.max(0, window.innerHeight - h)));
+            });
+        }
+
+        function restaurarPaineis() {
+            posPaineis = {};
+            salvarPosPaineis();
+            IDS_MOVEIS.forEach(id => { const el = document.getElementById(id); if (el) soltarPosicao(el); });
+            reposicionarBarras();
+            if (modoCor === 'inventario') renderInvRanking();
+            else if (modoCor === 'anomalia') renderAnomFora();
+            avisar('Painéis de volta à posição original.');
+        }
+
+        /* Arrastar: segurar o botão do mouse numa parte "vazia" do painel (fora de botões e itens clicáveis) */
+        (function ativarArrastePaineis() {
+            const INTERATIVO = 'button, select, input, textarea, a, .it, .rk, .sec, .inv-chip, .inv-aba, .modo, .placa-corredor';
+            let arr = null;
+
+            document.addEventListener('pointerdown', function(e) {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                const t = e.target;
+                if (!t || !t.closest) return;
+                const el = IDS_MOVEIS.map(id => document.getElementById(id)).find(x => x && x.contains(t));
+                if (!el) return;
+                if (t.closest(INTERATIVO) && !t.closest('h4, .rk-tit')) return;
+
+                const r = el.getBoundingClientRect();
+                arr = { el: el, x0: e.clientX, y0: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top, moveu: false, id: e.pointerId };
+            });
+
+            document.addEventListener('pointermove', function(e) {
+                if (!arr || e.pointerId !== arr.id) return;
+                if (!arr.moveu) {
+                    if (Math.abs(e.clientX - arr.x0) + Math.abs(e.clientY - arr.y0) < 5) return;
+                    arr.moveu = true;
+                    arr.el.classList.add('arrastando');
+                    try { arr.el.setPointerCapture(e.pointerId); } catch (er) { /* ok */ }
+                }
+                const w = arr.el.offsetWidth, h = arr.el.offsetHeight;
+                const l = limitar(e.clientX - arr.dx, 0, Math.max(0, window.innerWidth - w));
+                const t = limitar(e.clientY - arr.dy, 0, Math.max(0, window.innerHeight - h));
+                posicionarLivre(arr.el, l, t);
+                posPaineis[arr.el.id] = { l: Math.round(l), t: Math.round(t) };
+                e.preventDefault();
+            }, { passive: false });
+
+            const fim = function(e) {
+                if (!arr || (e && e.pointerId !== arr.id)) return;
+                const el = arr.el;
+                const moveu = arr.moveu;
+                arr = null;
+                el.classList.remove('arrastando');
+                if (moveu) {
+                    salvarPosPaineis();
+                    /* o arraste não conta como clique (título da legenda/ranking recolhem no clique) */
+                    const bloqueia = function(ev) { ev.stopPropagation(); ev.preventDefault(); };
+                    el.addEventListener('click', bloqueia, { capture: true, once: true });
+                    setTimeout(() => el.removeEventListener('click', bloqueia, true), 80);
+                    reposicionarBarras();
+                }
+            };
+            document.addEventListener('pointerup', fim);
+            document.addEventListener('pointercancel', fim);
+        })();
+
+        window.addEventListener('resize', function() {
+            IDS_MOVEIS.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el || !el.classList.contains('movido') || !el.offsetWidth) return;
+                const r = el.getBoundingClientRect();
+                posicionarLivre(el, limitar(r.left, 0, Math.max(0, window.innerWidth - r.width)), limitar(r.top, 0, Math.max(0, window.innerHeight - r.height)));
+            });
+        });
+
+        document.getElementById('btn-restaurar-paineis').addEventListener('click', restaurarPaineis);
+
+        /* Minimizar: botões de modo (embaixo) e menu de câmera (canto) */
+        function aplicarRecolhidos() {
+            const bm = document.getElementById('barra-modos');
+            const bt = document.getElementById('btn-min-modos');
+            bm.classList.toggle('recolhida', modosRecolhidos);
+            bt.innerHTML = modosRecolhidos ? '&#9652;' : '&#9662;';
+            bt.title = modosRecolhidos ? 'Abrir todos os botões de modo' : 'Minimizar: fica só o modo atual';
+
+            const cam = document.getElementById('ui-camera');
+            const bc = document.getElementById('btn-min-cam');
+            cam.classList.toggle('recolhido', menuCamRecolhido);
+            bc.innerHTML = (menuCamRecolhido ? '&#9656; Menu' : '&#9662; Menu');
+            reposicionarBarras();
+        }
+
+        document.getElementById('btn-min-modos').addEventListener('click', function() {
+            modosRecolhidos = !modosRecolhidos;
+            aplicarRecolhidos();
+            salvarEstado();
+        });
+
+        document.getElementById('btn-min-cam').addEventListener('click', function() {
+            menuCamRecolhido = !menuCamRecolhido;
+            aplicarRecolhidos();
+            salvarEstado();
+        });
+
+        /* Blocos do ranking (acréscimos / reduções / acuracidade) recolhem ao clicar no título */
+        document.getElementById('inv-ranking').addEventListener('click', function(e) {
+            const s = e.target.closest ? e.target.closest('.sec') : null;
+            if (!s) return;
+            const id = s.getAttribute('data-sec');
+            secRecolhida[id] = !secRecolhida[id];
+            renderInvRanking();
+        });
 
         /* ---------- Enquadrar ---------- */
         function posEnquadrada() {
@@ -5376,7 +5572,7 @@
 
         function salvarEstado() {
             try {
-                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, foco: Array.from(focoLegenda), invSel: Array.from(invSel), invAba: invAba, semPaineis: semPaineis };
+                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, foco: Array.from(focoLegenda), invSel: Array.from(invSel), invAba: invAba, semPaineis: semPaineis, modosRec: modosRecolhidos, camRec: menuCamRecolhido };
                 if (lembrarCamera) {
                     est.cam = camera.position.toArray();
                     est.tgt = controls.target.toArray();
@@ -5423,12 +5619,16 @@
                 if (est.invAba === 'pre' || est.invAba === 'pos' || est.invAba === 'comp') invAba = est.invAba;
                 if (Array.isArray(est.invSel)) invSel = new Set(est.invSel);
                 if (est.semPaineis === true) { semPaineis = true; aplicarPaineis(); }
+                if (est.modosRec === true) modosRecolhidos = true;
+                if (est.camRec === true) menuCamRecolhido = true;
                 if (est.qual === false) { qualidadeAlta = false; aplicarQualidade(); }
             }
             btnLembrar.innerText = 'Lembrar câmera: ' + (lembrarCamera ? 'Sim' : 'Não');
             btnLembrar.classList.toggle('btn-toggle-ativo', lembrarCamera);
             aplicarHud();
             atualizarBarraModos();
+            aplicarPosicoesSalvas();   /* painéis que você arrastou voltam para onde estavam */
+            aplicarRecolhidos();       /* menus que você minimizou continuam minimizados */
         })();
 
         /* =========================================================
