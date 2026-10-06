@@ -274,6 +274,15 @@
         #inv-ranking .ac .bar { flex: 1; height: 7px; background: #0b1626; border-radius: 4px; overflow: hidden; }
         #inv-ranking .ac .bar i { display: block; height: 100%; }
         #inv-ranking .ac .v { min-width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
+        #inv-ranking .rc { padding: 4px 5px 5px; border-radius: 4px; }
+        #inv-ranking .rc.sel { background: rgba(255,170,0,0.10); }
+        #inv-ranking .rc.tot { border-top: 1px solid #005b7a; margin-top: 3px; background: rgba(0,243,255,0.07); }
+        #inv-ranking .rc .l1 { display: flex; align-items: baseline; gap: 8px; }
+        #inv-ranking .rc .l1 b { color: #cfe9f5; min-width: 58px; }
+        #inv-ranking .rc.sel .l1 b { color: #ffd166; }
+        #inv-ranking .rc .liq { flex: 1; font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
+        #inv-ranking .rc .pc { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 60px; text-align: right; }
+        #inv-ranking .rc .l2 { color: #8fb0c2; font-size: 10px; line-height: 1.35; margin-top: 1px; }
         #inv-ranking .rk-det { color: #8fb0c2; font-size: 10px; padding: 0 5px 3px 51px; line-height: 1.3; }
 
         /* Campo de visão: esconder painéis (botão "Painéis" ou tecla H) e recolher legenda/ranking */
@@ -1119,7 +1128,9 @@
             <div class="ms-corpo" id="ms-corpo"></div>
             <div class="ms-acoes">
                 <button id="ms-copiar">Copiar</button>
-                <a id="ms-baixar" download="layout3d.png">Baixar</a>
+                <button id="ms-copiar-img" title="Copia a imagem para colar no Teams ou e-mail">&#128203; Copiar imagem</button>
+                <button id="ms-baixar" title="Baixa o arquivo PNG">&#11015; Baixar</button>
+                <button id="ms-nova-aba" title="Abre a imagem em uma aba nova">&#8599; Abrir em nova aba</button>
                 <button id="ms-fechar">Fechar</button>
             </div>
         </div>
@@ -4631,8 +4642,44 @@
             const rkComp = compItens.filter(c => Math.abs(c.vDif) >= EPS_INV).map(c => ({ k: c.r.k, end: c.r.end, prod: c.r.prod, desc: c.r.desc, v: c.vDif, q: c.difQ }));
             const top = (arr, pos) => arr.filter(x => pos ? x.v > 0 : x.v < 0).sort((a, b) => pos ? b.v - a.v : a.v - b.v).slice(0, 5);
 
+            /* Resumo por ciclo (todos os ciclos, mesmo os não marcados): ajuste em R$ e % sobre o contado */
+            const somaPor = (arr, f) => arr.reduce((s, i) => s + f(i), 0);
+            const ciclosStats = invCiclos.map(c => {
+                const p = calcularCiclo(c);
+                const cont = p.itens.filter(i => i.contPre);
+                const comPos = p.itens.filter(i => i.difPos !== null);
+                return {
+                    c: c, n: cont.length, ok: cont.filter(i => i.stPre === 'OK').length,
+                    ajPos: somaPor(cont, i => Math.max(i.vDifPre, 0)), ajNeg: somaPor(cont, i => Math.min(i.vDifPre, 0)),
+                    vContado: somaPor(cont, i => i.vCntPre),
+                    temPos: p.temPos,
+                    impPos: somaPor(comPos, i => i.vDifPos),
+                    impAcr: somaPor(comPos, i => Math.max(i.vDifPos, 0)), impRed: somaPor(comPos, i => Math.min(i.vDifPos, 0)),
+                    vContPos: somaPor(p.itens.filter(i => i.contPos), i => i.vCntPos)
+                };
+            });
+
+            /* Endereços com divergência: um grupo de ajuste negativo e outro de positivo, com o valor líquido do endereço */
+            const endAj = { pre: { pos: [], neg: [] }, pos: { pos: [], neg: [] }, comp: { pos: [], neg: [] } };
+            lst.forEach(a => {
+                const add = (aba, net, nDiv) => {
+                    if (nDiv > 0 && Math.abs(net) >= EPS_INV) endAj[aba][net > 0 ? 'pos' : 'neg'].push({ k: a.k, end: a.end, v: net, n: nDiv });
+                };
+                const cont = a.itens.filter(i => i.contPre);
+                add('pre', somaPor(cont, i => i.vDifPre), cont.filter(i => i.stPre === 'Acréscimo' || i.stPre === 'Redução').length);
+                const comPos = a.itens.filter(i => i.difPos !== null);
+                add('pos', somaPor(comPos, i => i.vDifPos), comPos.filter(i => Math.abs(i.difPos) >= EPS_INV).length);
+                const amb = a.itens.filter(i => i.contPre && i.contPos);
+                add('comp', somaPor(amb, i => i.vDifPos - i.vDifPre), amb.filter(i => Math.abs(i.r.cp - i.r.cs) >= EPS_INV).length);
+            });
+            ['pre', 'pos', 'comp'].forEach(aba => {
+                endAj[aba].pos.sort((x, y) => y.v - x.v);
+                endAj[aba].neg.sort((x, y) => x.v - y.v);
+            });
+
             invCache = {
                 n: n, temPos: temPos, temZ: temZ, addrs: addrs, itens: itens,
+                ciclosStats: ciclosStats, endAj: endAj,
                 resumo: { pre: resPre, pos: resPos, comp: resComp },
                 ranking: {
                     pre: { pos: top(rkPre, true), neg: top(rkPre, false) },
@@ -4774,7 +4821,8 @@
         }
 
         /* Cada bloco do ranking recolhe ao clicar no título (▾/▸) */
-        let secRecolhida = { pos: false, neg: false, acc: false };
+        let secRecolhida = { res: false, endneg: false, endpos: false, pos: false, neg: false, acc: false };
+        try { Object.assign(secRecolhida, JSON.parse(sessionStorage.getItem('l3d_sec_v1') || '{}')); } catch (e) { /* sem memória */ }
 
         function secaoRanking(id, titulo, conteudo) {
             return '<h5 class="sec' + (secRecolhida[id] ? ' sec-recolhida' : '') + '" data-sec="' + id + '" title="Clique para recolher/abrir">' +
@@ -4791,9 +4839,12 @@
                 ? '<div class="vazio">nenhum</div>'
                 : arr.map(x => '<div class="rk" data-k="' + escaparHTML(x.k) + '"><b>' + escaparHTML(x.end) + '</b><span class="nm" title="' + escaparHTML(x.desc || x.prod) + '">' + escaparHTML(x.desc || x.prod) + '</span><span class="v ' + classe + '">' + escaparHTML(fmtSinalMoeda(x.v)) + '</span></div>').join('');
 
-            el.innerHTML = '<div class="rk-tit" title="Clique para recolher/abrir (arraste para mover)">' + (rankingRecolhido ? '▸' : '▾') + ' Ranking por valor</div>' +
-                secaoRanking('pos', 'Maiores acréscimos · ' + tit, linhas(R.pos, 'sobe')) +
-                secaoRanking('neg', 'Maiores reduções · ' + tit, linhas(R.neg, 'desce')) +
+            el.innerHTML = '<div class="rk-tit" title="Clique para recolher/abrir (arraste para mover)">' + (rankingRecolhido ? '▸' : '▾') + ' Resumo e ranking do inventário</div>' +
+                htmlResumoCiclos() +
+                htmlEnderecosAjuste('neg') +
+                htmlEnderecosAjuste('pos') +
+                secaoRanking('pos', 'Maiores acréscimos (itens) · ' + tit, linhas(R.pos, 'sobe')) +
+                secaoRanking('neg', 'Maiores reduções (itens) · ' + tit, linhas(R.neg, 'desce')) +
                 htmlAcuracidade();
             el.classList.toggle('recolhido', rankingRecolhido);
 
@@ -5004,6 +5055,23 @@
             if (arrSelecionados.length > 0) L.push('Filtro do Power BI ativo (' + arrSelecionados.length + ' endereços)');
 
             if (modoCor === 'inventario' && invCache && invCache.n > 0) {
+                const rc = linhasResumoCiclos().filter(r => !r.sem);
+                if (rc.length) {
+                    L.push('');
+                    L.push(invAba === 'pre' ? 'Ajuste previsto por ciclo (% sobre o valor contado):' : (invAba === 'pos' ? 'Impacto real por ciclo (% sobre o processado):' : 'Real − previsto por ciclo:'));
+                    rc.forEach(r => {
+                        const pct = r.base > 0 ? (r.liq / r.base) * 100 : 0;
+                        L.push('   - ' + r.c + ': ' + fmtSinalMoeda(r.liq) + (r.base > 0 ? ' (' + fmtPct(pct) + ')' : '') + (r.comp ? ' · previsto ' + fmtSinalMoeda(r.pos) + ' · real ' + fmtSinalMoeda(r.neg) : ' · ' + fmtSinalMoeda(r.pos) + ' acréscimo · ' + fmtSinalMoeda(r.neg) + ' redução') + ' · base ' + formatarMoeda(r.base));
+                    });
+                }
+                ['neg', 'pos'].forEach(sg => {
+                    const lst = invCache.endAj[invAba][sg];
+                    if (!lst.length) return;
+                    L.push('');
+                    L.push('Endereços com ajuste ' + (sg === 'neg' ? 'negativo' : 'positivo') + ' (' + lst.length + ' · ' + fmtSinalMoeda(lst.reduce((s, x) => s + x.v, 0)) + '):');
+                    lst.forEach(x => L.push('   - ' + x.end + ': ' + fmtSinalMoeda(x.v) + ' (' + x.n + (x.n === 1 ? ' item' : ' itens') + ')'));
+                });
+
                 const R = invCache.ranking[invAba];
                 const rk = (arr) => arr.map(x => '   - ' + x.end + ' · ' + (x.desc || x.prod) + ': ' + fmtSinalMoeda(x.v));
                 if (R.pos.length) { L.push(''); L.push('Maiores acréscimos:'); rk(R.pos).forEach(x => L.push(x)); }
@@ -5123,11 +5191,12 @@
             const m = document.getElementById('modal-share');
             document.getElementById('ms-tit').innerText = titulo;
             document.getElementById('ms-corpo').innerHTML = corpoHtml;
-            const bc = document.getElementById('ms-copiar');
-            const bb = document.getElementById('ms-baixar');
-            bc.style.display = (opcoes && opcoes.copiar) ? 'inline-block' : 'none';
-            bb.style.display = (opcoes && opcoes.baixar) ? 'inline-block' : 'none';
-            if (opcoes && opcoes.baixar) { bb.href = opcoes.baixar; bb.download = opcoes.nomeArquivo || 'layout3d.png'; }
+            const mostra = (id, ligado) => { document.getElementById(id).style.display = ligado ? 'inline-block' : 'none'; };
+            mostra('ms-copiar', opcoes && opcoes.copiar);
+            mostra('ms-copiar-img', opcoes && opcoes.imagem);
+            mostra('ms-baixar', opcoes && opcoes.imagem);
+            mostra('ms-nova-aba', opcoes && opcoes.imagem);
+            m.dataset.nomeArquivo = (opcoes && opcoes.nomeArquivo) || 'layout3d.png';
             m.classList.add('visivel');
             m.dataset.texto = (opcoes && opcoes.texto) || '';
             const ta = document.getElementById('ms-texto');
@@ -5146,6 +5215,34 @@
             }
             else {
                 depois(copiarFallback(txt));
+            }
+        }
+
+        let ultimoImgBlob = null;
+        let ultimoImgUrl = '';
+
+        function reduzirCanvas(c, maxW) {
+            if (c.width <= maxW) return c;
+            const k = maxW / c.width;
+            const r = document.createElement('canvas');
+            r.width = maxW;
+            r.height = Math.round(c.height * k);
+            const g = r.getContext('2d');
+            g.imageSmoothingQuality = 'high';
+            g.drawImage(c, 0, 0, r.width, r.height);
+            return r;
+        }
+
+        function tentarCopiarImagem(silencioso) {
+            if (!ultimoImgBlob) return;
+            if (navigator.clipboard && window.ClipboardItem) {
+                navigator.clipboard.write([new ClipboardItem({ 'image/png': ultimoImgBlob })]).then(
+                    () => avisar('Imagem copiada. Cole no Teams ou no e-mail (Ctrl+V).'),
+                    () => { if (!silencioso) avisar('O navegador não deixou copiar. Clique com o botão direito na imagem > Copiar imagem.'); }
+                );
+            }
+            else if (!silencioso) {
+                avisar('Este navegador não copia imagem pelo botão. Clique com o botão direito na imagem > Copiar imagem.');
             }
         }
 
@@ -5204,18 +5301,17 @@
                     });
                 }
 
-                c.toBlob(function(blob) {
-                    const url = c.toDataURL('image/png');
-                    const mostrar = (aviso) => abrirModal('Imagem do mapa', '<img src="' + url + '" alt="Mapa 3D"><div class="ms-dica">' + aviso + '</div>', { baixar: url, nomeArquivo: 'layout3d-' + modoCor + '.png' });
-                    if (blob && navigator.clipboard && window.ClipboardItem) {
-                        navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(
-                            () => avisar('Imagem copiada. Cole no Teams ou no e-mail (Ctrl+V).'),
-                            () => mostrar('Clique com o botão direito na imagem e escolha "Copiar imagem" (ou "Baixar").')
-                        );
-                    }
-                    else {
-                        mostrar('Clique com o botão direito na imagem e escolha "Copiar imagem" (ou "Baixar").');
-                    }
+                /* reduz para no máximo 1800 px de largura: arquivo menor, bom para Teams/e-mail */
+                const alvo = reduzirCanvas(c, 1800);
+                alvo.toBlob(function(blob) {
+                    if (!blob) { avisar('Não consegui gerar a imagem.'); return; }
+                    if (ultimoImgUrl) { try { URL.revokeObjectURL(ultimoImgUrl); } catch (er) { /* ok */ } }
+                    ultimoImgBlob = blob;
+                    ultimoImgUrl = URL.createObjectURL(blob);
+                    const d = new Date();
+                    const nome = 'layout3d-' + modoCor + '-' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '.png';
+                    abrirModal('Imagem do mapa', '<img src="' + ultimoImgUrl + '" alt="Mapa 3D"><div class="ms-dica">Use <b>Copiar imagem</b> para colar no Teams/e-mail. Se o Power BI bloquear o botão, clique com o botão direito na imagem (Copiar imagem / Salvar imagem como…) ou use Win+Shift+S.</div>', { imagem: true, nomeArquivo: nome });
+                    tentarCopiarImagem(true);
                 }, 'image/png');
             }
             catch (e) {
@@ -5267,6 +5363,25 @@
         document.getElementById('modal-share').addEventListener('click', function(e) {
             if (e.target === this) this.classList.remove('visivel');
         });
+        document.getElementById('ms-copiar-img').addEventListener('click', function() { tentarCopiarImagem(false); });
+
+        document.getElementById('ms-baixar').addEventListener('click', function() {
+            if (!ultimoImgUrl) return;
+            const a = document.createElement('a');
+            a.href = ultimoImgUrl;
+            a.download = document.getElementById('modal-share').dataset.nomeArquivo || 'layout3d.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            avisar('Download iniciado. Se nada baixar, o Power BI bloqueou: botão direito na imagem > Salvar imagem como…');
+        });
+
+        document.getElementById('ms-nova-aba').addEventListener('click', function() {
+            if (!ultimoImgUrl) return;
+            const w = window.open(ultimoImgUrl, '_blank');
+            if (!w) avisar('O Power BI bloqueou a nova aba. Use o botão direito na imagem.');
+        });
+
         document.getElementById('ms-copiar').addEventListener('click', function() {
             const m = document.getElementById('modal-share');
             const ta = document.getElementById('ms-texto');
@@ -5278,18 +5393,84 @@
 
         /* ---------- Acuracidade por ciclo (parte do painel lateral do inventário) ---------- */
         function htmlAcuracidade() {
-            if (invCiclos.length < 2) return '';
+            if (invCiclos.length < 2 || !invCache || !invCache.ciclosStats) return '';
             let h = '';
-            invCiclos.forEach(c => {
-                const p = calcularCiclo(c);
-                const cont = p.itens.filter(i => i.contPre);
-                if (cont.length === 0) return;
-                const ok = cont.filter(i => i.stPre === 'OK').length;
-                const pct = Math.round((ok / cont.length) * 100);
+            invCache.ciclosStats.forEach(s => {
+                if (s.n === 0) return;
+                const pct = Math.round((s.ok / s.n) * 100);
                 const cor = pct >= 90 ? '#2ecc71' : (pct >= 70 ? '#f1c40f' : '#e74c3c');
-                h += '<div class="ac' + (invSel.has(c) ? ' sel' : '') + '"><b>' + escaparHTML(c) + '</b><span class="bar"><i style="width:' + pct + '%;background:' + cor + '"></i></span><span class="v">' + pct + '% · ' + ok + '/' + cont.length + '</span></div>';
+                h += '<div class="ac' + (invSel.has(s.c) ? ' sel' : '') + '"><b>' + escaparHTML(s.c) + '</b><span class="bar"><i style="width:' + pct + '%;background:' + cor + '"></i></span><span class="v">' + pct + '% · ' + s.ok + '/' + s.n + '</span></div>';
             });
             return h ? secaoRanking('acc', 'Acuracidade por ciclo · itens contados OK', h) : '';
+        }
+
+        function fmtPct(v) {
+            return (v > 0 ? '+' : (v < 0 ? '−' : '')) + (Math.round(Math.abs(v) * 10) / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+        }
+
+        /* Linhas do resumo por ciclo conforme a aba: [{c, liq, pos, neg, base, extra, sel}] */
+        function linhasResumoCiclos() {
+            const out = [];
+            if (!invCache || !invCache.ciclosStats) return out;
+            invCache.ciclosStats.forEach(s => {
+                if (invAba === 'pre') {
+                    if (s.n === 0) return;
+                    out.push({ c: s.c, liq: s.ajPos + s.ajNeg, pos: s.ajPos, neg: s.ajNeg, base: s.vContado, sel: invSel.has(s.c), nota: 'contado' });
+                }
+                else if (invAba === 'pos') {
+                    out.push({ c: s.c, sem: !s.temPos, liq: s.impPos, pos: s.impAcr, neg: s.impRed, base: s.vContPos, sel: invSel.has(s.c), nota: 'contagem processada' });
+                }
+                else {
+                    if (s.n === 0) return;
+                    out.push({ c: s.c, sem: !s.temPos, liq: s.impPos - (s.ajPos + s.ajNeg), pos: s.ajPos + s.ajNeg, neg: s.impPos, base: s.vContado, sel: invSel.has(s.c), nota: 'contado', comp: true });
+                }
+            });
+            return out;
+        }
+
+        /* Resumo do valor do ajuste por ciclo e % sobre o total contado */
+        function htmlResumoCiclos() {
+            const L = linhasResumoCiclos();
+            if (L.length === 0) return '';
+            const cls = v => (v >= 0 ? 'sobe' : 'desce');
+            const linha = (r, total) => {
+                const nome = total ? 'Marcados' : r.c;
+                if (r.sem) {
+                    return '<div class="rc' + (r.sel ? ' sel' : '') + '"><div class="l1"><b>' + escaparHTML(nome) + '</b><span class="pc">sem arquivo pós</span></div></div>';
+                }
+                const pct = r.base > 0 ? (r.liq / r.base) * 100 : 0;
+                const l2 = r.comp
+                    ? 'previsto ' + fmtSinalMoeda(r.pos) + ' · real ' + fmtSinalMoeda(r.neg) + ' · contado ' + moedaCurta(r.base)
+                    : '<span class="sobe">' + fmtSinalMoeda(r.pos) + '</span> acréscimo · <span class="desce">' + fmtSinalMoeda(r.neg) + '</span> redução · ' + r.nota + ' ' + moedaCurta(r.base);
+                return '<div class="rc' + (r.sel ? ' sel' : '') + (total ? ' tot' : '') + '"><div class="l1"><b>' + escaparHTML(nome) + '</b>' +
+                    '<span class="liq ' + cls(r.liq) + '">' + escaparHTML(fmtSinalMoeda(r.liq)) + '</span>' +
+                    '<span class="pc ' + cls(r.liq) + '">' + (r.base > 0 ? escaparHTML(fmtPct(pct)) : '—') + '</span></div>' +
+                    '<div class="l2">' + (r.comp ? escaparHTML(l2) : l2) + '</div></div>';
+            };
+            let h = L.map(r => linha(r, false)).join('');
+            const marc = L.filter(r => r.sel && !r.sem);
+            if (marc.length > 1) {
+                const t = { liq: 0, pos: 0, neg: 0, base: 0, nota: L[0].nota, comp: L[0].comp };
+                marc.forEach(r => { t.liq += r.liq; t.pos += r.pos; t.neg += r.neg; t.base += r.base; });
+                h += linha(t, true);
+            }
+            const tit = invAba === 'pre' ? 'Ajuste previsto por ciclo · % sobre o contado'
+                : (invAba === 'pos' ? 'Impacto real por ciclo · % sobre o processado' : 'Real − previsto por ciclo');
+            return secaoRanking('res', tit, h);
+        }
+
+        /* Endereços com divergência: um bloco para ajuste negativo e outro para positivo */
+        function htmlEnderecosAjuste(sinal) {
+            if (!invCache || !invCache.endAj) return '';
+            const lista = invCache.endAj[invAba][sinal];
+            const total = lista.reduce((s, x) => s + x.v, 0);
+            const nome = sinal === 'neg' ? 'Endereços com ajuste negativo' : 'Endereços com ajuste positivo';
+            const cab = nome + ' · ' + lista.length + (lista.length ? ' · ' + fmtSinalMoeda(total) : '');
+            const MAX = 12;
+            let h = lista.length === 0 ? '<div class="vazio">nenhum endereço</div>' :
+                lista.slice(0, MAX).map(x => '<div class="rk" data-k="' + escaparHTML(x.k) + '"><b>' + escaparHTML(x.end) + '</b><span class="nm">' + x.n + (x.n === 1 ? ' item divergente' : ' itens divergentes') + '</span><span class="v ' + (sinal === 'neg' ? 'desce' : 'sobe') + '">' + escaparHTML(fmtSinalMoeda(x.v)) + '</span></div>').join('');
+            if (lista.length > MAX) h += '<div class="rk-det" style="padding-left:5px">+ ' + (lista.length - MAX) + ' endereços (use "Copiar resumo" para a lista completa)</div>';
+            return secaoRanking(sinal === 'neg' ? 'endneg' : 'endpos', cab, h);
         }
 
         /* ---------- Painel lateral: anomalias sem endereço ---------- */
@@ -5500,6 +5681,7 @@
             if (!s) return;
             const id = s.getAttribute('data-sec');
             secRecolhida[id] = !secRecolhida[id];
+            try { sessionStorage.setItem('l3d_sec_v1', JSON.stringify(secRecolhida)); } catch (er) { /* sem memória */ }
             renderInvRanking();
         });
 
