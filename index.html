@@ -1072,6 +1072,7 @@
             <button class="btn btn-cinema" id="btn-cinema">Modo Cinemático</button>
             <button class="btn" id="btn-hud" title="Alterna o painel de números do canto superior direito">HUD: Completo</button>
             <button class="btn btn-toggle-ativo" id="btn-qualidade" title="Alta = imagem mais lisa (usa mais da placa de vídeo). Normal = mais leve em computadores fracos">Qualidade: Alta</button>
+            <button class="btn btn-toggle-ativo" id="btn-transicao" title="Suaviza a troca de cores ao mudar de data, de modo ou de destaque. Suave = 0,65 s · Rápida = 0,25 s · Desligada = troca direta (mais leve em computadores fracos)">Transição: Suave</button>
             <button class="btn btn-toggle-ativo" id="btn-logo-vis" title="Mostra ou esconde o logo na parede">Logo: Visível</button>
             <button class="btn" id="btn-logo-pos" title="Depois de clicar, clique na parede onde o logo deve ficar">Posicionar logo (clicar na parede)</button>
             <button class="btn" id="btn-logo-mais" title="Aumenta o logo">Logo +</button>
@@ -1316,10 +1317,15 @@
         let hudModo = 'completo';
         let lembrarCamera = true;
         let qualidadeAlta = true;
+        let transicaoModo = 'suave';        /* suave | rapida | off: dissolve a cor das caixas quando algo muda */
+        let transicoesLiberadas = false;    /* a primeira pintura com dados é direta; só as mudanças seguintes animam */
+        let recebeuMensagem = false;        /* o Power BI já mandou dados pelo menos uma vez */
 
         /* Série histórica (play/variação): data -> { endereco: [qtd, valor] } */
         let serieDados = {};
         let serieDatas = [];
+        let dataEscolhidaBI = null;   /* true = há filtro em Data Base no Power BI; false = nenhuma escolhida (vale a mais recente) */
+        let fontesDatas = null;       /* data do último arquivo de cada relatório: { end, sa, pos, slow, obs, val } */
         let dataBaseBI = '';      /* data base que o Power BI informou */
         let dataBaseSerie = '';   /* data da série que corresponde à data base (última <= data base) */
         let dataVis = '';         /* data que está sendo exibida (play) */
@@ -1533,6 +1539,8 @@
                     return;
                 }
 
+                recebeuMensagem = true;
+
                 let payload = event.data.dadosEstoque;
 
                 if (typeof payload === 'string') {
@@ -1684,6 +1692,9 @@
                 } else {
                     arrSelecionados = [];
                 }
+
+                dataEscolhidaBI = typeof event.data.dataEscolhida === 'boolean' ? event.data.dataEscolhida : null;
+                fontesDatas = (event.data.fontes && typeof event.data.fontes === 'object') ? event.data.fontes : null;
 
                 processarSerie(event.data.serie, event.data.dataBase);
                 processarInventario(event.data.inventario);
@@ -2184,12 +2195,15 @@
             /* --- data base --- */
             if (dataVis) {
                 let h = '📅 Saldo por endereço de <b>' + fmtDataISO(dataVis) + '</b>';
+                if (dataEscolhidaBI === true) h += ' <span class="aviso">(data escolhida no filtro Data Base)</span>';
+                else if (dataEscolhidaBI === false) h += ' <span class="aviso">(a mais recente · nenhuma data escolhida)</span>';
                 if (dataBaseBI && dataBaseBI !== dataBaseSerie) {
                     h += ' <span class="aviso">(data base ' + fmtDataISO(dataBaseBI) + ': usa o arquivo mais recente até ela)</span>';
                 }
                 if (dataVis !== dataBaseSerie) {
                     h += '<br><span class="aviso">Play em data anterior: números do HUD são de ' + fmtDataISO(dataBaseSerie) + '</span>';
                 }
+                h += htmlFontesDatas();
                 elData.innerHTML = h;
                 elData.style.display = 'block';
             }
@@ -2465,10 +2479,106 @@
             return COR_CAIXA_NORMAL;
         }
 
+        /* =========================================================
+           13.0 TRANSIÇÃO SUAVE DE COR E PULSO DA VARIAÇÃO
+           A cor final de cada caixa continua sendo calculada de uma vez (aplicarFiltrosECores);
+           aqui ela só é "adiada": a caixa volta à cor que estava na tela e caminha até a nova.
+           ========================================================= */
+
+        const TRANSICAO_MS = { suave: 650, rapida: 250, off: 0 };
+        const TRANSICAO_ROTULO = { suave: 'Transição: Suave', rapida: 'Transição: Rápida', off: 'Transição: Desligada' };
+        const animCor = new Map();    /* material -> { de, para, paraHex, t0, dur } */
+        const flashes = new Map();    /* caixa -> { hex, t0, dur } (brilho curto das caixas que mudaram) */
+
+        /* no play, a transição nunca passa de 60% do tempo entre uma data e a outra */
+        function duracaoTransicao() {
+            let d = TRANSICAO_MS[transicaoModo] || 0;
+            if (d > 0 && playTimer) {
+                const passo = Number(document.getElementById('play-vel').value) || 1200;
+                d = Math.min(d, passo * 0.6);
+            }
+            return d;
+        }
+
+        function coresAtuais(child) {
+            const a = [];
+            percorrerMateriais(child, m => a.push(m.color ? m.color.getHex() : null));
+            return a;
+        }
+
+        function cancelarTransicaoDaCaixa(child) {
+            percorrerMateriais(child, m => animCor.delete(m));
+        }
+
+        function iniciarTransicaoDaCaixa(child, antes, dur) {
+            let i = 0;
+            percorrerMateriais(child, m => {
+                const de = antes[i++];
+                if (de === null || de === undefined || !m.color) return;
+                const para = m.color.getHex();
+                const ativa = animCor.get(m);
+                if (de === para) { animCor.delete(m); return; }
+                m.color.setHex(de);                                   /* volta à cor que estava na tela */
+                if (ativa && ativa.paraHex === para) return;          /* já está indo para essa cor: não reinicia */
+                animCor.set(m, { de: new THREE.Color(de), para: new THREE.Color(para), paraHex: para, t0: performance.now(), dur: dur });
+            });
+        }
+
+        /* chamada a cada quadro (ver animate) */
+        function atualizarTransicoes() {
+            if (animCor.size === 0 && flashes.size === 0) return;
+            const agora = performance.now();
+
+            animCor.forEach((a, m) => {
+                const t = (agora - a.t0) / a.dur;
+                if (t >= 1) { m.color.copy(a.para); animCor.delete(m); return; }
+                m.color.copy(a.de).lerp(a.para, easeInOutCubic(Math.max(0, t)));
+            });
+
+            flashes.forEach((f, caixa) => {
+                const t = (agora - f.t0) / f.dur;
+                if (t < 0) return;                                    /* ainda esperando a dissolução */
+                if (t >= 1) { desligarEmissive(caixa); flashes.delete(caixa); return; }
+                const q = 1 - t;
+                aplicarEmissive(caixa, f.hex, 0.9 * q * q);
+            });
+        }
+
+        /* Modo Variação: as caixas que mudaram (subiu, caiu, novo, zerou) dão um brilho curto depois da dissolução */
+        function dispararFlashVariacao() {
+            flashes.forEach((f, caixa) => desligarEmissive(caixa));
+            flashes.clear();
+
+            const dur = duracaoTransicao();
+            if (!transicoesLiberadas || dur === 0 || modoCor !== 'variacao' || !modeloGeral || !cacheModo.cls) return;
+
+            const atraso = dur * 0.55;
+            const passo = playTimer ? (Number(document.getElementById('play-vel').value) || 1200) : 1400;
+            const durFlash = Math.max(400, Math.min(1100, passo * 0.85 - atraso));
+            const t0 = performance.now() + atraso;
+            const filtrando = temFiltroAtivo();
+
+            modeloGeral.traverse(child => {
+                if (!child.isMesh || ehEstrutura(child)) return;
+                const e = getEnderecoDaHierarquia(child);
+                if (!e) return;
+                const k = extrairChaveEndereco(e) || normalizarNome(e);
+                const c = cacheModo.cls[k];
+                if (!c || c === 'Sem mudança' || c === 'Sem dado') return;
+                if (filtrando && !estaSelecionadoEndereco(e)) return;
+                const hex = cacheModo.cor[k];
+                if (typeof hex !== 'number') return;
+                flashes.set(child, { hex: hex, t0: t0, dur: durFlash });
+            });
+        }
+
         function aplicarFiltrosECores() {
             if (!modeloGeral) return;
 
             objetosDestacados = [];
+
+            /* a primeira pintura (abertura da página) é direta; depois disso as mudanças dissolvem */
+            const durTrans = transicoesLiberadas ? duracaoTransicao() : 0;
 
             modeloGeral.traverse(child => {
                 if (!child.isMesh) return;
@@ -2484,6 +2594,8 @@
                     aplicarCorNosMateriais(child, COR_ESTRUTURA_PRINCIPAL);
                     return;
                 }
+
+                const coresAntes = durTrans > 0 ? coresAtuais(child) : null;
 
                 const selecionado = estaSelecionadoEndereco(endereco);
 
@@ -2520,11 +2632,18 @@
                     // no loop de animação — ver atualizarPulsoRealce)
                     aplicarEmissive(child, cor, 0.35);
                     objetosDestacados.push(child);
+                    flashes.delete(child);      /* a caixa já pulsa pelo filtro; sem brilho duplo */
                 }
                 else {
                     desligarEmissive(child);
                 }
+
+                if (coresAntes) iniciarTransicaoDaCaixa(child, coresAntes, durTrans);
+                else cancelarTransicaoDaCaixa(child);
             });
+
+            /* depois da primeira pintura com dados do Power BI, as próximas mudanças passam a animar */
+            if (recebeuMensagem) transicoesLiberadas = true;
 
             atualizarHUD();
             atualizarBannerFiltroAtivo();
@@ -3845,6 +3964,7 @@
             }
 
             atualizarPulsoRealce();
+            atualizarTransicoes();
             organizarPlacas();
 
             renderer.render(scene, camera);
@@ -4375,12 +4495,29 @@
             atualizarPlayUI();
             atualizarInvUI();
             aplicarFiltrosECores();
+            dispararFlashVariacao();
             salvarEstado();
         }
 
         /* =========================================================
            25.2 SÉRIE HISTÓRICA: PLAY E VARIAÇÃO ENTRE DATAS
            ========================================================= */
+
+        /* aaaa-mm-dd -> dd/mm (só aceita data válida; qualquer outro texto vira vazio) */
+        function dataCurta(iso) {
+            const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+            return m ? m[2] + '/' + m[1] : '';
+        }
+
+        /* Data do último arquivo de cada relatório (o que o Power BI carregou). "sem arquivo" = o relatório não entrou no modelo. */
+        function htmlFontesDatas() {
+            if (!fontesDatas) return '';
+            const it = (rot, k) => {
+                const d = dataCurta(fontesDatas[k]);
+                return rot + ' ' + (d ? '<b>' + d + '</b>' : '<span class="aviso">sem arquivo</span>');
+            };
+            return '<br><small>' + [it('Saldo atual', 'sa'), it('Posição', 'pos'), it('Slowmove', 'slow'), it('Obsolescência', 'obs'), it('Validades', 'val')].join(' · ') + '</small>';
+        }
 
         function fmtDataISO(iso) {
             const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
@@ -4472,6 +4609,7 @@
             renderLegendaModo();
             atualizarPlayUI();
             aplicarFiltrosECores();
+            dispararFlashVariacao();
         }
 
         function pararPlay() {
@@ -6330,7 +6468,7 @@
 
         function salvarEstado() {
             try {
-                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, foco: Array.from(focoLegenda), invSel: Array.from(invSel), invAba: invAba, semPaineis: semPaineis, modosRec: modosRecolhidos, camRec: menuCamRecolhido };
+                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, trans: transicaoModo, foco: Array.from(focoLegenda), invSel: Array.from(invSel), invAba: invAba, semPaineis: semPaineis, modosRec: modosRecolhidos, camRec: menuCamRecolhido };
                 if (lembrarCamera) {
                     est.cam = camera.position.toArray();
                     est.tgt = controls.target.toArray();
@@ -6363,6 +6501,28 @@
             salvarEstado();
         });
 
+        function aplicarTransicaoModo() {
+            const b = document.getElementById('btn-transicao');
+            if (b) {
+                b.innerText = TRANSICAO_ROTULO[transicaoModo];
+                b.classList.toggle('btn-toggle-ativo', transicaoModo !== 'off');
+            }
+            if (transicaoModo === 'off') {
+                /* desligada: termina na hora o que estava em andamento */
+                animCor.forEach((a, m) => m.color.copy(a.para));
+                animCor.clear();
+                flashes.forEach((f, caixa) => desligarEmissive(caixa));
+                flashes.clear();
+            }
+        }
+
+        document.getElementById('btn-transicao').addEventListener('click', function() {
+            const ordem = ['suave', 'rapida', 'off'];
+            transicaoModo = ordem[(ordem.indexOf(transicaoModo) + 1) % ordem.length];
+            aplicarTransicaoModo();
+            salvarEstado();
+        });
+
         controls.addEventListener('end', salvarEstado);
 
         (function restaurarEstadoInicial() {
@@ -6380,7 +6540,9 @@
                 if (est.modosRec === true) modosRecolhidos = true;
                 if (est.camRec === true) menuCamRecolhido = true;
                 if (est.qual === false) { qualidadeAlta = false; aplicarQualidade(); }
+                if (TRANSICAO_MS[est.trans] !== undefined) transicaoModo = est.trans;
             }
+            aplicarTransicaoModo();
             btnLembrar.innerText = 'Lembrar câmera: ' + (lembrarCamera ? 'Sim' : 'Não');
             btnLembrar.classList.toggle('btn-toggle-ativo', lembrarCamera);
             aplicarHud();
