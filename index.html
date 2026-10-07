@@ -1026,6 +1026,65 @@
         #painel-kpi { background-color: rgb(22, 40, 66); }
         #barra-modos, #barra-play { background: rgba(22, 40, 66, 0.97); }
         #legenda-modo { background: rgba(22, 40, 66, 0.97); }
+
+        /* =========================================================
+           MENU DA ESQUERDA COMPACTO (07/10/2026)
+           câmera em 2 fileiras de ícones, opções em 2 colunas agrupadas, rolagem de segurança
+           ========================================================= */
+        .cam-linha { display: flex; gap: 6px; }
+
+        .btn-cam.btn-ico {
+            min-width: 0;
+            width: 34px;
+            height: 32px;
+            padding: 0;
+            text-align: center;
+            font-size: 15px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* dica que aparece na hora (a do navegador demora e pode nem aparecer dentro do Power BI) */
+        .btn-ico[data-dica]:hover::after {
+            content: attr(data-dica);
+            position: absolute;
+            left: calc(100% + 8px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgb(22, 40, 66);
+            border: 1px solid #005b7a;
+            border-radius: 4px;
+            color: #00f3ff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 8px;
+            white-space: nowrap;
+            z-index: 60;
+            pointer-events: none;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.45);
+        }
+
+        #ui-camera > #btn-min-cam, #ui-camera > #btn-opcoes { width: 154px; box-sizing: border-box; }
+
+        #menu-opcoes { display: none; position: relative; width: 268px; padding: 0 !important; overflow: hidden; box-sizing: border-box; }
+        #menu-opcoes.aberto { display: block; }
+        #menu-opcoes .rol-in { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; }
+        #menu-opcoes .op-grupo { grid-column: 1 / -1; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #7fb6c9; margin-top: 4px; }
+        #menu-opcoes .op-grupo:first-child { margin-top: 0; }
+        #menu-opcoes .op-linha { grid-column: 1 / -1; display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 6px; }
+        #menu-opcoes .btn { font-size: 11.5px; padding: 7px 8px; line-height: 1.15; white-space: normal; text-align: left; }
+        #menu-opcoes .op-linha .btn { text-align: center; white-space: nowrap; padding: 7px 4px; }
+
+        /* esmaecer: o menu fica discreto sem o mouse; os painéis clareiam enquanto a câmera se move */
+        #ui-camera { transition: opacity 0.25s ease; }
+        body.esmaece-ligado #ui-camera:not(:hover):not(.menu-aberto) { opacity: 0.5; }
+        #hud-topo, #legenda-modo, #inv-ranking { transition: opacity 0.3s ease; }
+        body.esmaece-ligado.camera-movendo #hud-topo,
+        body.esmaece-ligado.camera-movendo #legenda-modo,
+        body.esmaece-ligado.camera-movendo #inv-ranking { opacity: 0.18; }
     </style>
 
     <!-- =========================================================
@@ -1053,32 +1112,42 @@
          ========================================================= -->
     <div id="ui-camera">
         <button class="btn btn-cam" id="btn-min-cam" title="Recolher/abrir os botões de câmera e opções">&#9662; Menu</button>
-        <button class="btn btn-cam" id="btn-frente" title="Vista frontal">&#9645; Frente</button>
-        <button class="btn btn-cam" id="btn-topo" title="Vista de cima">&#11026; Topo</button>
-        <button class="btn btn-cam" id="btn-lado" title="Vista lateral">&#9680; Lado</button>
-        <button class="btn btn-cam" id="btn-enquadrar" title="Enquadrar o galpão inteiro">&#10530; Enquadrar</button>
-        <button class="btn btn-cam" id="btn-pan" title="Arrastar para mover o mapa">&#9995; Mover</button>
-        <button class="btn btn-cam" id="btn-wasd" title="Visão em 1ª pessoa (teclas W A S D)">&#9684; 1ª Pessoa</button>
-        <button class="btn btn-cam" id="btn-compartilhar" title="Copiar resumo/pendências ou gerar imagem do mapa para colar no Teams ou e-mail">&#128228; Compartilhar</button>
+        <div class="cam-linha">
+            <button class="btn btn-cam btn-ico" id="btn-frente" data-dica="Frente" aria-label="Frente" title="Vista frontal">&#9645;</button>
+            <button class="btn btn-cam btn-ico" id="btn-topo" data-dica="Topo" aria-label="Topo" title="Vista de cima">&#11026;</button>
+            <button class="btn btn-cam btn-ico" id="btn-lado" data-dica="Lado" aria-label="Lado" title="Vista lateral">&#9680;</button>
+            <button class="btn btn-cam btn-ico" id="btn-enquadrar" data-dica="Enquadrar" aria-label="Enquadrar" title="Enquadrar o galpão inteiro">&#10530;</button>
+        </div>
+        <div class="cam-linha">
+            <button class="btn btn-cam btn-ico" id="btn-pan" data-dica="Mover (arrastar o mapa)" aria-label="Mover" title="Arrastar para mover o mapa">&#9995;</button>
+            <button class="btn btn-cam btn-ico" id="btn-wasd" data-dica="1ª pessoa (W A S D)" aria-label="1ª pessoa" title="Visão em 1ª pessoa (teclas W A S D)">&#9684;</button>
+            <button class="btn btn-cam btn-ico" id="btn-compartilhar" data-dica="Compartilhar" aria-label="Compartilhar" title="Copiar resumo/pendências ou gerar imagem do mapa para colar no Teams ou e-mail">&#128228;</button>
+            <button class="btn btn-cam btn-ico" id="btn-paineis" data-dica="Tela limpa (tecla H)" aria-label="Tela limpa" title="Tela limpa: esconde o HUD, o ranking e a legenda para liberar a visão do mapa (tecla H)">&#128065;</button>
+        </div>
         <div id="menu-compartilhar">
             <button class="btn" data-acao="resumo" title="Texto com o resumo do que está na tela">📋 Copiar resumo</button>
             <button class="btn" data-acao="pendencias" id="item-share-pend" title="Lista de endereços/itens para contar, recontar ou conferir">📋 Copiar pendências</button>
             <button class="btn" data-acao="imagem" title="Imagem do mapa com título, legenda e resumo">🖼 Imagem do mapa</button>
         </div>
-        <button class="btn btn-cam" id="btn-paineis" title="Esconde o HUD, o ranking e a legenda para liberar a visão do mapa (tecla H)">&#128065; Painéis</button>
         <button class="btn btn-cam" id="btn-opcoes" title="Mais opções">&#9881; Opções</button>
         <div id="menu-opcoes">
-            <button class="btn btn-toggle-ativo" id="btn-estrutura" title="Mostra a letra de cada estrutura (clique na letra para destacar a estrutura)">Letras: Visíveis</button>
-            <button class="btn btn-cinema" id="btn-cinema">Modo Cinemático</button>
+            <div class="op-grupo">Visual</div>
+            <button class="btn btn-toggle-ativo" id="btn-estrutura" data-fecha="1" title="Mostra a letra de cada estrutura (clique na letra para destacar a estrutura)">Letras: Visíveis</button>
+            <button class="btn btn-cinema" id="btn-cinema" data-fecha="1">Modo Cinemático</button>
             <button class="btn" id="btn-hud" title="Alterna o painel de números do canto superior direito">HUD: Completo</button>
-            <button class="btn btn-toggle-ativo" id="btn-qualidade" title="Alta = imagem mais lisa (usa mais da placa de vídeo). Normal = mais leve em computadores fracos">Qualidade: Alta</button>
+            <button class="btn btn-toggle-ativo" id="btn-qualidade" data-fecha="1" title="Alta = imagem mais lisa (usa mais da placa de vídeo). Normal = mais leve em computadores fracos">Qualidade: Alta</button>
             <button class="btn btn-toggle-ativo" id="btn-transicao" title="Suaviza a troca de cores ao mudar de data, de modo ou de destaque. Suave = 0,65 s · Rápida = 0,25 s · Desligada = troca direta (mais leve em computadores fracos)">Transição: Suave</button>
-            <button class="btn btn-toggle-ativo" id="btn-logo-vis" title="Mostra ou esconde o logo na parede">Logo: Visível</button>
-            <button class="btn" id="btn-logo-pos" title="Depois de clicar, clique na parede onde o logo deve ficar">Posicionar logo (clicar na parede)</button>
-            <button class="btn" id="btn-logo-mais" title="Aumenta o logo">Logo +</button>
-            <button class="btn" id="btn-logo-menos" title="Diminui o logo">Logo −</button>
-            <button class="btn" id="btn-restaurar-paineis" title="Volta HUD, legenda, ranking e barras para a posição original">Restaurar painéis</button>
-            <button class="btn btn-toggle-ativo" id="btn-lembrar"title="Ao filtrar no Power BI o mapa recarrega; esta opção mantém a câmera e o modo de cor">Lembrar câmera: Sim</button>
+            <button class="btn btn-toggle-ativo" id="btn-esmaecer" data-fecha="1" title="Sim = o menu da esquerda fica discreto quando o mouse sai de cima, e os painéis (HUD, legenda, ranking) clareiam enquanto você gira ou move o mapa">Esmaecer: Sim</button>
+            <div class="op-grupo">Logo na parede</div>
+            <div class="op-linha">
+                <button class="btn btn-toggle-ativo" id="btn-logo-vis" title="Mostra ou esconde o logo na parede">👁 Logo</button>
+                <button class="btn" id="btn-logo-pos" title="Depois de clicar, clique na parede onde o logo deve ficar">📍</button>
+                <button class="btn" id="btn-logo-mais" title="Aumenta o logo">+</button>
+                <button class="btn" id="btn-logo-menos" title="Diminui o logo">−</button>
+            </div>
+            <div class="op-grupo">Sistema</div>
+            <button class="btn" id="btn-restaurar-paineis" data-fecha="1" title="Volta HUD, legenda, ranking e barras para a posição original">Restaurar painéis</button>
+            <button class="btn btn-toggle-ativo" id="btn-lembrar" data-fecha="1" title="Ao filtrar no Power BI o mapa recarrega; esta opção mantém a câmera e o modo de cor">Lembrar câmera: Sim</button>
         </div>
         <button class="btn btn-status" id="btn-status">Modo: Status (Desligado)</button>
     </div>
@@ -1320,6 +1389,7 @@
         let transicaoModo = 'suave';        /* suave | rapida | off: dissolve a cor das caixas quando algo muda */
         let transicoesLiberadas = false;    /* a primeira pintura com dados é direta; só as mudanças seguintes animam */
         let recebeuMensagem = false;        /* o Power BI já mandou dados pelo menos uma vez */
+        let esmaecerAuto = true;            /* menu discreto sem o mouse + painéis claros enquanto a câmera se move */
 
         /* Série histórica (play/variação): data -> { endereco: [qtd, valor] } */
         let serieDados = {};
@@ -5289,20 +5359,22 @@
             if (b) b.classList.toggle('btn-toggle-ativo', semPaineis);
         }
 
-        document.getElementById('btn-paineis').addEventListener('click', function() {
+        /* "Tela limpa": avisa como voltar, para ninguém ficar sem saber onde estão os painéis */
+        function alternarTelaLimpa() {
             semPaineis = !semPaineis;
             aplicarPaineis();
             salvarEstado();
-        });
+            avisar(semPaineis ? 'Tela limpa. Pressione H (ou clique no 👁) para voltar.' : 'Painéis de volta.');
+        }
+
+        document.getElementById('btn-paineis').addEventListener('click', alternarTelaLimpa);
 
         document.addEventListener('keydown', function(e) {
             if (e.key !== 'h' && e.key !== 'H') return;
             if (e.ctrlKey || e.altKey || e.metaKey) return;
             const alvo = e.target && e.target.tagName;
             if (alvo === 'INPUT' || alvo === 'TEXTAREA' || alvo === 'SELECT') return;
-            semPaineis = !semPaineis;
-            aplicarPaineis();
-            salvarEstado();
+            alternarTelaLimpa();
         });
 
         document.getElementById('inv-ranking').addEventListener('click', function(e) {
@@ -6294,7 +6366,8 @@
             const b = document.getElementById('btn-logo-vis');
             if (b) {
                 const vis = !logoCfg || logoCfg.visivel !== false;
-                b.innerText = 'Logo: ' + (vis ? 'Visível' : 'Oculto');
+                b.innerText = vis ? '👁 Logo' : '🚫 Logo';
+                b.title = vis ? 'Logo visível: clique para esconder' : 'Logo oculto: clique para mostrar';
                 b.classList.toggle('btn-toggle-ativo', vis);
             }
         }
@@ -6423,10 +6496,50 @@
         const menuOpcoes = document.getElementById('menu-opcoes');
         const btnOpcoes = document.getElementById('btn-opcoes');
 
+        /* Rolagem de segurança: se a janela for baixa, o menu rola por dentro (rolagem própria, que não borra o texto) */
+        garantirRolagem(menuOpcoes);
+
+        function ajustarAlturaMenuOpcoes() {
+            if (!menuOpcoes.classList.contains('aberto')) return;
+            /* zera a rolagem antes de medir: a margem negativa do conteúdo encolheria o menu e esconderia a necessidade de crescer */
+            const conteudo = menuOpcoes.querySelector(':scope > .rol-in');
+            if (conteudo) conteudo.style.marginTop = '0px';
+            menuOpcoes.style.maxHeight = '';
+            const topo = menuOpcoes.getBoundingClientRect().top;
+            menuOpcoes.style.maxHeight = Math.max(110, Math.floor(window.innerHeight - topo - 12)) + 'px';
+            atualizarRolagem(menuOpcoes);
+        }
+
+        /* Sempre que um menu abre ou fecha (por qualquer caminho): marca o menu como "em uso" (não esmaece),
+           ajusta a altura e deixa a legenda usar o espaço que sobrou */
+        function sincronizarMenusAbertos() {
+            const aberto = menuOpcoes.classList.contains('aberto') || menuShare.classList.contains('aberto');
+            document.getElementById('ui-camera').classList.toggle('menu-aberto', aberto);
+            ajustarAlturaMenuOpcoes();
+            reposicionarBarras();
+        }
+
+        (function observarMenus() {
+            const obs = new MutationObserver(sincronizarMenusAbertos);
+            obs.observe(menuOpcoes, { attributes: true, attributeFilter: ['class'] });
+            obs.observe(menuShare, { attributes: true, attributeFilter: ['class'] });
+        })();
+
+        window.addEventListener('resize', ajustarAlturaMenuOpcoes);
+
         btnOpcoes.addEventListener('click', function(e) {
             e.stopPropagation();
             menuOpcoes.classList.toggle('aberto');
             btnOpcoes.classList.toggle('btn-toggle-ativo', menuOpcoes.classList.contains('aberto'));
+        });
+
+        /* opções de um clique só (ligar/desligar): fecham o menu depois de escolher; as que têm várias etapas
+           (HUD, Transição, Logo + / −) deixam o menu aberto */
+        menuOpcoes.addEventListener('click', function(e) {
+            const b = e.target.closest ? e.target.closest('[data-fecha]') : null;
+            if (!b) return;
+            menuOpcoes.classList.remove('aberto');
+            btnOpcoes.classList.remove('btn-toggle-ativo');
         });
 
         document.addEventListener('click', function(e) {
@@ -6434,6 +6547,31 @@
             if (menuOpcoes.contains(e.target) || e.target === btnOpcoes) return;
             menuOpcoes.classList.remove('aberto');
             btnOpcoes.classList.remove('btn-toggle-ativo');
+        });
+
+        /* ---------- Esmaecer (menu discreto + painéis claros enquanto a câmera se move) ---------- */
+        function aplicarEsmaecer() {
+            document.body.classList.toggle('esmaece-ligado', esmaecerAuto);
+            if (!esmaecerAuto) document.body.classList.remove('camera-movendo');
+            const b = document.getElementById('btn-esmaecer');
+            if (b) {
+                b.innerText = 'Esmaecer: ' + (esmaecerAuto ? 'Sim' : 'Não');
+                b.classList.toggle('btn-toggle-ativo', esmaecerAuto);
+            }
+        }
+
+        document.getElementById('btn-esmaecer').addEventListener('click', function() {
+            esmaecerAuto = !esmaecerAuto;
+            aplicarEsmaecer();
+            salvarEstado();
+        });
+
+        let tmrCameraMovendo = null;
+        controls.addEventListener('change', function() {
+            if (!esmaecerAuto || tweenCameraAtivo) return;      /* só quando VOCÊ gira, move ou dá zoom (não nos movimentos automáticos) */
+            document.body.classList.add('camera-movendo');
+            clearTimeout(tmrCameraMovendo);
+            tmrCameraMovendo = setTimeout(function() { document.body.classList.remove('camera-movendo'); }, 450);
         });
 
         /* ---------- HUD em 3 níveis ---------- */
@@ -6468,7 +6606,7 @@
 
         function salvarEstado() {
             try {
-                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, trans: transicaoModo, foco: Array.from(focoLegenda), invSel: Array.from(invSel), invAba: invAba, semPaineis: semPaineis, modosRec: modosRecolhidos, camRec: menuCamRecolhido };
+                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, trans: transicaoModo, esm: esmaecerAuto, foco: Array.from(focoLegenda), invSel: Array.from(invSel), invAba: invAba, semPaineis: semPaineis, modosRec: modosRecolhidos, camRec: menuCamRecolhido };
                 if (lembrarCamera) {
                     est.cam = camera.position.toArray();
                     est.tgt = controls.target.toArray();
@@ -6541,8 +6679,10 @@
                 if (est.camRec === true) menuCamRecolhido = true;
                 if (est.qual === false) { qualidadeAlta = false; aplicarQualidade(); }
                 if (TRANSICAO_MS[est.trans] !== undefined) transicaoModo = est.trans;
+                if (est.esm === false) esmaecerAuto = false;
             }
             aplicarTransicaoModo();
+            aplicarEsmaecer();
             btnLembrar.innerText = 'Lembrar câmera: ' + (lembrarCamera ? 'Sim' : 'Não');
             btnLembrar.classList.toggle('btn-toggle-ativo', lembrarCamera);
             aplicarHud();
