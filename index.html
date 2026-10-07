@@ -1516,8 +1516,19 @@
             dadosPorNomeBlender[nomeKey].push(registro);
         }
 
+        /* Só aceita dados de quem embute este site (o quadro do visual do Power BI, que é o "pai" deste iframe)
+           ou do próprio site. Mensagens de qualquer outra janela são ignoradas.
+           Não se confere o endereço (origin): o quadro do visual HTML Content roda isolado e pode chegar como "null". */
+        function mensagemDeOrigemConfiavel(event) {
+            return event.source === window.parent || event.source === window;
+        }
+
         window.addEventListener('message', function(event) {
             try {
+                if (!mensagemDeOrigemConfiavel(event)) {
+                    return;
+                }
+
                 if (!event.data || event.data.tipo !== 'dadosPowerBI') {
                     return;
                 }
@@ -2954,7 +2965,7 @@
             h += '<div class="tt-line"><span class="tt-label">Itens que divergem</span><span class="tt-value" style="color:' + (nDiv > 0 ? '#ff6b6b' : '#6bff9a') + '">' + formatarNumero(nDiv, 0) + '</span></div>';
 
             ordenados.slice(0, MAX).forEach(r => {
-                const un = (r.unidadeMedida && r.unidadeMedida !== 'N/A') ? ' ' + r.unidadeMedida : '';
+                const un = (r.unidadeMedida && r.unidadeMedida !== 'N/A') ? ' ' + escaparHTML(r.unidadeMedida) : '';
                 h += '<div class="tt-produto"><div class="tt-produto-titulo">' + escaparHTML(r.produto || 'Produto') + '</div>';
                 h += '<div class="cf-sub">' + escaparHTML(r.codigoProduto) + ' · neste endereço: ' + formatarNumero(r.estoque, 0) + un +
                     (ehDiv(r) && r.divergEm ? ' · <b class="cf-em">diverge em: ' + escaparHTML(r.divergEm) + '</b>' : '') + '</div>';
@@ -4164,7 +4175,7 @@
                     msgVazio = 'Sem dados de inventário.<br>Coloque os arquivos em DADOS\\08 - Inventario e atualize o BI.';
                 }
                 else if (invAba !== 'pre' && !c.temPos) {
-                    msgVazio = invCiclo + ' ainda não tem arquivo de pós-processamento.<br>Coloque-o em 02 - Pos processamento.';
+                    msgVazio = escaparHTML(invCiclo) + ' ainda não tem arquivo de pós-processamento.<br>Coloque-o em 02 - Pos processamento.';
                 }
                 else {
                     Object.keys(c.addrs).forEach(k => {
@@ -4173,7 +4184,7 @@
                         const v = invAba === 'pre' ? a.vClsPre : (invAba === 'pos' ? a.vClsPos : a.vClsComp);
                         if (rot) marca(k, rot, COR_INV[rot], v);
                     });
-                    extra = '<div class="resumo">' + invCiclo + ' · ' + ROTULO_ABA[invAba] + '<br>' + formatarNumero(Object.keys(c.addrs).length, 0) + ' endereços no ciclo</div>';
+                    extra = '<div class="resumo">' + escaparHTML(invCiclo) + ' · ' + ROTULO_ABA[invAba] + '<br>' + formatarNumero(Object.keys(c.addrs).length, 0) + ' endereços no ciclo</div>';
                 }
             }
 
@@ -4386,6 +4397,7 @@
             const novo = {};
             if (s && typeof s === 'object') {
                 Object.keys(s).forEach(dt => {
+                    if (!/^\d{4}-\d{2}-\d{2}$/.test(dt)) return;   /* só datas aaaa-mm-dd: qualquer outro texto é ignorado */
                     const m = {};
                     const o = s[dt] || {};
                     Object.keys(o).forEach(a => {
@@ -4402,7 +4414,8 @@
             serieDados = novo;
             serieDatas = Object.keys(novo).sort();
 
-            const db = String(dataBase || '').trim();
+            const dbTxt = String(dataBase || '').trim();
+            const db = /^\d{4}-\d{2}-\d{2}$/.test(dbTxt) ? dbTxt : '';
             let baseSerie = serieDatas.length ? serieDatas[serieDatas.length - 1] : '';
             if (db) {
                 const ate = serieDatas.filter(d => d <= db);
@@ -4796,7 +4809,7 @@
             const pctConc = endZer > 0 ? Math.round((endZerCont / endZer) * 100) : null;
 
             const resPre = {
-                rot: 'Inventário · ' + invCiclo + ' · Pré',
+                rot: 'Inventário · ' + escaparHTML(invCiclo) + ' · Pré',
                 val: temZ ? (formatarNumero(endZerCont, 0) + '/' + formatarNumero(endZer, 0) + ' zerados contados' + (pctConc !== null ? ' (' + pctConc + '%)' : '')) : (formatarNumero(endCont, 0) + ' endereços contados'),
                 sub: (temZ ? 'Aguardando contagem: <b>' + cAg + '</b> · Contagem sem zeramento: <b>' + cSemZ + '</b> · Faltou item: <b>' + cFaltou + '</b><br>' : 'Ciclo sem zeramento (contagem direta)<br>') +
                     'Itens contados: ' + formatarNumero(contItens.length, 0) + ' · OK: ' + itOK + ' · divergentes: ' + (contItens.length - itOK) + '<br>' +
@@ -4808,7 +4821,7 @@
             /* Resumo PÓS */
             let resPos;
             if (!temPos) {
-                resPos = { rot: 'Inventário · ' + invCiclo + ' · Pós', val: 'Sem arquivo pós', sub: 'Coloque o arquivo tirado depois de processar em DADOS\\08 - Inventario\\02 - Pos processamento.' };
+                resPos = { rot: 'Inventário · ' + escaparHTML(invCiclo) + ' · Pós', val: 'Sem arquivo pós', sub: 'Coloque o arquivo tirado depois de processar em DADOS\\08 - Inventario\\02 - Pos processamento.' };
             }
             else {
                 const comPos = itens.filter(i => i.difPos !== null);
@@ -4819,7 +4832,7 @@
                 const eRed = lst.filter(a => a.clsPos === 'Redução de estoque').length;
                 const eSem = lst.filter(a => a.clsPos === 'Sem contagem pós').length;
                 resPos = {
-                    rot: 'Inventário · ' + invCiclo + ' · Pós',
+                    rot: 'Inventário · ' + escaparHTML(invCiclo) + ' · Pós',
                     val: fmtSinalMoeda(impacto) + ' <small style="font-size:11px;color:#9fc3d6">impacto real no sistema</small>',
                     sub: 'Valor zerado: ' + escaparHTML(moedaCurta(vZerTot)) + ' · contagem processada: ' + escaparHTML(moedaCurta(vCntPosTot)) + '<br>' +
                         'Endereços: <span class="sobe">' + eAcr + ' acréscimo</span> · <span class="desce">' + eRed + ' redução</span> · sem contagem pós: <b>' + eSem + '</b>' +
@@ -4831,7 +4844,7 @@
             /* Resumo COMPARAR */
             let resComp;
             if (!temPos) {
-                resComp = { rot: 'Inventário · ' + invCiclo + ' · Pré × Pós', val: 'Sem arquivo pós', sub: 'Sem o pós-processamento não há o que comparar.' };
+                resComp = { rot: 'Inventário · ' + escaparHTML(invCiclo) + ' · Pré × Pós', val: 'Sem arquivo pós', sub: 'Sem o pós-processamento não há o que comparar.' };
             }
             else {
                 const eq = itens.filter(i => i.stComp === 'Pré = Pós').length;
@@ -4840,7 +4853,7 @@
                 const prev = itens.filter(i => i.contPre).reduce((s, i) => s + i.vDifPre, 0);
                 const real = itens.filter(i => i.difPos !== null).reduce((s, i) => s + i.vDifPos, 0);
                 resComp = {
-                    rot: 'Inventário · ' + invCiclo + ' · Pré × Pós',
+                    rot: 'Inventário · ' + escaparHTML(invCiclo) + ' · Pré × Pós',
                     val: df + ' item(ns) com pré ≠ pós',
                     sub: 'Iguais: ' + eq + ' · diferentes: <b>' + df + '</b> · pós pendente: ' + pend + '<br>' +
                         'Previsto (pré): ' + escaparHTML(fmtSinalMoeda(prev)) + ' · real (pós): ' + escaparHTML(fmtSinalMoeda(real)) + '<br>Diferença: ' + escaparHTML(fmtSinalMoeda(real - prev))
@@ -5213,10 +5226,10 @@
             anomFora = (o && typeof o === 'object' && Array.isArray(o.it)) ? o : null;
         }
 
+        /* HTML -> texto sem executar nada: o DOMParser cria um documento inerte (não carrega imagens nem roda scripts) */
         function htmlParaTexto(h) {
-            const d = document.createElement('div');
-            d.innerHTML = String(h || '').replace(/<br\s*\/?>/gi, '\n');
-            return d.textContent.replace(/\n{3,}/g, '\n\n').trim();
+            const doc = new DOMParser().parseFromString(String(h || '').replace(/<br\s*\/?>/gi, '\n'), 'text/html');
+            return (doc.body ? doc.body.textContent : '').replace(/\n{3,}/g, '\n\n').trim();
         }
 
         /* Resumo mostrado no HUD; no inventário vem direto do cálculo (não depende de o HUD ter sido redesenhado) */
