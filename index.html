@@ -948,6 +948,11 @@
         #play-resumo { color: #9fc3d6; font-size: 11px; white-space: nowrap; }
         #play-resumo .sobe { color: #6bff9a; }
         #play-resumo .desce { color: #ff6b6b; }
+        /* minimizada: fica só o botão ▴ e a data (a data fica âmbar se não for a data base) */
+        #barra-play.recolhida > *:not(#btn-min-play):not(#play-data) { display: none !important; }
+        #barra-play.recolhida { padding: 5px 10px; gap: 6px; }
+        #barra-play.recolhida #play-data { min-width: 0; }
+        #barra-play #play-data.fora-base { color: #ffd166; }
         @media (max-width: 820px) {
             #barra-play { flex-wrap: wrap; justify-content: center; border-radius: 16px; }
             #play-range { width: 140px; }
@@ -1240,6 +1245,7 @@
     </div>
     <div id="inv-ranking"></div>
     <div id="barra-play">
+        <button id="btn-min-play" class="min-btn" title="Minimizar a linha do tempo (fica só a data)">&#9662;</button>
         <button id="play-ant" title="Data anterior">&#9664;</button>
         <button id="play-btn" title="Reproduzir / pausar">&#9654;</button>
         <button id="play-prox" title="Próxima data">&#9654;&#9654;</button>
@@ -4661,6 +4667,7 @@
             range.max = String(serieDatas.length - 1);
             range.value = String(Math.max(0, serieDatas.indexOf(dataVis)));
             document.getElementById('play-data').innerText = fmtDataISO(dataVis);
+            document.getElementById('play-data').classList.toggle('fora-base', dataVis !== dataBaseSerie);
             document.getElementById('play-resumo').innerHTML = resumoDaData(dataVis) +
                 (dataVis !== dataBaseSerie ? ' · só Valor e Variação' : '');
             document.getElementById('play-btn').innerHTML = playTimer ? '&#10074;&#10074;' : '&#9654;';
@@ -6148,6 +6155,19 @@
         let posPaineis = {};
         let modosRecolhidos = false;
         let menuCamRecolhido = false;
+        let playRecolhido = false;   /* linha do tempo minimizada (a escolha fica guardada no navegador, não só na sessão) */
+
+        const CHAVE_PLAY_REC = 'l3d_play_rec_v1';
+
+        function lerPlayRec() {
+            try { return localStorage.getItem(CHAVE_PLAY_REC) === '1'; } catch (e) { /* tenta a sessão */ }
+            try { return sessionStorage.getItem(CHAVE_PLAY_REC) === '1'; } catch (e) { return false; }
+        }
+
+        function salvarPlayRec() {
+            const v = playRecolhido ? '1' : '0';
+            try { localStorage.setItem(CHAVE_PLAY_REC, v); } catch (e) { try { sessionStorage.setItem(CHAVE_PLAY_REC, v); } catch (e2) { /* sem memória */ } }
+        }
 
         try { posPaineis = JSON.parse(sessionStorage.getItem('l3d_pos_v1') || '{}') || {}; } catch (e) { posPaineis = {}; }
 
@@ -6278,8 +6298,21 @@
             const bc = document.getElementById('btn-min-cam');
             cam.classList.toggle('recolhido', menuCamRecolhido);
             bc.innerHTML = (menuCamRecolhido ? '&#9656; Menu' : '&#9662; Menu');
+
+            const bp = document.getElementById('barra-play');
+            const btp = document.getElementById('btn-min-play');
+            bp.classList.toggle('recolhida', playRecolhido);
+            btp.innerHTML = playRecolhido ? '&#9652;' : '&#9662;';
+            btp.title = playRecolhido ? 'Abrir a linha do tempo (play e datas)' : 'Minimizar a linha do tempo (fica só a data)';
             reposicionarBarras();
         }
+
+        document.getElementById('btn-min-play').addEventListener('click', function() {
+            playRecolhido = !playRecolhido;
+            if (playRecolhido) pararPlay();      /* escondida, não fica tocando sem você ver */
+            aplicarRecolhidos();
+            salvarPlayRec();
+        });
 
         document.getElementById('btn-min-modos').addEventListener('click', function() {
             modosRecolhidos = !modosRecolhidos;
@@ -6688,6 +6721,7 @@
             aplicarHud();
             atualizarBarraModos();
             aplicarPosicoesSalvas();   /* painéis que você arrastou voltam para onde estavam */
+            playRecolhido = lerPlayRec();   /* a linha do tempo minimizada continua minimizada nas próximas vezes */
             aplicarRecolhidos();       /* menus que você minimizou continuam minimizados */
         })();
 
