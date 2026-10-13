@@ -341,6 +341,49 @@
         #barra-inv .inv-chip.todos.ativo { background: #ffaa00; color: #0b1626; }
         #barra-inv .inv-aba.ativo { background: #00f3ff; color: #0b1626; border-color: #00f3ff; }
 
+        /* INVENTÁRIO GERAL: mesma barra do inventário, com documentos no lugar dos ciclos */
+        #barra-invg {
+            position: absolute;
+            left: 50%;
+            bottom: 74px;
+            transform: translateX(-50%);
+            z-index: 25;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            max-width: calc(100vw - 24px);
+            flex-wrap: wrap;
+            justify-content: center;
+            background: rgba(22, 40, 66, 0.97);
+            border: 1px solid #005b7a;
+            border-radius: 999px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+            color: #e0f7fa;
+            font-size: 12px;
+        }
+        #barra-invg.visivel { display: flex; }
+        #barra-invg .inv-rot { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #80d8ff; font-weight: 700; }
+        #invg-docs { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+        #barra-invg .inv-chip {
+            border: 1px solid #005b7a; background: transparent; color: #9fc3d6; border-radius: 999px;
+            cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 700; padding: 4px 9px;
+        }
+        #barra-invg .inv-chip:hover { background: rgba(0,243,255,0.15); }
+        #barra-invg .inv-chip.ativo { background: rgba(255,170,0,0.20); border-color: #ffaa00; color: #ffd166; }
+        #barra-invg .inv-chip.todos.ativo { background: #ffaa00; color: #0b1626; }
+        #barra-invg .inv-acao {
+            border: 1px solid #ffaa00; background: rgba(255,170,0,0.12); color: #ffd166; border-radius: 999px;
+            cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; padding: 5px 11px;
+        }
+        #barra-invg .inv-acao:hover { background: rgba(255,170,0,0.30); }
+
+        /* chave "Por endereço | Geral" (nas duas barras do inventário) */
+        .inv-modo { display: inline-flex; border: 1px solid #005b7a; border-radius: 999px; overflow: hidden; }
+        .inv-modo button { border: 0; background: transparent; color: #9fc3d6; font-family: inherit; font-size: 11px; font-weight: 700; padding: 5px 11px; cursor: pointer; }
+        .inv-modo button:hover { background: rgba(0,243,255,0.15); }
+        .inv-modo button.ativo { background: #00f3ff; color: #0b1626; }
+
         #inv-ranking {
             position: absolute;
             right: 15px;
@@ -1220,12 +1263,25 @@
         <button class="modo" data-modo="variacao" title="O que mudou em relação à data anterior (precisa de 2+ datas de Saldo por Endereço)">Variação</button>
     </div>
     <div id="barra-inv">
+        <span class="inv-modo" title="Por endereço: zeramento, contagem e pós-processamento, endereço por endereço. Geral: só o total contado de cada produto contra o Saldo por Endereço.">
+            <button class="ativo" data-invmodo="endereco">Por endereço</button><button data-invmodo="geral">Geral</button>
+        </span>
         <span class="inv-rot" title="Clique para marcar um ou vários ciclos (ou Todos). Os números somam os ciclos marcados.">Ciclos</span>
         <span id="inv-ciclos"></span>
         <button class="inv-aba ativo" data-aba="pre" title="Antes de processar no sistema: todo endereço zerado foi contado? quanto vai ajustar?">Pré-processamento</button>
         <button class="inv-aba" data-aba="pos" title="Depois de processar: o que realmente subiu ou desceu no sistema">Pós-processamento</button>
         <button class="inv-aba" data-aba="comp" title="Compara o ajuste previsto (pré) com o processado (pós)">Comparar</button>
         <button class="inv-acao" data-acao="pendencias" title="Copia a lista do que falta contar/recontar para colar no Teams ou e-mail">📋 Pendências</button>
+        <button class="inv-acao" data-acao="imagem" title="Gera a imagem do mapa com legenda e resumo">🖼 Imagem</button>
+    </div>
+    <!-- INVENTÁRIO GERAL: conta pelo total do produto (Filial x Armazém), sem olhar o endereço -->
+    <div id="barra-invg">
+        <span class="inv-modo" title="Por endereço: zeramento, contagem e pós-processamento, endereço por endereço. Geral: só o total contado de cada produto contra o Saldo por Endereço.">
+            <button data-invmodo="endereco">Por endereço</button><button class="ativo" data-invmodo="geral">Geral</button>
+        </span>
+        <span class="inv-rot" title="Clique para marcar um ou vários documentos de contagem (ou Todos). Os números somam os documentos marcados.">Documentos</span>
+        <span id="invg-docs"></span>
+        <button class="inv-acao" data-acao="pendencias" title="Lista o que ajustar ou recontar (negativos, positivos e endereços diferentes) para colar no Teams ou e-mail">📋 Ajustes</button>
         <button class="inv-acao" data-acao="imagem" title="Gera a imagem do mapa com legenda e resumo">🖼 Imagem</button>
     </div>
     <div id="toast-share"></div>
@@ -1775,6 +1831,7 @@
                 processarSerie(event.data.serie, event.data.dataBase);
                 processarInventario(event.data.inventario);
                 processarAnomFora(event.data.anomForaMapa);
+                processarInvGeral(event.data.invGeral);
                 atualizarModosUI();
                 atualizarPlayUI();
                 atualizarHUD(countLidos);
@@ -2332,6 +2389,10 @@
             if (modoCor === 'inventario' && invCache && invCache.n > 0) {
                 const ri = invCache.resumo[invAba];
                 if (ri) res = [ri.rot, ri.val, ri.sub];
+            }
+            else if (modoCor === 'invgeral' && invgCache && invgCache.n > 0) {
+                const rg = invgCache.resHud;
+                res = [rg.rot, rg.val, rg.sub];
             }
 
             ultimoResumoHud = res || null;
@@ -3177,6 +3238,7 @@
 
         function montarHTMLTooltip(endereco, registros) {
             if (modoCor === 'inventario') return montarHTMLTooltipInv(endereco);
+            if (modoCor === 'invgeral') return montarHTMLTooltipInvG(endereco);
             if (modoCor === 'diverg' && registros && registros.length > 0) return montarHTMLTooltipConf(endereco, registros);
 
             let html = '<div class="tt-header">' + escaparHTML(endereco) + '</div>';
@@ -3354,6 +3416,10 @@
         function exibirKPI(enderecoVisual, registros) {
             if (modoCor === 'inventario') {
                 exibirKPIInv(enderecoVisual);
+                return;
+            }
+            if (modoCor === 'invgeral') {
+                exibirKPIInvG(enderecoVisual);
                 return;
             }
             restaurarRotulosKPI();
@@ -4064,6 +4130,7 @@
             diverg:   { rotulo: 'Divergência' },
             anomalia: { rotulo: 'Anomalias' },
             inventario: { rotulo: 'Inventário' },
+            invgeral: { rotulo: 'Inventário Geral' },     /* sem botão próprio: entra pela chave "Geral" do Inventário */
             variacao: { rotulo: 'Variação' }
         };
 
@@ -4383,6 +4450,23 @@
                     extra = '<div class="resumo">' + escaparHTML(invCiclo) + ' · ' + ROTULO_ABA[invAba] + '<br>' + formatarNumero(Object.keys(c.addrs).length, 0) + ' endereços no ciclo</div>';
                 }
             }
+            else if (modoCor === 'invgeral') {
+                /* Inventário geral: verde = total confere · vermelho = ajuste negativo · amarelo = ajuste positivo.
+                   Pinta os endereços onde o produto está no sistema ou onde foi contado (vale a pior situação). */
+                const c = calcularInvGeral();
+                if (!c || c.n === 0) {
+                    msgVazio = invgDados.length === 0
+                        ? 'Sem dados do inventário geral.<br>Coloque os arquivos em DADOS\\09 - Inventario Geral e atualize o BI.'
+                        : 'Nenhum documento marcado.';
+                }
+                else {
+                    Object.keys(c.addrs).forEach(k => { const a = c.addrs[k]; marca(k, a.cls, COR_INVG[a.cls], 0); });
+                    /* o R$ da legenda é por PRODUTO (não por endereço): ajuste dos vermelhos/amarelos e valor do que confere */
+                    Object.keys(cont).forEach(r => { cont[r].v = c.valorClasse[r] || 0; });
+                    extra = '<div class="resumo">' + escaparHTML(invgTexto) + ' · Geral<br>' + formatarNumero(c.n, 0) + ' produtos contados · ' + formatarNumero(Object.keys(c.addrs).length, 0) + ' endereços<br>' +
+                        'Sistema: Saldo por Endereço de ' + (invgDtSistema ? escaparHTML(fmtDataISO(invgDtSistema)) : '--') + '</div>';
+                }
+            }
 
             /* Modos por ITEM (giro, obsolescência, validade, família, filial, divergência, anomalia):
                a legenda conta os endereços que TÊM itens da classe e soma só o valor dos itens dessa classe
@@ -4431,6 +4515,9 @@
             else if (modoCor === 'inventario') {
                 const ord = ORDEM_INV[invAba] || [];
                 legenda.sort((a, b) => ord.indexOf(a[0]) - ord.indexOf(b[0]));
+            }
+            else if (modoCor === 'invgeral') {
+                legenda.sort((a, b) => ORDEM_INVG.indexOf(a[0]) - ORDEM_INVG.indexOf(b[0]));
             }
             else if (modoCor === 'diverg') {
                 const ord = ['Diverge', 'Confere, mas dado suspeito', 'Confere'];
@@ -4508,11 +4595,13 @@
                         '<span class="n">' + l[2] + (mostraValor && l[3] > 0 ? ' <small>· ' + escaparHTML(moedaCurta(l[3])) + '</small>' : '') + '</span></div>';
                 });
                 h += '<div class="nota">' + (temFoco ? 'Clique de novo na classe (ou no aviso do topo) para limpar o destaque.' : 'Clique numa classe para destacar só ela no 3D.') +
-                    (mostraValor ? (cacheModo.recNivel ? '<br>números = endereços que têm itens da classe · R$ = só os itens da classe (a cor do endereço é a pior situação dele)' : '<br>números = endereços · valor em estoque') : '') + '</div>';
+                    (mostraValor ? (cacheModo.recNivel ? '<br>números = endereços que têm itens da classe · R$ = só os itens da classe (a cor do endereço é a pior situação dele)'
+                        : (modoCor === 'invgeral' ? '<br>números = endereços · R$ = ajuste dos produtos (vermelho/amarelo) ou valor do que confere (verde) · a cor do endereço é a pior situação dos produtos dele'
+                            : '<br>números = endereços · valor em estoque')) : '') + '</div>';
             }
 
             if (cacheModo.extra) h += cacheModo.extra;
-            h += '<div class="nota">' + (modoCor === 'inventario' ? 'Cinza escuro = endereço fora deste ciclo.' : 'Cinza escuro = endereço sem saldo.') + '</div>';
+            h += '<div class="nota">' + (modoCor === 'inventario' ? 'Cinza escuro = endereço fora deste ciclo.' : (modoCor === 'invgeral' ? 'Cinza escuro = endereço fora desta contagem.' : 'Cinza escuro = endereço sem saldo.')) + '</div>';
             escreverRolagem(el, h);
             el.style.display = 'block';
             atualizarRolagem(el);
@@ -4520,8 +4609,8 @@
 
         /* Botões: marca "sem dado" e mostra selo vermelho com a quantidade de alertas */
         function atualizarBarraModos() {
-            const tem = { valor: false, giro: false, validade: false, familia: false, filial: false, obsoleto: false, diverg: false, anomalia: false, inventario: invDados.length > 0, variacao: serieDatas.length >= 2 };
-            const selo = { giro: 0, validade: 0, obsoleto: 0, diverg: 0, anomalia: 0, inventario: (invCache && invCache.pendencias) || 0 };
+            const tem = { valor: false, giro: false, validade: false, familia: false, filial: false, obsoleto: false, diverg: false, anomalia: false, inventario: invDados.length > 0 || invgDados.length > 0, variacao: serieDatas.length >= 2 };
+            const selo = { giro: 0, validade: 0, obsoleto: 0, diverg: 0, anomalia: 0, inventario: modoCor === 'invgeral' ? ((invgCache && invgCache.nAj) || 0) : ((invCache && invCache.pendencias) || 0) };
 
             Object.keys(infoEnd).forEach(k => {
                 const o = infoEnd[k];
@@ -4538,7 +4627,7 @@
 
             document.querySelectorAll('#barra-modos .modo').forEach(b => {
                 const m = b.getAttribute('data-modo');
-                b.classList.toggle('ativo', m === modoCor);
+                b.classList.toggle('ativo', m === modoCor || (m === 'inventario' && modoCor === 'invgeral'));
                 b.classList.toggle('sem-dado', m !== 'padrao' && !tem[m]);
 
                 const rot = MODOS[m].rotulo.split(' ')[0];
@@ -4550,16 +4639,20 @@
         function atualizarModosUI() {
             analisarEnderecos();
             calcularInventario();
+            calcularInvGeral();
             recalcularModo();
             atualizarBarraModos();
             renderLegendaModo();
             atualizarInvUI();
+            atualizarInvGUI();
         }
 
         function aplicarModo(m) {
             if (!MODOS[m]) return;
             if (m !== modoCor) focoLegenda.clear();
             modoCor = m;
+            if (m === 'invgeral') invSubModo = 'geral';
+            else if (m === 'inventario') invSubModo = 'endereco';
             /* Os modos com detalhe (obsoleto, validade...) só existem na data base: volta para ela */
             if (MODOS_SERIE.indexOf(m) < 0 && dataVis !== dataBaseSerie) {
                 pararPlay();
@@ -4570,6 +4663,7 @@
             renderLegendaModo();
             atualizarPlayUI();
             atualizarInvUI();
+            atualizarInvGUI();
             aplicarFiltrosECores();
             dispararFlashVariacao();
             salvarEstado();
@@ -4657,7 +4751,7 @@
             const barra = document.getElementById('barra-play');
             if (!barra) return;
 
-            if (serieDatas.length < 2 || modoCor === 'inventario') {
+            if (serieDatas.length < 2 || modoCor === 'inventario' || modoCor === 'invgeral') {
                 barra.classList.remove('visivel');
                 reposicionarBarras();
                 return;
@@ -4761,7 +4855,11 @@
 
         document.getElementById('barra-modos').addEventListener('click', function(e) {
             const b = e.target.closest ? e.target.closest('.modo') : null;
-            if (b) aplicarModo(b.getAttribute('data-modo'));
+            if (b) {
+                const m = b.getAttribute('data-modo');
+                /* o botão Inventário volta para a última chave usada (Por endereço ou Geral) */
+                aplicarModo(m === 'inventario' && invSubModo === 'geral' ? 'invgeral' : m);
+            }
         });
 
         /* =========================================================
@@ -5273,6 +5371,7 @@
         }
 
         function renderInvRanking() {
+            if (modoCor === 'invgeral') { renderInvGPainel(); return; }     /* no modo Geral o painel é outro (ver 25.3b) */
             const el = document.getElementById('inv-ranking');
             if (!el || !invCache || invCache.n === 0) return;
 
@@ -5359,6 +5458,417 @@
             mudarInvBase();
         });
 
+        /* =========================================================
+           25.3b INVENTÁRIO GERAL (pasta 09): conta pelo TOTAL do produto, sem olhar o endereço
+           Contado (soma de onde acharam) x Saldo por Endereço (soma de todos os endereços do produto),
+           por Filial x Armazém x Produto. Só entra o que foi contado. O endereço só mostra onde acharam
+           e se ele também confere; não decide o resultado. O inventário por endereço (acima) não é tocado.
+           ========================================================= */
+
+        let invgDados = [];          /* linhas contadas: documento x filial x armazém x endereço x produto */
+        let invgDtSistema = '';      /* data do Saldo por Endereço usado como "sistema" (aaaa-mm-dd) */
+        let invgDocs = [];           /* documentos existentes (mais antigo -> mais recente) */
+        let invgDataDoc = {};        /* documento -> data da contagem */
+        let invgSel = new Set();     /* documentos marcados: um, vários ou todos */
+        let invgTexto = '';          /* texto dos documentos marcados (títulos) */
+        let invgCache = null;
+        let invSubModo = 'endereco'; /* última chave usada no Inventário (o botão "Inventário" volta para ela) */
+
+        const COR_INVG = { 'Ajuste negativo': 0xe74c3c, 'Ajuste positivo': 0xf1c40f, 'Total confere': 0x2ecc71 };
+        const ORDEM_INVG = ['Ajuste negativo', 'Ajuste positivo', 'Total confere'];
+        const SEM_END_INVG = '(sem endereço)';
+
+        function ehDataISO(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')); }
+
+        function processarInvGeral(x) {
+            let o = x;
+            if (typeof o === 'string') {
+                try { o = JSON.parse(o); } catch (e) { o = null; }
+            }
+            const arr = (o && Array.isArray(o.it)) ? o.it : [];
+            invgDtSistema = (o && ehDataISO(o.dt)) ? o.dt : '';
+
+            invgDados = arr.map(r => ({
+                doc: String(r.d || '').trim(), filial: String(r.f || '').trim(), armazem: String(r.a || '').trim(),
+                end: String(r.e || ''), k: r.e ? (extrairChaveEndereco(r.e) || normalizarNome(r.e)) : '',
+                prod: String(r.p || '').trim(), desc: String(r.ds || ''), un: String(r.u || ''),
+                q: Number(r.q) || 0, custo: Number(r.k) || 0, orig: String(r.ko || ''), dc: ehDataISO(r.dc) ? String(r.dc) : ''
+            })).filter(r => r.doc && r.prod);
+
+            const dataDoc = {};
+            invgDados.forEach(r => { if (r.dc && (!dataDoc[r.doc] || r.dc > dataDoc[r.doc])) dataDoc[r.doc] = r.dc; });
+            invgDataDoc = dataDoc;
+            invgDocs = Array.from(new Set(invgDados.map(r => r.doc))).sort((a, b) => {
+                const da = dataDoc[a] || '', db = dataDoc[b] || '';
+                if (da !== db) return da < db ? -1 : 1;
+                return a < b ? -1 : (a > b ? 1 : 0);
+            });
+
+            /* mantém só os documentos marcados que ainda existem; sem nenhum, marca o mais recente */
+            invgSel = new Set(Array.from(invgSel).filter(d => invgDocs.indexOf(d) >= 0));
+            if (invgSel.size === 0 && invgDocs.length > 0) invgSel.add(invgDocs[invgDocs.length - 1]);
+        }
+
+        function textoEndsInvG(o, max) {
+            const ks = Object.keys(o).filter(k => Math.abs(o[k]) >= EPS_INV).sort();
+            if (ks.length === 0) return '—';
+            const m = max || 6;
+            return ks.slice(0, m).map(k => k + ' (' + fmtQtdInv(o[k]) + ')').join(' · ') + (ks.length > m ? ' …' : '');
+        }
+
+        function calcularInvGeral() {
+            const docsSel = invgDocs.filter(d => invgSel.has(d));
+            invgTexto = docsSel.length === 0 ? '' : (docsSel.length === invgDocs.length && docsSel.length > 1 ? 'Todos (' + docsSel.length + ' documentos)' : docsSel.join(' + '));
+
+            /* 1) contado: soma por Filial x Armazém x Produto (lotes e endereços somados) */
+            const itens = {};
+            let dcMin = '', dcMax = '';
+            invgDados.filter(r => invgSel.has(r.doc)).forEach(r => {
+                const ik = r.filial + '|' + r.armazem + '|' + r.prod;
+                let it = itens[ik];
+                if (!it) {
+                    it = itens[ik] = { ik: ik, filial: r.filial, armazem: r.armazem, prod: r.prod, desc: '', un: '', contado: 0, cEnd: {},
+                        sis: 0, sEnd: {}, sisVal: 0, docs: new Set(), custoMod: 0, orig: '', dc: '' };
+                }
+                it.contado += r.q;
+                const k = r.k || SEM_END_INVG;
+                it.cEnd[k] = (it.cEnd[k] || 0) + r.q;
+                it.docs.add(r.doc);
+                if (!it.desc && r.desc) it.desc = r.desc;
+                if (!it.un && r.un) it.un = r.un;
+                if (r.custo > 0 && !(it.custoMod > 0)) { it.custoMod = r.custo; it.orig = r.orig; }
+                if (r.dc) {
+                    if (!it.dc || r.dc > it.dc) it.dc = r.dc;
+                    if (!dcMin || r.dc < dcMin) dcMin = r.dc;
+                    if (!dcMax || r.dc > dcMax) dcMax = r.dc;
+                }
+            });
+
+            /* 2) sistema: Saldo por Endereço que o Power BI mandou (soma de todos os endereços do produto) */
+            Object.keys(dadosPorEndereco).forEach(k => {
+                (dadosPorEndereco[k] || []).forEach(reg => {
+                    if (normalizarNome(reg.fonte).indexOf('CONTAGEM') >= 0) return;      /* só o Saldo por Endereço */
+                    const ik = String(reg.filial || '').trim() + '|' + String(reg.armazem || '').trim() + '|' + String(reg.codigoProduto || '').trim();
+                    const it = itens[ik];
+                    if (!it) return;
+                    const q = Number(reg.estoque) || 0;
+                    it.sis += q;
+                    it.sEnd[k] = (it.sEnd[k] || 0) + q;
+                    it.sisVal += Number(reg.custoTotal) || 0;
+                });
+            });
+
+            /* 3) resultado por produto */
+            const lista = Object.keys(itens).map(ik => itens[ik]);
+            lista.forEach(it => {
+                let custo = it.custoMod, orig = it.orig;
+                if (!(custo > 0) && it.sis > 0 && it.sisVal > 0) { custo = it.sisVal / it.sis; orig = 'Saldo por Endereço'; }
+                it.custo = custo > 0 ? custo : 0;
+                it.orig = it.custo > 0 ? orig : 'Não localizado';
+                it.dif = it.contado - it.sis;
+                it.vDif = it.dif * it.custo;
+                it.vContado = it.contado * it.custo;
+                it.status = Math.abs(it.dif) < EPS_INV ? 'Total confere' : (it.dif < 0 ? 'Ajuste negativo' : 'Ajuste positivo');
+
+                const kc = Object.keys(it.cEnd);
+                const ks = Object.keys(it.sEnd);
+                const todas = new Set(kc.concat(ks));
+                const semEndContado = kc.indexOf(SEM_END_INVG) >= 0;
+                todas.delete(SEM_END_INVG);
+                it.ends = Array.from(todas);
+                /* o endereço também confere? (só faz sentido se o total confere e o arquivo trouxe endereço) */
+                it.endConfere = (it.status === 'Total confere' && !semEndContado && kc.length > 0)
+                    ? it.ends.every(k => Math.abs((it.cEnd[k] || 0) - (it.sEnd[k] || 0)) < EPS_INV)
+                    : null;
+                it.docsTxt = Array.from(it.docs).sort((a, b) => ((invgDataDoc[a] || '') < (invgDataDoc[b] || '') ? -1 : 1)).join(' + ');
+            });
+
+            /* 4) endereços: a pior situação entre os produtos que passam por ele (onde estão no sistema ou onde foram contados) */
+            const addrs = {};
+            lista.forEach(it => it.ends.forEach(k => {
+                if (!addrs[k]) addrs[k] = { k: k, itens: [], cls: 'Total confere' };
+                addrs[k].itens.push(it);
+            }));
+            Object.keys(addrs).forEach(k => {
+                const a = addrs[k];
+                a.cls = a.itens.some(i => i.status === 'Ajuste negativo') ? 'Ajuste negativo'
+                    : (a.itens.some(i => i.status === 'Ajuste positivo') ? 'Ajuste positivo' : 'Total confere');
+            });
+
+            /* 5) resumos */
+            const R = { n: lista.length, nOk: 0, nNeg: 0, nPos: 0, vNeg: 0, vPos: 0, vOk: 0, liq: 0, vContado: 0, nEndOk: 0, nEndDif: 0, semCusto: 0 };
+            const grupos = {};
+            lista.forEach(it => {
+                R.vContado += it.vContado;
+                if (it.semCusto === undefined) it.semCusto = !(it.custo > 0);
+                if (it.status !== 'Total confere' && it.semCusto) R.semCusto++;
+                if (it.status === 'Total confere') {
+                    R.nOk++; R.vOk += it.vContado;
+                    if (it.endConfere === true) R.nEndOk++;
+                    else if (it.endConfere === false) R.nEndDif++;
+                }
+                else if (it.status === 'Ajuste negativo') { R.nNeg++; R.vNeg += Math.abs(it.vDif); R.liq += it.vDif; }
+                else { R.nPos++; R.vPos += it.vDif; R.liq += it.vDif; }
+
+                const g = grupos[it.docsTxt] || (grupos[it.docsTxt] = { docs: it.docsTxt, n: 0, nOk: 0, nNeg: 0, nPos: 0, vNeg: 0, vPos: 0, liq: 0, vContado: 0, dc: '' });
+                g.n++; g.vContado += it.vContado;
+                if (it.dc && it.dc > g.dc) g.dc = it.dc;
+                if (it.status === 'Total confere') g.nOk++;
+                else if (it.status === 'Ajuste negativo') { g.nNeg++; g.vNeg += Math.abs(it.vDif); g.liq += it.vDif; }
+                else { g.nPos++; g.vPos += it.vDif; g.liq += it.vDif; }
+            });
+            const porDoc = Object.keys(grupos).map(k => grupos[k]).sort((a, b) => (a.dc === b.dc ? (a.docs < b.docs ? -1 : 1) : (a.dc < b.dc ? -1 : 1)));
+
+            const absV = it => Math.abs(it.vDif) || Math.abs(it.dif) * 1e-6;
+            const neg = lista.filter(i => i.status === 'Ajuste negativo').sort((a, b) => absV(b) - absV(a));
+            const pos = lista.filter(i => i.status === 'Ajuste positivo').sort((a, b) => absV(b) - absV(a));
+            const endDif = lista.filter(i => i.status === 'Total confere' && i.endConfere === false).sort((a, b) => b.vContado - a.vContado);
+
+            /* aviso de data: contagem de um dia, saldo do sistema de outro */
+            const dataDiverge = !!(dcMax && invgDtSistema && (dcMax !== invgDtSistema || dcMin !== invgDtSistema));
+            const aviso = dataDiverge
+                ? 'contagem de ' + fmtDataISO(dcMin === dcMax ? dcMax : dcMin) + (dcMin !== dcMax ? ' a ' + fmtDataISO(dcMax) : '') + ' e sistema de ' + fmtDataISO(invgDtSistema) + ': parte da diferença pode ser movimentação'
+                : '';
+
+            const pctOk = R.n > 0 ? Math.round((R.nOk / R.n) * 100) : 0;
+            const resHud = {
+                rot: 'Inventário geral · ' + escaparHTML(invgTexto),
+                val: fmtSinalMoeda(R.liq) + ' <small style="font-size:11px;color:#9fc3d6">ajuste líquido</small>',
+                sub: 'Conferem: <b>' + R.nOk + '/' + R.n + '</b> produtos (' + pctOk + '%)<br>' +
+                    'Negativo: <span class="desce">' + R.nNeg + ' · ' + escaparHTML(moedaCurta(R.vNeg)) + '</span> · positivo: <span class="sobe">' + R.nPos + ' · ' + escaparHTML(moedaCurta(R.vPos)) + '</span><br>' +
+                    'Sistema: Saldo por Endereço de ' + (invgDtSistema ? escaparHTML(fmtDataISO(invgDtSistema)) : '--') +
+                    (aviso ? '<br>⚠ ' + escaparHTML(aviso) : '') +
+                    (R.semCusto > 0 ? '<br>⚠ ' + R.semCusto + ' item(ns) sem custo localizado' : '')
+            };
+
+            invgCache = {
+                n: lista.length, itens: lista, addrs: addrs, R: R, porDoc: porDoc, neg: neg, pos: pos, endDif: endDif,
+                valorClasse: { 'Ajuste negativo': R.vNeg, 'Ajuste positivo': R.vPos, 'Total confere': R.vOk },
+                nAj: R.nNeg + R.nPos, aviso: aviso, resHud: resHud, dcMin: dcMin, dcMax: dcMax
+            };
+            return invgCache;
+        }
+
+        function corTxtInvG(status) {
+            return status === 'Total confere' ? '#6bff9a' : (status === 'Ajuste negativo' ? '#ff8a80' : '#ffd166');
+        }
+
+        /* Um produto: contado x sistema, onde contaram, onde está no sistema, se o endereço também confere */
+        function htmlInvGItem(it, k) {
+            const lin = (rot, val, ruim) => '<div class="cf-lin ' + (ruim ? 'cf-ruim' : 'cf-bom') + '"><span class="cf-rot">' + rot + '</span><span class="cf-val">' + val + '</span></div>';
+            const un = it.un ? ' ' + escaparHTML(it.un) : '';
+            const ends = o => escaparHTML(textoEndsInvG(o, 6));
+
+            let h = '<div class="tt-produto"><div class="tt-produto-titulo">' + escaparHTML(it.desc || it.prod) + '</div>';
+            h += '<div class="cf-sub">' + escaparHTML(it.prod) + ' · ' + escaparHTML(it.filial) + '/' + escaparHTML(it.armazem) +
+                ' · <b style="color:' + corTxtInvG(it.status) + '">' + escaparHTML(it.status) + '</b></div>';
+            h += '<div class="cf-bloco">';
+            h += lin('Contado (total)', fmtQtdInv(it.contado) + un, false);
+            h += lin('Sistema (Saldo por End.)', fmtQtdInv(it.sis) + un, false);
+            h += lin('Diferença', fmtSinalQtd(it.dif) + un + (it.custo > 0 ? ' (' + escaparHTML(fmtSinalMoeda(it.vDif)) + ')' : ''), Math.abs(it.dif) >= EPS_INV);
+            if (k) h += lin('Neste endereço', 'contado ' + fmtQtdInv(it.cEnd[k] || 0) + ' · sistema ' + fmtQtdInv(it.sEnd[k] || 0) + un, false);
+            h += lin('Onde contaram', ends(it.cEnd), false);
+            h += lin('No sistema', ends(it.sEnd), false);
+            if (it.status === 'Total confere' && it.endConfere === true) h += lin('Endereço', '✓ também confere', false);
+            else if (it.status === 'Total confere' && it.endConfere === false) h += lin('Endereço', 'diferente do sistema', true);
+            h += lin('Custo unitário', it.custo > 0 ? escaparHTML(formatarMoeda(it.custo)) + ' <small>(' + escaparHTML(it.orig) + ')</small>' : '<b>não localizado</b>', !(it.custo > 0));
+            h += '</div>';
+            h += '<div class="cf-sub">Doc.: ' + escaparHTML(it.docsTxt) + (it.dc ? ' · contagem de ' + escaparHTML(fmtDataISO(it.dc)) : '') + '</div>';
+            return h + '</div>';
+        }
+
+        function montarHTMLTooltipInvG(endereco) {
+            const k = extrairChaveEndereco(endereco) || normalizarNome(endereco);
+            const c = invgCache || calcularInvGeral();
+            const a = c && c.addrs ? c.addrs[k] : null;
+
+            let h = '<div class="tt-header">' + escaparHTML(endereco) + '</div>';
+            if (!a) {
+                return h + '<div class="tt-line"><span class="tt-label">Inventário geral</span><span class="tt-value">endereço fora desta contagem</span></div>';
+            }
+
+            h += '<div class="tt-line"><span class="tt-label">' + escaparHTML(invgTexto) + ' · Geral</span><span class="tt-value" style="color:' + hexCss(COR_INVG[a.cls] || COR_SEM_DADO) + '">' + escaparHTML(a.cls) + '</span></div>';
+            h += '<div class="tt-line"><span class="tt-label">Produtos neste endereço</span><span class="tt-value">' + formatarNumero(a.itens.length, 0) + '</span></div>';
+
+            const peso = i => (i.status === 'Total confere' ? 0 : 1e12) + Math.abs(i.vDif) + Math.abs(i.dif);
+            const ord = a.itens.slice().sort((x, y) => peso(y) - peso(x));
+            const MAX = Math.max(1, Math.min(3, Math.floor((window.innerHeight - 190) / 190)));
+            ord.slice(0, MAX).forEach(i => { h += htmlInvGItem(i, k); });
+            if (ord.length > MAX) h += '<div class="tt-resto">+ ' + formatarNumero(ord.length - MAX, 0) + ' produto(s)<br>Clique no endereço para ver todos</div>';
+            return h;
+        }
+
+        function exibirKPIInvG(enderecoVisual) {
+            const k = extrairChaveEndereco(enderecoVisual) || normalizarNome(enderecoVisual);
+            const c = invgCache || calcularInvGeral();
+            const a = c && c.addrs ? c.addrs[k] : null;
+
+            const rot = document.querySelectorAll('#painel-kpi .corpo .linha .rotulo');
+            ['Produtos', 'Contado aqui', 'Valor contado aqui', 'Situação'].forEach((t, i) => { if (rot[i]) rot[i].innerText = t; });
+
+            document.getElementById('kpi-endereco').innerText = enderecoVisual;
+            const prod = document.getElementById('kpi-produtos');
+
+            if (!a) {
+                document.getElementById('kpi-qtd-produtos').innerText = '0';
+                document.getElementById('kpi-estoque').innerText = '0';
+                document.getElementById('kpi-valor-estoque').innerText = formatarMoeda(0);
+                document.getElementById('kpi-status').innerText = 'Fora da contagem';
+                prod.innerHTML = '<div class="kpi-produto-item">Este endereço não aparece na contagem geral (' + escaparHTML(invgTexto) + ').</div>';
+                mostrarPainelKPI();
+                return;
+            }
+
+            document.getElementById('kpi-qtd-produtos').innerText = a.itens.length;
+            document.getElementById('kpi-estoque').innerText = formatarNumero(a.itens.reduce((s, i) => s + (i.cEnd[k] || 0), 0), 0);
+            document.getElementById('kpi-valor-estoque').innerText = formatarMoeda(a.itens.reduce((s, i) => s + (i.cEnd[k] || 0) * i.custo, 0));
+            document.getElementById('kpi-status').innerText = a.cls;
+
+            const peso = i => (i.status === 'Total confere' ? 0 : 1e12) + Math.abs(i.vDif) + Math.abs(i.dif);
+            const ord = a.itens.slice().sort((x, y) => peso(y) - peso(x));
+            prod.innerHTML = ord.map(i => htmlInvGItem(i, k)).join('') || '<div class="kpi-produto-item">Sem produtos.</div>';
+            mostrarPainelKPI();
+        }
+
+        /* Painel de resumo (mesmo painel do ranking do inventário) */
+        function renderInvGPainel() {
+            const el = document.getElementById('inv-ranking');
+            const c = invgCache;
+            if (!el || !c || c.n === 0) return;
+            const R = c.R;
+            const cls = v => (v >= 0 ? 'sobe' : 'desce');
+            const pctOk = R.n > 0 ? Math.round((R.nOk / R.n) * 100) : 0;
+
+            const linhaRes =
+                '<div class="rc tot"><div class="l1"><b>AJUSTE LÍQUIDO</b><span class="liq ' + cls(R.liq) + '">' + escaparHTML(fmtSinalMoeda(R.liq)) + '</span>' +
+                    '<span class="pc ' + cls(R.liq) + '">' + (R.vContado > 0 ? escaparHTML(fmtPct((R.liq / R.vContado) * 100)) : '—') + '</span></div>' +
+                    '<div class="l2">% sobre o valor contado (' + escaparHTML(moedaCurta(R.vContado)) + ')</div></div>' +
+                '<div class="rc"><div class="l1"><b>Conferem</b><span class="liq sobe">' + R.nOk + ' de ' + R.n + ' produtos</span><span class="pc sobe">' + pctOk + '%</span></div>' +
+                    '<div class="l2">' + R.nEndOk + ' também por endereço · ' + R.nEndDif + ' com o total certo em endereço diferente do sistema</div></div>' +
+                '<div class="rc"><div class="l1"><b>Negativo</b><span class="liq desce">' + escaparHTML(fmtSinalMoeda(-R.vNeg)) + '</span><span class="pc desce">' + R.nNeg + '</span></div>' +
+                    '<div class="l2">contou menos que o Saldo por Endereço</div></div>' +
+                '<div class="rc"><div class="l1"><b>Positivo</b><span class="liq" style="color:#ffd166">' + escaparHTML(fmtSinalMoeda(R.vPos)) + '</span><span class="pc" style="color:#ffd166">' + R.nPos + '</span></div>' +
+                    '<div class="l2">contou mais que o Saldo por Endereço</div></div>' +
+                '<div class="l2" style="padding:3px 5px">Sistema: Saldo por Endereço de ' + (invgDtSistema ? escaparHTML(fmtDataISO(invgDtSistema)) : '--') +
+                    (c.aviso ? '<br>⚠ ' + escaparHTML(c.aviso) : '') +
+                    (R.semCusto > 0 ? '<br>⚠ ' + R.semCusto + ' ajuste(s) sem custo localizado (valor 0)' : '') + '</div>';
+
+            const linhasDoc = c.porDoc.map(g =>
+                '<div class="rc"><div class="l1"><b>' + escaparHTML(g.docs) + '</b><span class="liq ' + cls(g.liq) + '">' + escaparHTML(fmtSinalMoeda(g.liq)) + '</span>' +
+                    '<span class="pc ' + cls(g.liq) + '">' + (g.vContado > 0 ? escaparHTML(fmtPct((g.liq / g.vContado) * 100)) : '—') + '</span></div>' +
+                    '<div class="l2">' + g.n + ' produtos · ' + g.nOk + ' conferem · ' + g.nNeg + ' neg. (' + escaparHTML(moedaCurta(g.vNeg)) + ') · ' + g.nPos + ' pos. (' + escaparHTML(moedaCurta(g.vPos)) + ')' +
+                    (g.dc ? ' · ' + escaparHTML(fmtDataISO(g.dc)) : '') + '</div></div>').join('');
+
+            const linhasItens = (arr, classe, comValor) => arr.length === 0
+                ? '<div class="vazio">nenhum</div>'
+                : arr.slice(0, 12).map(it => {
+                    const k0 = it.ends[0] || '';
+                    return '<div class="rk" data-k="' + escaparHTML(k0) + '"><b>' + escaparHTML(k0 || '—') + '</b><span class="nm" title="' + escaparHTML(it.desc || it.prod) + '">' + escaparHTML(it.desc || it.prod) + '</span>' +
+                        '<span class="v ' + classe + '">' + escaparHTML(comValor ? fmtSinalMoeda(it.vDif) : moedaCurta(it.vContado)) + '</span></div>' +
+                        '<div class="rk-det">' + escaparHTML(it.filial + '/' + it.armazem + ' · contado ' + fmtQtdInv(it.contado) + ' · sistema ' + fmtQtdInv(it.sis) + (comValor ? ' · ' + fmtSinalQtd(it.dif) : '')) + '</div>' +
+                        (comValor ? '' : '<div class="rk-det">contou em ' + escaparHTML(textoEndsInvG(it.cEnd, 4)) + ' · sistema em ' + escaparHTML(textoEndsInvG(it.sEnd, 4)) + '</div>');
+                }).join('') + (arr.length > 12 ? '<div class="rk-det" style="padding-left:5px">+ ' + (arr.length - 12) + ' (use "Ajustes" para a lista completa)</div>' : '');
+
+            escreverRolagem(el, '<div class="rk-tit" title="Clique para recolher/abrir (arraste para mover)">' + (rankingRecolhido ? '▸' : '▾') + ' Resumo do inventário geral</div>' +
+                secaoRanking('g_res', 'Resumo · ' + escaparHTML(invgTexto), linhaRes) +
+                secaoRanking('g_doc', 'Por documento · ajuste e % sobre o contado', linhasDoc) +
+                secaoRanking('g_neg', 'Ajuste negativo · ' + c.neg.length + ' produto(s)', linhasItens(c.neg, 'desce', true)) +
+                secaoRanking('g_pos', 'Ajuste positivo · ' + c.pos.length + ' produto(s)', linhasItens(c.pos, 'sobe', true)) +
+                secaoRanking('g_end', 'Total certo, endereço diferente · ' + c.endDif.length, linhasItens(c.endDif, 'sobe', false)));
+            el.classList.toggle('recolhido', rankingRecolhido);
+
+            posicionarPainelLateral(el);
+            atualizarRolagem(el);
+        }
+
+        /* Barra (documentos + ações) e painel do modo Geral */
+        function atualizarInvGUI() {
+            const barra = document.getElementById('barra-invg');
+            const rk = document.getElementById('inv-ranking');
+            if (!barra || !rk) return;
+
+            const ativo = modoCor === 'invgeral';
+            barra.classList.toggle('visivel', ativo);
+
+            if (ativo) {
+                const box = document.getElementById('invg-docs');
+                const todos = invgDocs.length > 1 && invgDocs.every(d => invgSel.has(d));
+                box.innerHTML = invgDocs.map(d => '<button class="inv-chip' + (invgSel.has(d) ? ' ativo' : '') + '" data-d="' + escaparHTML(d) + '"' +
+                        (invgDataDoc[d] ? ' title="Contagem de ' + escaparHTML(fmtDataISO(invgDataDoc[d])) + '"' : '') + '>' + escaparHTML(d) + '</button>').join('') +
+                    (invgDocs.length > 1 ? '<button class="inv-chip todos' + (todos ? ' ativo' : '') + '" data-d="__todos__" title="Somar todos os documentos">Todos</button>' : '');
+                rk.classList.toggle('visivel', !!invgCache && invgCache.n > 0);
+                renderInvGPainel();
+            }
+            reposicionarBarras();
+        }
+
+        function mudarInvGBase() {
+            calcularInvGeral();
+            recalcularModo();
+            atualizarBarraModos();
+            renderLegendaModo();
+            atualizarInvGUI();
+            aplicarFiltrosECores();
+            salvarEstado();
+        }
+
+        document.getElementById('barra-invg').addEventListener('click', function(e) {
+            const chip = e.target.closest ? e.target.closest('.inv-chip') : null;
+            if (chip) {
+                const d = chip.getAttribute('data-d');
+                if (d === '__todos__') {
+                    invgSel = new Set(invgDocs);
+                }
+                else if (invgSel.has(d)) {
+                    if (invgSel.size > 1) invgSel.delete(d);      /* sempre fica pelo menos um */
+                }
+                else {
+                    invgSel.add(d);
+                }
+                focoLegenda.clear();
+                mudarInvGBase();
+                return;
+            }
+            const b = e.target.closest ? e.target.closest('[data-acao]') : null;
+            if (b) acaoCompartilhar(b.getAttribute('data-acao'));
+        });
+
+        /* chave "Por endereço | Geral" (as duas barras) */
+        document.addEventListener('click', function(e) {
+            const b = e.target.closest ? e.target.closest('[data-invmodo]') : null;
+            if (!b) return;
+            aplicarModo(b.getAttribute('data-invmodo') === 'geral' ? 'invgeral' : 'inventario');
+        });
+
+        /* texto para colar no Teams/e-mail: o que ajustar ou recontar */
+        function textoPendenciasInvG() {
+            const c = invgCache;
+            if (!c || c.n === 0) return '';
+            const L = [];
+            L.push('*INVENTÁRIO GERAL · AJUSTES A CONFERIR · ' + invgTexto + '*  (' + dataHoraBR() + ')');
+            L.push(htmlParaTexto(c.resHud.val));
+            L.push(htmlParaTexto(c.resHud.sub));
+
+            const linha = it => '   • ' + (it.desc || it.prod) + ' (' + it.prod + ') · ' + it.filial + '/' + it.armazem + ': contado ' + fmtQtdInv(it.contado) + ', sistema ' + fmtQtdInv(it.sis) +
+                ', diferença ' + fmtSinalQtd(it.dif) + (it.custo > 0 ? ' (' + fmtSinalMoeda(it.vDif) + ')' : '') +
+                ' · contou em ' + textoEndsInvG(it.cEnd, 5) + ' · sistema em ' + textoEndsInvG(it.sEnd, 5);
+            const bloco = (titulo, arr) => {
+                if (arr.length === 0) return;
+                L.push('');
+                L.push(titulo + ' (' + arr.length + '):');
+                arr.forEach(it => L.push(linha(it)));
+            };
+            bloco('AJUSTE NEGATIVO (contou menos que o sistema)', c.neg);
+            bloco('AJUSTE POSITIVO (contou mais que o sistema)', c.pos);
+            bloco('TOTAL CERTO, MAS EM ENDEREÇO DIFERENTE DO SISTEMA', c.endDif);
+            const sem = c.itens.filter(i => i.status !== 'Total confere' && i.semCusto);
+            if (sem.length) {
+                L.push('');
+                L.push('SEM CUSTO LOCALIZADO (' + sem.length + '): ' + sem.slice(0, 15).map(i => i.prod).join(', ') + (sem.length > 15 ? ' …' : ''));
+            }
+            return L.join('\n');
+        }
+
         /* Esconde/mostra HUD, ranking e legenda de uma vez (botão "Painéis" ou tecla H) */
         function aplicarPaineis() {
             document.body.classList.toggle('sem-paineis', semPaineis);
@@ -5400,7 +5910,7 @@
             let base = livre(bm) ? 18 : bm.offsetHeight + 26;
             const larguras = livre(bm) ? [] : [bm.offsetWidth];
 
-            ['barra-inv', 'barra-play'].forEach(id => {
+            ['barra-inv', 'barra-invg', 'barra-play'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el && el.classList.contains('visivel') && !livre(el)) {
                     el.style.bottom = base + 'px';
@@ -5425,7 +5935,7 @@
             }
         }
 
-        window.addEventListener('resize', function() { reposicionarBarras(); if (modoCor === 'inventario') renderInvRanking(); });
+        window.addEventListener('resize', function() { reposicionarBarras(); if (modoCor === 'inventario' || modoCor === 'invgeral') renderInvRanking(); });
 
         /* =========================================================
            25.4 COMPARTILHAR (texto e imagem), ACURACIDADE, PENDÊNCIAS NAS PLACAS E
@@ -5455,6 +5965,10 @@
                 const r = invCache.resumo[invAba];
                 return [r.rot, r.val, r.sub];
             }
+            if (modoCor === 'invgeral' && invgCache && invgCache.n > 0) {
+                const r = invgCache.resHud;
+                return [r.rot, r.val, r.sub];
+            }
             return ultimoResumoHud;
         }
 
@@ -5464,6 +5978,7 @@
 
         function tituloCompartilhar() {
             if (modoCor === 'inventario') return 'Inventário · ' + invCiclo + ' · ' + ROTULO_ABA[invAba];
+            if (modoCor === 'invgeral') return 'Inventário geral · ' + invgTexto;
             return 'Layout 3D · ' + (MODOS[modoCor] ? MODOS[modoCor].rotulo : 'Padrão');
         }
 
@@ -5526,6 +6041,21 @@
                 if (R.neg.length) { L.push(''); L.push('Maiores reduções:'); rk(R.neg).forEach(x => L.push(x)); }
             }
 
+            if (modoCor === 'invgeral' && invgCache && invgCache.n > 0) {
+                const c = invgCache, R = c.R;
+                L.push('');
+                L.push('Conferem: ' + R.nOk + ' de ' + R.n + ' produtos · ' + R.nEndOk + ' também por endereço · ' + R.nEndDif + ' com o total certo em endereço diferente');
+                L.push('Ajuste negativo: ' + R.nNeg + ' produto(s) · ' + fmtSinalMoeda(-R.vNeg));
+                L.push('Ajuste positivo: ' + R.nPos + ' produto(s) · ' + fmtSinalMoeda(R.vPos));
+                L.push('Ajuste líquido: ' + fmtSinalMoeda(R.liq) + (R.vContado > 0 ? ' (' + fmtPct((R.liq / R.vContado) * 100) + ' do valor contado)' : ''));
+                if (c.porDoc.length) {
+                    L.push('');
+                    L.push('Por documento (ajuste líquido e % sobre o contado):');
+                    c.porDoc.forEach(g => L.push('   - ' + g.docs + ': ' + fmtSinalMoeda(g.liq) + (g.vContado > 0 ? ' (' + fmtPct((g.liq / g.vContado) * 100) + ')' : '') +
+                        ' · ' + g.n + ' produtos · ' + g.nOk + ' conferem · ' + g.nNeg + ' neg. · ' + g.nPos + ' pos.'));
+                }
+            }
+
             if (modoCor === 'anomalia' && anomFora && anomFora.n > 0) {
                 L.push('');
                 L.push('Itens com anomalia SEM endereço (fora do mapa): ' + formatarNumero(anomFora.n, 0) + ' · maiores:');
@@ -5555,6 +6085,7 @@
 
         /* Lista de pendências do inventário: o que contar, recontar ou conferir */
         function textoPendencias() {
+            if (modoCor === 'invgeral') return textoPendenciasInvG();
             if (modoCor !== 'inventario' || !invCache || invCache.n === 0) return '';
             const c = invCache;
             const addrs = Object.keys(c.addrs).map(k => c.addrs[k]).sort((a, b) => (a.end < b.end ? -1 : 1));
@@ -5819,7 +6350,7 @@
 
         btnShare.addEventListener('click', function(e) {
             e.stopPropagation();
-            document.getElementById('item-share-pend').style.display = (modoCor === 'inventario' && invCache && invCache.n > 0) ? 'block' : 'none';
+            document.getElementById('item-share-pend').style.display = ((modoCor === 'inventario' && invCache && invCache.n > 0) || (modoCor === 'invgeral' && invgCache && invgCache.n > 0)) ? 'block' : 'none';
             menuShare.classList.toggle('aberto');
             btnShare.classList.toggle('btn-toggle-ativo', menuShare.classList.contains('aberto'));
         });
@@ -6034,6 +6565,9 @@
                     : (invAba === 'pos' ? ['Sem contagem pós'] : ['Pré ≠ Pós', 'Pós pendente']);
                 Object.keys(invCache.addrs).forEach(k => { if (pend.indexOf(clsInvDoEndereco(invCache.addrs[k])) >= 0) soma(k); });
             }
+            else if (modoCor === 'invgeral' && invgCache && invgCache.n > 0) {
+                Object.keys(invgCache.addrs).forEach(k => { if (invgCache.addrs[k].cls !== 'Total confere') soma(k); });
+            }
             else if (modoCor === 'diverg') {
                 Object.keys(infoEnd).forEach(k => { if (infoEnd[k].div === 'DIVERGE') soma(k); });
             }
@@ -6151,7 +6685,7 @@
            25.5 PAINÉIS ARRASTÁVEIS E MENUS RECOLHÍVEIS
            ========================================================= */
 
-        const IDS_MOVEIS = ['hud-topo', 'legenda-modo', 'inv-ranking', 'barra-inv', 'barra-play', 'barra-modos'];
+        const IDS_MOVEIS = ['hud-topo', 'legenda-modo', 'inv-ranking', 'barra-inv', 'barra-invg', 'barra-play', 'barra-modos'];
         let posPaineis = {};
         let modosRecolhidos = false;
         let menuCamRecolhido = false;
@@ -6216,7 +6750,7 @@
             salvarPosPaineis();
             IDS_MOVEIS.forEach(id => { const el = document.getElementById(id); if (el) soltarPosicao(el); });
             reposicionarBarras();
-            if (modoCor === 'inventario') renderInvRanking();
+            if (modoCor === 'inventario' || modoCor === 'invgeral') renderInvRanking();
             else if (modoCor === 'anomalia') renderAnomFora();
             avisar('Painéis de volta à posição original.');
         }
@@ -6639,7 +7173,7 @@
 
         function salvarEstado() {
             try {
-                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, trans: transicaoModo, esm: esmaecerAuto, foco: Array.from(focoLegenda), invSel: Array.from(invSel), invAba: invAba, semPaineis: semPaineis, modosRec: modosRecolhidos, camRec: menuCamRecolhido };
+                const est = { modo: modoCor, hud: hudModo, lembrar: lembrarCamera, qual: qualidadeAlta, trans: transicaoModo, esm: esmaecerAuto, foco: Array.from(focoLegenda), invSel: Array.from(invSel), invgSel: Array.from(invgSel), invAba: invAba, semPaineis: semPaineis, modosRec: modosRecolhidos, camRec: menuCamRecolhido };
                 if (lembrarCamera) {
                     est.cam = camera.position.toArray();
                     est.tgt = controls.target.toArray();
@@ -6707,6 +7241,8 @@
                 if (est.lembrar === false) lembrarCamera = false;
                 if (est.invAba === 'pre' || est.invAba === 'pos' || est.invAba === 'comp') invAba = est.invAba;
                 if (Array.isArray(est.invSel)) invSel = new Set(est.invSel);
+                if (Array.isArray(est.invgSel)) invgSel = new Set(est.invgSel);
+                if (est.modo === 'invgeral') invSubModo = 'geral';
                 if (est.semPaineis === true) { semPaineis = true; aplicarPaineis(); }
                 if (est.modosRec === true) modosRecolhidos = true;
                 if (est.camRec === true) menuCamRecolhido = true;
